@@ -1,6 +1,4 @@
-﻿using LightQueryProfiler.Shared.Models.XEvent;
-
-namespace LightQueryProfiler.Shared.Interfaces
+﻿namespace LightQueryProfiler.Shared.Repositories.Interfaces
 {
     public interface IXEventRepository
     {
@@ -16,6 +14,6 @@ namespace LightQueryProfiler.Shared.Interfaces
 
         public void DisconnectSession(string sessionName);
 
-        public Task<string>? GetXEventsDataAsync(string sessionName, string targetName);
+        public Task<string> GetXEventsDataAsync(string sessionName, string targetName);
     }
 }

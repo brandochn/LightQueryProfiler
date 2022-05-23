@@ -1,4 +1,4 @@
-﻿using LightQueryProfiler.Shared.Interfaces;
+﻿using LightQueryProfiler.Shared.Repositories.Interfaces;
 
 namespace LightQueryProfiler.Shared.Models
 {

@@ -1,12 +1,10 @@
 ﻿using LightQueryProfiler.Shared.Data;
-using LightQueryProfiler.Shared.Interfaces;
-using LightQueryProfiler.Shared.Models.XEvent;
+using LightQueryProfiler.Shared.Repositories.Interfaces;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
-using System.Xml.Serialization;
 
-namespace LightQueryProfiler.Shared.Services
+namespace LightQueryProfiler.Shared.Repositories
 {
     public class XEventRepository : IXEventRepository
     {
@@ -41,7 +39,7 @@ namespace LightQueryProfiler.Shared.Services
             {
                 DbCommand cmd = new SqlCommand();
                 cmd.Connection = connection;
-                cmd.CommandText = template.CreateSQLStatement;
+                cmd.CommandText = template.CreateSQLStatement(sessionName);
                 cmd.CommandType = CommandType.Text;
 
                 cmd.Parameters.Add(new SqlParameter()
@@ -69,14 +67,12 @@ namespace LightQueryProfiler.Shared.Services
                 DbCommand cmd = new SqlCommand();
                 cmd.Connection = connection;
                 cmd.CommandType = CommandType.Text;
-                cmd.CommandText = @"IF EXISTS (SELECT TOP 1 1
+                cmd.CommandText = @$"IF EXISTS (SELECT TOP 1 1
 						                FROM sys.server_event_sessions
 						                WHERE name = @sessionName)
 					                BEGIN
-						                DROP EVENT SESSION @sessionName
-							                ON SERVER;
-					                END
-					                GO";
+						                DROP EVENT SESSION [{sessionName}] ON SERVER
+					                END";
 
                 cmd.Parameters.Add(new SqlParameter()
                 {
@@ -103,13 +99,12 @@ namespace LightQueryProfiler.Shared.Services
                 DbCommand cmd = new SqlCommand();
                 cmd.Connection = connection;
                 cmd.CommandType = CommandType.Text;
-                cmd.CommandText = @"IF EXISTS (SELECT TOP 1 1
+                cmd.CommandText = @$"IF EXISTS (SELECT TOP 1 1
 						                FROM sys.server_event_sessions
 						                WHERE name = @sessionName)
 					                BEGIN
-						                ALTER EVENT SESSION @sessionName ON SERVER STATE = STOP;
-					                END
-					                GO";
+						                ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = STOP
+					                END";
 
                 cmd.Parameters.Add(new SqlParameter()
                 {
@@ -126,7 +121,7 @@ namespace LightQueryProfiler.Shared.Services
             DeleteXEventSession(sessionName);
         }
 
-        public async Task<string>? GetXEventsDataAsync(string sessionName, string targetName)
+        public async Task<string> GetXEventsDataAsync(string sessionName, string targetName)
         {
             string result = string.Empty;
 
@@ -185,13 +180,12 @@ namespace LightQueryProfiler.Shared.Services
                 DbCommand cmd = new SqlCommand();
                 cmd.Connection = connection;
                 cmd.CommandType = CommandType.Text;
-                cmd.CommandText = @"IF EXISTS (SELECT TOP 1 1
+                cmd.CommandText = @$"IF EXISTS (SELECT TOP 1 1
 						                FROM sys.server_event_sessions
 						                WHERE name = @sessionName)
 					                BEGIN
-						                ALTER EVENT SESSION @sessionName ON SERVER STATE = STOP;
-					                END
-					                GO";
+						                ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = STOP
+					                END";
 
                 cmd.Parameters.Add(new SqlParameter()
                 {
@@ -218,13 +212,12 @@ namespace LightQueryProfiler.Shared.Services
                 DbCommand cmd = new SqlCommand();
                 cmd.Connection = connection;
                 cmd.CommandType = CommandType.Text;
-                cmd.CommandText = @"IF EXISTS (SELECT TOP 1 1
+                cmd.CommandText = @$"IF EXISTS (SELECT TOP 1 1
 						                FROM sys.server_event_sessions
 						                WHERE name = @sessionName)
 					                BEGIN
-						                ALTER EVENT SESSION @sessionName ON SERVER STATE = START;
-					                END
-					                GO";
+						                ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = START
+					                END";
 
                 cmd.Parameters.Add(new SqlParameter()
                 {
@@ -251,13 +244,12 @@ namespace LightQueryProfiler.Shared.Services
                 DbCommand cmd = new SqlCommand();
                 cmd.Connection = connection;
                 cmd.CommandType = CommandType.Text;
-                cmd.CommandText = @"IF EXISTS (SELECT TOP 1 1
+                cmd.CommandText = @$"IF EXISTS (SELECT TOP 1 1
 						                FROM sys.server_event_sessions
 						                WHERE name = @sessionName)
 					                BEGIN
-						                ALTER EVENT SESSION @sessionName ON SERVER STATE = STOP;
-					                END
-					                GO";
+						                ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = STOP
+					                END";
 
                 cmd.Parameters.Add(new SqlParameter()
                 {
