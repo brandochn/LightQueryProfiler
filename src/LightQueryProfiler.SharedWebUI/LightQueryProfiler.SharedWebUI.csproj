@@ -21,4 +21,8 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView" Version="6.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LightQueryProfiler.Shared\LightQueryProfiler.Shared.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -1,39 +1,122 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">LightQueryProfiler.WebApp</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
+﻿@using LightQueryProfiler.Shared.Extensions
+@using LightQueryProfiler.Shared.Enums
 
-<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="oi oi-home" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="oi oi-plus" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="fetchdata">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
-            </NavLink>
-        </div>
-    </nav>
-</div>
+<nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
+	<div class="container-fluid">
+		<a class="navbar-brand" href="">Light Query Profiler</a>
+		<button class="navbar-toggler @NavButtonCssClass" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
+				aria-controls="navbarCollapse" aria-label="Toggle navigation" @onclick="ToggleNavMenu">
+			<span class="navbar-toggler-icon"></span>
+		</button>
+		<div class="collapse navbar-collapse @NavBarCssClass" id="navbarCollapse" @onclick="ToggleNavMenu">
+			<ul class="navbar-nav me-auto mb-2 mb-md-0">
+				<li class="nav-item">
+					<div class="navbar-text ms-1">
+						<div class="input-group">
+							<span class="input-group-text" id="basic-addon1">Server</span>
+							<input id="inputServer" type="text" class="form-control" placeholder="Server or IP address" aria-label="Server" aria-describedby="basic-addon1">
+						</div>
+					</div>
+				</li>
+				<li class="nav-item">
+					<div class="navbar-text ms-1">
+						<div class="input-group">
+							<span class="input-group-text" id="basic-addon2">Auth</span>
+							<select class="form-select" @bind="@AuthenticationMode" aria-label="Authentication select" @onclick="@CollapseUserAndPasswordInputs">
+								@foreach (var am in GetAuthenticationModes())
+								{
+									<option value="@am"> @am.GetString() </option>
+								}
+							</select>
+						</div>
+					</div>
+				</li>
+				<li class="nav-item" hidden="@ShowUserAndPasswordInputs">
+					<div class="navbar-text ms-1">
+						<div class="input-group">
+							<span class="input-group-text" id="basic-addon3">User</span>
+							<input type="text" class="form-control" placeholder="User" aria-label="User" aria-describedby="basic-addon3">
+						</div>
+					</div>
+				</li>
+				<li class="nav-item" hidden="@ShowUserAndPasswordInputs">
+					<div class="navbar-text ms-1">
+						<div class="input-group">
+							<span class="input-group-text" id="basic-addon4">Password</span>
+							<input type="password" class="form-control" placeholder="Password" aria-label="Password" aria-describedby="basic-addon3">
+						</div>
+					</div>
+				</li>
+				<li class="nav-item">
+					<div class="navbar-text ms-2">
+						<div class="input-group">
+							<button class="btn btn-outline-success" type="button">Start</button>
+						</div>
+					</div>
+				</li>
+				<li class="nav-item">
+					<div class="navbar-text ms-2">
+						<div class="input-group">
+							<button class="btn btn-outline-secondary" type="button">Pause</button>
+						</div>
+					</div>
+				</li>
+				<li class="nav-item">
+					<div class="navbar-text ms-2">
+						<div class="input-group">
+							<button class="btn btn-outline-danger" type="button">Stop</button>
+						</div>
+					</div>
+				</li>
+				@*<li class="nav-item">
+				<NavLink class="nav-link" href="counter">
+				<span class="oi oi-plus" aria-hidden="true"></span> Counter
+				</NavLink>
+				</li>
+				<li class="nav-item">
+				<NavLink class="nav-link" href="fetchdata">
+				<span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
+				</NavLink>
+				</li>*@
+			</ul>
+		</div>
+	</div>
+</nav>
 
 @code {
-    private bool collapseNavMenu = true;
+	private bool collapseNavMenu = true;
+	private string? NavBarCssClass => collapseNavMenu ? null : "show";
+	private string? NavButtonCssClass => collapseNavMenu ? "collapsed" : null;
+	private AuthenticationMode AuthenticationMode { get; set; } = AuthenticationMode.WindowsAuth;
+	private bool ShowUserAndPasswordInputs { get; set; }
 
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+	private void ToggleNavMenu()
+	{
+		collapseNavMenu = !collapseNavMenu;
+	}
 
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
+	private List<AuthenticationMode> GetAuthenticationModes()
+	{
+		List<AuthenticationMode> authenticationModes = Enum.GetValues(typeof(AuthenticationMode)).Cast<AuthenticationMode>().ToList();
+
+		return authenticationModes;
+	}
+
+	private void CollapseUserAndPasswordInputs()
+	{
+		if (AuthenticationMode == AuthenticationMode.WindowsAuth)
+		{
+			ShowUserAndPasswordInputs = true;
+		}
+		else
+		{
+			ShowUserAndPasswordInputs = false;
+		}
+	}
+
+	protected override void OnInitialized()
+	{
+		CollapseUserAndPasswordInputs();
+	}
+
 }
