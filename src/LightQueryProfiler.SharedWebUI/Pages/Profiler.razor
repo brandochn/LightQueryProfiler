@@ -1,0 +1,136 @@
+﻿@page "/profiler"
+
+@using LightQueryProfiler.Shared.Enums
+@using LightQueryProfiler.Shared.Data
+@using LightQueryProfiler.Shared.Models
+@using LightQueryProfiler.Shared.Repositories
+@using LightQueryProfiler.Shared.Repositories.Interfaces
+@using LightQueryProfiler.Shared.Services
+@using LightQueryProfiler.Shared.Services.Interfaces
+@using System.Data.SqlClient
+
+<NavMenu StartButtonOnClickCallBack="@OnStart"
+		 ServerChanged="@SeverHandler"
+		 UserChanged="@UserHandler"
+		 PasswordChanged="@PasswordHandler"
+		 AuthModeChanged="@AuthenticationModeHandler" />
+
+<TableTemplate Items="Events" Context="profilerEvent">
+	<TableHeader>
+		<th>Name</th>
+		<th>Timestamp</th>
+	</TableHeader>
+	<RowTemplate>
+		<td>@profilerEvent.Name</td>
+		<td>@profilerEvent.Timestamp</td>
+	</RowTemplate>
+</TableTemplate>
+
+
+
+@code {
+	public string? Server { get; set; }
+
+	public AuthenticationMode AuthenticationMode { get; set; }
+
+	public string? User { get; set; }
+
+	public string? Password { get; set; }
+
+	private string SessionName { get; set; } = "lqpSession";
+
+	private List<ProfilerEvent> Events { get; set; } = new List<ProfilerEvent>();
+
+	private IApplicationDbContext? _applicationDbContext;
+	private IXEventRepository? _xEventRepository;
+	private IXEventService? _xEventService;
+	private IProfilerService? _profilerService;
+
+
+	private void Configure()
+	{
+		SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
+		if (AuthenticationMode == AuthenticationMode.WindowsAuth)
+		{
+			builder.IntegratedSecurity = true;
+			User = string.Empty;
+			Password = string.Empty;
+		}
+
+		builder.TrustServerCertificate = true;
+		builder.DataSource = Server;
+		builder.InitialCatalog = "master";
+		builder.UserID = User;
+		builder.Password = Password;
+
+
+		_applicationDbContext = new ApplicationDbContext(builder.ConnectionString);
+		_xEventRepository = new XEventRepository(_applicationDbContext);
+		_xEventService = new XEventService();
+		_profilerService = new ProfilerService(_xEventRepository, _xEventService);
+	}
+
+	public void StartProfiling()
+	{
+		if (_profilerService == null)
+		{
+			return;
+		}
+		_profilerService.StartProfiling(SessionName, new DefaultProfilerSessionTemplate());
+	}
+
+	public async Task GetLastEventsAsync()
+	{
+		if (_profilerService != null)
+		{
+			List<ProfilerEvent>? _events;
+			for (int i = 0; i < 15; i++)
+			{
+				_events = await _profilerService.GetLastEventsAsync(SessionName);
+				if (_events != null)
+				{
+					Events.AddRange(_events);
+				}
+				StateHasChanged();
+				await Task.Delay(900);
+			}
+		}
+	}
+
+	public void StopProfiling()
+	{
+		if (_profilerService == null)
+		{
+			return;
+		}
+		_profilerService.StopProfiling(SessionName);
+	}
+
+	private async void OnStart()
+	{
+		Configure();
+		StartProfiling();
+		await GetLastEventsAsync();
+	}
+
+	private void SeverHandler(string server)
+	{
+		Server = server;
+	}
+
+	private void UserHandler(string user)
+	{
+		User = user;
+	}
+
+	private void PasswordHandler(string pwd)
+	{
+		Password = pwd;
+	}
+
+	private void AuthenticationModeHandler(AuthenticationMode authenticationMode)
+	{
+		AuthenticationMode = authenticationMode;
+	}
+
+}

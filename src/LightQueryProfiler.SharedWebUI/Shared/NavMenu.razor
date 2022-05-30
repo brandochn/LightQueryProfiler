@@ -14,7 +14,7 @@
 					<div class="navbar-text ms-1">
 						<div class="input-group">
 							<span class="input-group-text" id="basic-addon1">Server</span>
-							<input id="inputServer" type="text" class="form-control" placeholder="Server or IP address" aria-label="Server" aria-describedby="basic-addon1">
+							<input id="inputServer" @oninput="OnServerChanged" value="@Server" type="text" class="form-control" placeholder="Server or IP address" aria-label="Server" aria-describedby="basic-addon1">
 						</div>
 					</div>
 				</li>
@@ -35,7 +35,7 @@
 					<div class="navbar-text ms-1">
 						<div class="input-group">
 							<span class="input-group-text" id="basic-addon3">User</span>
-							<input type="text" class="form-control" placeholder="User" aria-label="User" aria-describedby="basic-addon3">
+							<input @oninput="OnUserChanged" value="@User" type="text" class="form-control" placeholder="User" aria-label="User" aria-describedby="basic-addon3">
 						</div>
 					</div>
 				</li>
@@ -43,14 +43,14 @@
 					<div class="navbar-text ms-1">
 						<div class="input-group">
 							<span class="input-group-text" id="basic-addon4">Password</span>
-							<input type="password" class="form-control" placeholder="Password" aria-label="Password" aria-describedby="basic-addon3">
+							<input @oninput="OnPasswordChanged" value="@Password" type="password" class="form-control" placeholder="Password" aria-label="Password" aria-describedby="basic-addon3">
 						</div>
 					</div>
 				</li>
 				<li class="nav-item">
 					<div class="navbar-text ms-2">
 						<div class="input-group">
-							<button class="btn btn-outline-success" type="button">Start</button>
+							<button class="btn btn-outline-success" type="button" @onclick="@StartButtonOnClick">Start</button>
 						</div>
 					</div>
 				</li>
@@ -84,11 +84,29 @@
 </nav>
 
 @code {
+
+	[Parameter]
+	public EventCallback StartButtonOnClickCallBack { get; set; }
+	[Parameter]
+	public EventCallback<string> ServerChanged { get; set; }
+	[Parameter]
+	public EventCallback<string> UserChanged { get; set; }
+	[Parameter]
+	public EventCallback<string> PasswordChanged { get; set; }
+	[Parameter]
+	public EventCallback<AuthenticationMode> AuthModeChanged { get; set; }
+
+	[Parameter] public AuthenticationMode AuthenticationMode { get; set; } = AuthenticationMode.WindowsAuth;
+	[Parameter] public string Server { get; set; } = string.Empty;
+	[Parameter] public string User { get; set; } = string.Empty;
+	[Parameter] public string Password { get; set; } = string.Empty;
+
+	private bool ShowUserAndPasswordInputs { get; set; }
 	private bool collapseNavMenu = true;
 	private string? NavBarCssClass => collapseNavMenu ? null : "show";
 	private string? NavButtonCssClass => collapseNavMenu ? "collapsed" : null;
-	private AuthenticationMode AuthenticationMode { get; set; } = AuthenticationMode.WindowsAuth;
-	private bool ShowUserAndPasswordInputs { get; set; }
+
+
 
 	private void ToggleNavMenu()
 	{
@@ -112,6 +130,8 @@
 		{
 			ShowUserAndPasswordInputs = false;
 		}
+
+		AuthModeChanged.InvokeAsync(AuthenticationMode);
 	}
 
 	protected override void OnInitialized()
@@ -119,4 +139,29 @@
 		CollapseUserAndPasswordInputs();
 	}
 
+	private void StartButtonOnClick()
+	{
+		StartButtonOnClickCallBack.InvokeAsync();
+	}
+
+	private Task OnServerChanged(ChangeEventArgs e)
+	{
+		Server = e?.Value?.ToString() ?? string.Empty;
+
+		return ServerChanged.InvokeAsync(Server);
+	}
+
+	private Task OnUserChanged(ChangeEventArgs e)
+	{
+		User = e?.Value?.ToString() ?? string.Empty;
+
+		return UserChanged.InvokeAsync(User);
+	}
+
+	private Task OnPasswordChanged(ChangeEventArgs e)
+	{
+		Password = e?.Value?.ToString() ?? string.Empty;
+
+		return PasswordChanged.InvokeAsync(Password);
+	}
 }
