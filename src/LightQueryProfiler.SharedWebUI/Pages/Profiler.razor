@@ -15,16 +15,32 @@
 		 PasswordChanged="@PasswordHandler"
 		 AuthModeChanged="@AuthenticationModeHandler" />
 
-<TableTemplate Items="Events" Context="profilerEvent">
+@*<TableTemplate Items="Events" Context="profilerEvent">
 	<TableHeader>
-		<th>Name</th>
-		<th>Timestamp</th>
+		@foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
+		{
+			<th>@c.Name</th>
+		}
 	</TableHeader>
 	<RowTemplate>
 		<td>@profilerEvent.Name</td>
 		<td>@profilerEvent.Timestamp</td>
 	</RowTemplate>
-</TableTemplate>
+</TableTemplate>*@
+
+<table class="table table-hover table-bordered ">
+	<thead class="table-secondary">
+		<tr>
+			@foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
+			{
+				<th>@c.Name</th>
+			}
+		</tr>
+	</thead>
+	<tbody>
+		@RowRender
+	</tbody>
+</table>
 
 
 
@@ -39,7 +55,11 @@
 
 	private string SessionName { get; set; } = "lqpSession";
 
-	private List<ProfilerEvent> Events { get; set; } = new List<ProfilerEvent>();
+	private List<Dictionary<string, object>> Events { get; set; } = new List<Dictionary<string, object>>();
+
+	public BaseProfilerViewTemplate ProfilerViewTemplate { get; set; } = new DefaultProfilerViewTemplate();
+
+	private RenderFragment? RowRender { get; set; }
 
 	private IApplicationDbContext? _applicationDbContext;
 	private IXEventRepository? _xEventRepository;
@@ -84,12 +104,13 @@
 		if (_profilerService != null)
 		{
 			List<ProfilerEvent>? _events;
-			for (int i = 0; i < 15; i++)
+			for (int i = 0; i < 20; i++)
 			{
 				_events = await _profilerService.GetLastEventsAsync(SessionName);
 				if (_events != null)
 				{
-					Events.AddRange(_events);
+					Events.AddRange(AddRows(_events));
+					RowRender = CreateRowComponent(Events);
 				}
 				StateHasChanged();
 				await Task.Delay(900);
@@ -133,4 +154,64 @@
 		AuthenticationMode = authenticationMode;
 	}
 
+	private List<Dictionary<string, object>> AddRows(List<ProfilerEvent> events)
+	{
+		if (events == null)
+		{
+			return new List<Dictionary<string, object>>();
+		}
+
+		List<Dictionary<string, object>> newEvents = new List<Dictionary<string, object>>();
+		Dictionary<string, object> data;
+		foreach (var e in events)
+		{
+			data = new Dictionary<string, object>();
+
+			foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
+			{
+				if (c.Name == "EventClass")
+				{
+					data["EventClass"] = e.Name ?? string.Empty;
+					continue;
+				}
+
+				if (c.Name == "StartTime")
+				{
+					data["StartTime"] = e.Timestamp ?? string.Empty;
+					continue;
+				}
+
+				string columName = c.Name;
+				object columValue = string.Empty;
+
+				if (e.Actions?.Any(a => c.EventsMapped.Contains(a.Key)) ?? false)
+				{
+					columValue = e.Actions.FirstOrDefault(a => c.EventsMapped.Contains(a.Key)).Value ?? string.Empty;
+				}
+				else
+				{
+					if (e.Fields?.Any(f => c.EventsMapped.Contains(f.Key)) ?? false)
+					{
+						columValue = e.Fields.FirstOrDefault(f => c.EventsMapped.Contains(f.Key)).Value ?? string.Empty;
+					}
+				}
+				
+				data[columName] = columValue;
+			}
+
+			newEvents.Add(data);
+		}
+
+		return newEvents;
+	}
+
+	private RenderFragment CreateRowComponent(List<Dictionary<string, object>> rows) => builder =>
+	{
+		foreach (var r in rows)
+		{
+			builder.OpenComponent(0, typeof(RowTemplate));
+			builder.AddAttribute(1, "Row", r);
+			builder.CloseComponent();
+		}
+	};
 }

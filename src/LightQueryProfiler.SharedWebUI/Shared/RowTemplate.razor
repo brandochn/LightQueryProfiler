@@ -1,0 +1,15 @@
+﻿
+<tr>
+	@if (Row is not null)
+	{
+		foreach (var r in Row)
+		{
+			<td>@r.Value</td>
+		}
+	}
+</tr>
+
+@code {
+	[Parameter]
+	public Dictionary<string, object>? Row { get; set; }
+}
