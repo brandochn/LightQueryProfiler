@@ -1,8 +1,75 @@
 ﻿@inherits LayoutComponentBase
-
+@using Components
+@implements IMessageComponent
 
 <main>
 	<article class="container-fluid">
-		@Body
+
+		@if (_isMessageActive)
+		{
+			switch (_messageType)
+			{
+				case MessageType.Error:
+					<div class="alert alert-danger alert-dismissible fade show" role="alert">
+						<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" @onclick="HideMessage"></button>
+						<h3>@_title</h3>
+						<p>@_message</p>
+					</div>
+					break;
+
+				case MessageType.Info:
+					<div class="alert alert-primary alert-dismissible fade show" role="alert">
+						<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" @onclick="HideMessage"></button>
+						<h3>@_title</h3>
+						<p>@_message</p>
+					</div>
+					break;
+
+				case MessageType.Success:
+					<div class="alert alert-success alert-dismissible fade show" role="alert">
+						<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" @onclick="HideMessage"></button>
+						<h3>@_title</h3>
+						<p>@_message</p>
+					</div>
+					break;
+
+				case MessageType.Warning:
+					<div class="alert alert-warning alert-dismissible fade show" role="alert">
+						<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" @onclick="HideMessage"></button>
+						<h3>@_title</h3>
+						<p>@_message</p>
+					</div>
+					break;
+				default:
+					<div></div>
+					break;
+			}
+		}
+
+		<CascadingValue Value="this" Name="MessageComponent">
+			@Body
+		</CascadingValue>
 	</article>
 </main>
+
+@code {
+
+	bool _isMessageActive;
+	string? _title;
+	string? _message;
+	MessageType _messageType;
+
+	public void ShowMessage(string title, string message, MessageType messageType)
+	{
+		_isMessageActive = true;
+		_title = title;
+		_message = message;
+		_messageType = messageType;
+		StateHasChanged();
+	}
+
+	private void HideMessage()
+	{
+		_isMessageActive = false;
+	}
+}

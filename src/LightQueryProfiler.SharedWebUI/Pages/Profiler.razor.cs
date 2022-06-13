@@ -6,6 +6,7 @@ using LightQueryProfiler.Shared.Repositories;
 using LightQueryProfiler.Shared.Repositories.Interfaces;
 using LightQueryProfiler.Shared.Services;
 using LightQueryProfiler.Shared.Services.Interfaces;
+using LightQueryProfiler.SharedWebUI.Components;
 using LightQueryProfiler.SharedWebUI.Shared;
 using Microsoft.AspNetCore.Components;
 using System.Data.SqlClient;
@@ -15,6 +16,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
     public partial class Profiler
     {
         private IApplicationDbContext? _applicationDbContext;
+
         //for cancaletation
         private CancellationTokenSource? _cancelationTokenSource;
 
@@ -22,10 +24,15 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         private PauseTokenSource? _pauseTokeSource;
 
         private IProfilerService? _profilerService;
+
         private IXEventRepository? _xEventRepository;
+
         private IXEventService? _xEventService;
+
+        [CascadingParameter(Name = "MessageComponent")]
+        protected IMessageComponent? MessageComponent { get; set; }
         private AuthenticationMode AuthenticationMode { get; set; }
-        private List<Dictionary<string, object>> Events { get; set; } = new List<Dictionary<string, object>>();
+        private List<Dictionary<string, object>> Rows { get; set; } = new List<Dictionary<string, object>>();
         private string? Password { get; set; }
         private BaseProfilerViewTemplate ProfilerViewTemplate { get; set; } = new DefaultProfilerViewTemplate();
         private RenderFragment? RowRender { get; set; }
@@ -88,6 +95,13 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             AuthenticationMode = authenticationMode;
         }
 
+        private void ClearTableResults()
+        {
+            Rows = new List<Dictionary<string, object>>();
+            RowRender = null;
+            StateHasChanged();
+        }
+
         private void Configure()
         {
             SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
@@ -103,6 +117,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             builder.InitialCatalog = "master";
             builder.UserID = User;
             builder.Password = Password;
+            builder.ApplicationName = "LightQueryProfiler";
 
             _applicationDbContext = new ApplicationDbContext(builder.ConnectionString);
             _xEventRepository = new XEventRepository(_applicationDbContext);
@@ -136,12 +151,11 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             if (_profilerService != null)
             {
                 await Task.Delay(1000, cancelToken);
-                List<ProfilerEvent>? _events;
-                _events = await _profilerService.GetLastEventsAsync(SessionName);
+                List<ProfilerEvent>? _events = await _profilerService.GetLastEventsAsync(SessionName);
                 if (_events != null)
                 {
-                    Events.AddRange(AddRows(_events));
-                    RowRender = CreateRowComponent(Events);
+                    Rows.AddRange(AddRows(_events));
+                    RowRender = CreateRowComponent(Rows);
                 }
                 StateHasChanged();
             }
@@ -162,15 +176,15 @@ namespace LightQueryProfiler.SharedWebUI.Pages
 
         private async void OnStart()
         {
-            ClearTableResults();
-            Configure();
-            StartProfiling();
-            //creating cancel and pause token sources
-            _pauseTokeSource = new PauseTokenSource();
-            _cancelationTokenSource = new CancellationTokenSource();
-
             try
             {
+                ClearTableResults();
+                Configure();
+                StartProfiling();
+                //creating cancel and pause token sources
+                _pauseTokeSource = new PauseTokenSource();
+                _cancelationTokenSource = new CancellationTokenSource();
+
                 await GetLastEventsAsync(_pauseTokeSource.Token, _cancelationTokenSource.Token);
             }
             catch (TaskCanceledException)
@@ -180,8 +194,12 @@ namespace LightQueryProfiler.SharedWebUI.Pages
                     StopProfiling();
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                if (MessageComponent != null)
+                {
+                    MessageComponent.ShowMessage("An error has occurred", e.Message, MessageType.Error);
+                }
             }
         }
 
@@ -223,13 +241,6 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         private void UserHandler(string user)
         {
             User = user;
-        }
-
-        private void ClearTableResults()
-        {
-            Events = new List<Dictionary<string, object>>();
-            RowRender = null;
-            StateHasChanged();
         }
     }
 }

@@ -23,8 +23,8 @@ namespace LightQueryProfiler.Shared.Services
 
             if (lastRead == null || lastRead.Count == 0)
             {
-                lastRead = readEvents;
-                return readEvents;
+                lastRead = readEvents.Where(p => !p.GetEventKey().Contains("LightQueryProfiler")).ToList();
+                return lastRead;
             }
 
             List<ProfilerEvent> newEvents = new List<ProfilerEvent>();
@@ -33,7 +33,15 @@ namespace LightQueryProfiler.Shared.Services
                 bool eventFound = false;
                 foreach (ProfilerEvent lr in lastRead)
                 {
+                    // ignore duplicate events
                     if (string.Equals(readEvent.GetEventKey(), lr.GetEventKey(), StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        eventFound = true;
+                        break;
+                    }
+
+                    // ignore events created by itself
+                    if (readEvent.GetEventKey().Contains("LightQueryProfiler"))
                     {
                         eventFound = true;
                         break;

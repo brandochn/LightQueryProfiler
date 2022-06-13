@@ -1,5 +1,6 @@
 ﻿@using LightQueryProfiler.Shared.Extensions
 @using LightQueryProfiler.Shared.Enums
+@using Components
 
 <nav class="navbar navbar-expand-md navbar-dark bg-dark">
 	<div class="container-fluid">
@@ -82,6 +83,9 @@
 
 @code {
 
+	[CascadingParameter(Name = "MessageComponent")]
+	protected IMessageComponent? MessageComponent { get; set; }
+
 	[Parameter]
 	public EventCallback StartButtonOnClickCallBack { get; set; }
 	[Parameter]
@@ -151,8 +155,43 @@
 
 	private void StartButtonOnClick()
 	{
-		ShowButtonsByAction("start");
-		StartButtonOnClickCallBack.InvokeAsync();
+		try
+		{
+			if (string.IsNullOrEmpty(Server))
+			{
+				throw new ArgumentNullException(null, "Please enter the server.");
+			}
+
+			if (AuthenticationMode == AuthenticationMode.SQLServerAuth)
+			{
+				if (string.IsNullOrEmpty(User))
+				{
+					throw new ArgumentNullException(null, "Please enter the user.");
+				}
+
+				if (string.IsNullOrEmpty(Password))
+				{
+					throw new ArgumentNullException(null, "Please enter the password.");
+				}
+			}
+
+			ShowButtonsByAction("start");
+			StartButtonOnClickCallBack.InvokeAsync();
+		}
+		catch (ArgumentNullException ane)
+		{
+			if (MessageComponent != null)
+			{
+				MessageComponent.ShowMessage("Required field", ane.Message, MessageType.Warning);
+			}
+		}
+		catch (Exception e)
+		{
+			if (MessageComponent != null)
+			{
+				MessageComponent.ShowMessage("An error has occurred", e.Message, MessageType.Error);
+			}
+		}
 	}
 
 	private Task OnServerChanged(ChangeEventArgs e)
