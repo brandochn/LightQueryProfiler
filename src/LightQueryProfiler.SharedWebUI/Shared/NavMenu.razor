@@ -1,7 +1,7 @@
 ﻿@using LightQueryProfiler.Shared.Extensions
 @using LightQueryProfiler.Shared.Enums
 
-<nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
+<nav class="navbar navbar-expand-md navbar-dark bg-dark">
 	<div class="container-fluid">
 		<a class="navbar-brand" href="">Light Query Profiler</a>
 		<button class="navbar-toggler @NavButtonCssClass" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
@@ -50,34 +50,31 @@
 				<li class="nav-item">
 					<div class="navbar-text ms-2">
 						<div class="input-group">
-							<button class="btn btn-outline-success" type="button" @onclick="@StartButtonOnClick">Start</button>
+							<button disabled="@StartButtonDisabled" class="btn btn-outline-success" type="button" @onclick="@StartButtonOnClick">Start</button>
+						</div>
+					</div>
+				</li>
+				<li class="nav-item" hidden="@PauseButtonHidden">
+					<div class="navbar-text ms-2">
+						<div class="input-group">
+							<button disabled="@PauseButtonDisabled" class="btn btn-outline-secondary" type="button" @onclick="@PauseButtonOnClick">Pause</button>
+						</div>
+					</div>
+				</li>
+				<li class="nav-item" hidden="@ResumeButtonHidden">
+					<div class="navbar-text ms-2">
+						<div class="input-group">
+							<button disabled="@ResumeButtonDisabled" class="btn btn-outline-info" type="button" @onclick="@ResumeButtonOnClick">Resume</button>
 						</div>
 					</div>
 				</li>
 				<li class="nav-item">
 					<div class="navbar-text ms-2">
 						<div class="input-group">
-							<button class="btn btn-outline-secondary" type="button">Pause</button>
+							<button disabled="@StopButtonDisabled" class="btn btn-outline-danger" type="button" @onclick="@StopButtonOnClick">Stop</button>
 						</div>
 					</div>
 				</li>
-				<li class="nav-item">
-					<div class="navbar-text ms-2">
-						<div class="input-group">
-							<button class="btn btn-outline-danger" type="button">Stop</button>
-						</div>
-					</div>
-				</li>
-				@*<li class="nav-item">
-				<NavLink class="nav-link" href="counter">
-				<span class="oi oi-plus" aria-hidden="true"></span> Counter
-				</NavLink>
-				</li>
-				<li class="nav-item">
-				<NavLink class="nav-link" href="fetchdata">
-				<span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
-				</NavLink>
-				</li>*@
 			</ul>
 		</div>
 	</div>
@@ -100,13 +97,25 @@
 	[Parameter] public string Server { get; set; } = string.Empty;
 	[Parameter] public string User { get; set; } = string.Empty;
 	[Parameter] public string Password { get; set; } = string.Empty;
+	[Parameter]
+	public EventCallback StopButtonOnClickCallBack { get; set; }
+
+	[Parameter]
+	public EventCallback PauseButtonOnClickCallBack { get; set; }
+
+	[Parameter]
+	public EventCallback ResumeButtonOnClickCallBack { get; set; }
 
 	private bool ShowUserAndPasswordInputs { get; set; }
 	private bool collapseNavMenu = true;
 	private string? NavBarCssClass => collapseNavMenu ? null : "show";
 	private string? NavButtonCssClass => collapseNavMenu ? "collapsed" : null;
-
-
+	private bool StartButtonDisabled { get; set; }
+	private bool StopButtonDisabled { get; set; }
+	private bool PauseButtonDisabled { get; set; }
+	private bool ResumeButtonDisabled { get; set; }
+	private bool PauseButtonHidden { get; set; }
+	private bool ResumeButtonHidden { get; set; }
 
 	private void ToggleNavMenu()
 	{
@@ -137,10 +146,12 @@
 	protected override void OnInitialized()
 	{
 		CollapseUserAndPasswordInputs();
+		ShowButtonsByAction("default");
 	}
 
 	private void StartButtonOnClick()
 	{
+		ShowButtonsByAction("start");
 		StartButtonOnClickCallBack.InvokeAsync();
 	}
 
@@ -163,5 +174,70 @@
 		Password = e?.Value?.ToString() ?? string.Empty;
 
 		return PasswordChanged.InvokeAsync(Password);
+	}
+
+	private void StopButtonOnClick()
+	{
+		ShowButtonsByAction("stop");
+		StopButtonOnClickCallBack.InvokeAsync();
+	}
+
+	private void PauseButtonOnClick()
+	{
+		ShowButtonsByAction("pause");
+		PauseButtonOnClickCallBack.InvokeAsync();
+	}
+
+	private void ResumeButtonOnClick()
+	{
+		ShowButtonsByAction("resume");
+		ResumeButtonOnClickCallBack.InvokeAsync();
+	}
+
+	private void ShowButtonsByAction(string action)
+	{
+		switch (action.ToUpper())
+		{
+			case "START":
+				StartButtonDisabled = true;
+				StopButtonDisabled = !StartButtonDisabled;
+				PauseButtonDisabled = false;
+				ResumeButtonDisabled = true;
+				PauseButtonHidden = false;
+				ResumeButtonHidden = true;
+				break;
+			case "STOP":
+				StartButtonDisabled = false;
+				StopButtonDisabled = !StartButtonDisabled;
+				PauseButtonDisabled = true;
+				ResumeButtonDisabled = true;
+				PauseButtonHidden = false;
+				ResumeButtonHidden = true;
+				break;
+			case "PAUSE":
+				StartButtonDisabled = true;
+				StopButtonDisabled = !StartButtonDisabled;
+				PauseButtonDisabled = true;
+				ResumeButtonDisabled = false;
+				PauseButtonHidden = true;
+				ResumeButtonHidden = false;
+				break;
+			case "RESUME":
+				StartButtonDisabled = true;
+				StopButtonDisabled = !StartButtonDisabled;
+				PauseButtonDisabled = false;
+				ResumeButtonDisabled = true;
+				PauseButtonHidden = false;
+				ResumeButtonHidden = true;
+				break;
+			default:
+				StartButtonDisabled = false;
+				StopButtonDisabled = !StartButtonDisabled;
+				PauseButtonDisabled = true;
+				ResumeButtonDisabled = true;
+				PauseButtonHidden = false;
+				ResumeButtonHidden = true;
+				break;
+		}
 	}
 }
