@@ -62,3 +62,33 @@ a, .btn-link {
     .blazor-error-boundary::after {
         content: "An error has occurred."
     }
+
+/* This is for sql-hightlight (SqlTextArea) */
+code.sql {
+    font-family: monospace;
+    background-color: #000;
+}
+
+.sql-hl-keyword {
+    color: #0037DA;
+}
+
+.sql-hl-function {
+    color: #FF0090;
+}
+
+.sql-hl-number {
+    color: #000;
+}
+
+.sql-hl-string {
+    color: #E45649;
+}
+
+.sql-hl-special {
+    color: #000;
+}
+
+.sql-hl-bracket {
+    color: #FF00FF;
+}

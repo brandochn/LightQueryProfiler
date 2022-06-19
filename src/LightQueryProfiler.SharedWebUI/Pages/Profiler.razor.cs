@@ -7,6 +7,7 @@ using LightQueryProfiler.Shared.Repositories.Interfaces;
 using LightQueryProfiler.Shared.Services;
 using LightQueryProfiler.Shared.Services.Interfaces;
 using LightQueryProfiler.SharedWebUI.Components;
+using LightQueryProfiler.SharedWebUI.Data;
 using LightQueryProfiler.SharedWebUI.Shared;
 using Microsoft.AspNetCore.Components;
 using System.Data.SqlClient;
@@ -31,13 +32,19 @@ namespace LightQueryProfiler.SharedWebUI.Pages
 
         [CascadingParameter(Name = "MessageComponent")]
         protected IMessageComponent? MessageComponent { get; set; }
+
+        [Inject]
+        protected SqlHighLightService? SqlHighLightService { get; set; }
+
         private AuthenticationMode AuthenticationMode { get; set; }
-        private List<Dictionary<string, object>> Rows { get; set; } = new List<Dictionary<string, object>>();
         private string? Password { get; set; }
         private BaseProfilerViewTemplate ProfilerViewTemplate { get; set; } = new DefaultProfilerViewTemplate();
+        private MarkupString RawSqlTextAreaHtml { get; set; }
         private RenderFragment? RowRender { get; set; }
+        private List<Dictionary<string, object>> Rows { get; set; } = new List<Dictionary<string, object>>();
         private string? Server { get; set; }
         private string SessionName { get; set; } = "lqpSession";
+        private string? SqlTextArea { get; set; }
         private string? User { get; set; }
         private List<Dictionary<string, object>> AddRows(List<ProfilerEvent> events)
         {
@@ -99,6 +106,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         {
             Rows = new List<Dictionary<string, object>>();
             RowRender = null;
+            SqlTextArea = string.Empty;
             StateHasChanged();
         }
 
@@ -131,6 +139,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             {
                 builder.OpenComponent(0, typeof(RowTemplate));
                 builder.AddAttribute(1, "Row", r);
+                builder.AddAttribute(2, "onClickRowCallBack", OnClickRowHandler);
                 builder.CloseComponent();
             }
         };
@@ -156,22 +165,43 @@ namespace LightQueryProfiler.SharedWebUI.Pages
                 {
                     Rows.AddRange(AddRows(_events));
                     RowRender = CreateRowComponent(Rows);
+                    StateHasChanged();
                 }
-                StateHasChanged();
             }
         }
 
-        private void OnPause()
+        private async void OnClickRowHandler(Dictionary<string, object> row)
         {
-            if (_pauseTokeSource != null)
+            await Task.Run(async () =>
             {
-                _pauseTokeSource.IsPaused = !_pauseTokeSource.IsPaused;
-            }
+                if (row != null && row.Count > 0)
+                {
+                    SqlTextArea = row["TextData"]?.ToString() ?? string.Empty;
+                    await RenderSqlTextAreaHtml(SqlTextArea);
+                }
+            });
         }
 
-        private void OnResume()
+        private async void OnPause()
         {
-            OnPause();
+            await Task.Run(() =>
+            {
+                if (_pauseTokeSource != null)
+                {
+                    _pauseTokeSource.IsPaused = !_pauseTokeSource.IsPaused;
+                }
+            });
+        }
+
+        private async void OnResume()
+        {
+            await Task.Run(() =>
+            {
+                if (_pauseTokeSource != null)
+                {
+                    _pauseTokeSource.IsPaused = !_pauseTokeSource.IsPaused;
+                }
+            });
         }
 
         private async void OnStart()
@@ -216,6 +246,24 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             Password = pwd;
         }
 
+        private async Task RenderSqlTextAreaHtml(string sqlText)
+        {
+            if (!string.IsNullOrEmpty(sqlText))
+            {
+                if (SqlHighLightService != null)
+                {
+                    string? html = await SqlHighLightService.SyntaxHighlight(sqlText ?? string.Empty);
+                    RawSqlTextAreaHtml = new MarkupString(html);
+                }
+            }
+            else
+            {
+                RawSqlTextAreaHtml = (MarkupString)string.Empty;
+            }
+
+            await InvokeAsync(StateHasChanged);
+        }
+
         private void SeverHandler(string server)
         {
             Server = server;
@@ -238,6 +286,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             }
             _profilerService.StopProfiling(SessionName);
         }
+
         private void UserHandler(string user)
         {
             User = user;

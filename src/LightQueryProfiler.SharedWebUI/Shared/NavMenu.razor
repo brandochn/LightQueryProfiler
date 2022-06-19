@@ -153,7 +153,7 @@
 		ShowButtonsByAction("default");
 	}
 
-	private void StartButtonOnClick()
+	private async void StartButtonOnClick()
 	{
 		try
 		{
@@ -176,7 +176,7 @@
 			}
 
 			ShowButtonsByAction("start");
-			StartButtonOnClickCallBack.InvokeAsync();
+			await StartButtonOnClickCallBack.InvokeAsync();
 		}
 		catch (ArgumentNullException ane)
 		{

@@ -3,6 +3,7 @@
 
 
 
+
 <NavMenu StartButtonOnClickCallBack="@OnStart"
 		 StopButtonOnClickCallBack="@OnStop"
 		 PauseButtonOnClickCallBack="@OnPause"
@@ -25,18 +26,31 @@
 	</RowTemplate>
 </TableTemplate>*@
 
-<div class="table-responsive" style="height: 50vh; overflow: auto;">
-	<table class="table table-hover table-bordered tableFixHead">
-		<thead class="table-secondary">
-			<tr>
-				@foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
-				{
-					<th>@c.Name</th>
-				}
-			</tr>
-		</thead>
-		<tbody>
-			@RowRender
-		</tbody>
-	</table>
+<div class="row mb-1">
+	<div class="col-12">
+		<div class="table-responsive" style="height: 45vh; overflow: auto;">
+			<table class="table table-hover table-bordered tableFixHead">
+				<thead class="table-secondary">
+					<tr>
+						@foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
+						{
+							<th>@c.Name</th>
+						}
+					</tr>
+				</thead>
+				<tbody>
+					@RowRender
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+
+<div class="row">
+	<div class="col-12">
+		<div style="height: 45vh; " class="overflow-auto form-control" id="sqlTextarea">
+			@RawSqlTextAreaHtml
+		</div>
+	</div>
 </div>

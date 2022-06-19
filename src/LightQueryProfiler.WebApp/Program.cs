@@ -1,3 +1,4 @@
+using LightQueryProfiler.SharedWebUI.Data;
 using LightQueryProfiler.WebApp.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton<WeatherForecastService>();
+builder.Services.AddScoped<SqlHighLightService>();
 
 var app = builder.Build();
 

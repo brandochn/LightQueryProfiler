@@ -1,5 +1,5 @@
 ﻿
-<tr>
+<tr @onclick="@onClickRow">
 	@if (Row is not null)
 	{
 		foreach (var r in Row)
@@ -12,4 +12,12 @@
 @code {
 	[Parameter]
 	public Dictionary<string, object>? Row { get; set; }
+
+	[Parameter]
+	public Action<Dictionary<string, object>>? onClickRowCallBack { get; set; }
+
+	private async void onClickRow()
+	{
+		await Task.Run(() => onClickRowCallBack?.Invoke(Row ?? new Dictionary<string, object>()));
+	}
 }
