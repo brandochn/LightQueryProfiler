@@ -10,6 +10,7 @@ using LightQueryProfiler.SharedWebUI.Components;
 using LightQueryProfiler.SharedWebUI.Data;
 using LightQueryProfiler.SharedWebUI.Shared;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using System.Data.SqlClient;
 
 namespace LightQueryProfiler.SharedWebUI.Pages
@@ -34,7 +35,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         protected IMessageComponent? MessageComponent { get; set; }
 
         [Inject]
-        protected SqlHighLightService? SqlHighLightService { get; set; }
+        protected LightQueryProfilerInterop? LightQueryProfilerInterop { get; set; }
 
         private AuthenticationMode AuthenticationMode { get; set; }
         private string? Password { get; set; }
@@ -250,9 +251,9 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         {
             if (!string.IsNullOrEmpty(sqlText))
             {
-                if (SqlHighLightService != null)
+                if (LightQueryProfilerInterop != null)
                 {
-                    string? html = await SqlHighLightService.SyntaxHighlight(sqlText ?? string.Empty);
+                    string? html = await LightQueryProfilerInterop.SyntaxHighlight(sqlText ?? string.Empty);
                     RawSqlTextAreaHtml = new MarkupString(html);
                 }
             }
@@ -290,6 +291,22 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         private void UserHandler(string user)
         {
             User = user;
+        }
+
+        private async Task ResizableRableColumnsInitAsync()
+        {
+            if (LightQueryProfilerInterop != null)
+            {
+                await LightQueryProfilerInterop.InitializeResizableTableColumns("mainTable");
+            }
+        }
+
+        protected override async void OnAfterRender(bool firstRender)
+        {
+            if (firstRender)
+            {
+                await ResizableRableColumnsInitAsync();
+            }
         }
     }
 }

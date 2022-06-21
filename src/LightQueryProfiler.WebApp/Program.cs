@@ -7,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton<WeatherForecastService>();
-builder.Services.AddScoped<SqlHighLightService>();
+builder.Services.AddScoped<LightQueryProfilerInterop>();
 
 var app = builder.Build();
 

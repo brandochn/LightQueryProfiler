@@ -29,12 +29,12 @@
 <div class="row mb-1">
 	<div class="col-12">
 		<div class="table-responsive" style="height: 45vh; overflow: auto;">
-			<table class="table table-hover table-bordered tableFixHead">
+			<table id="mainTable" class="data table table-hover table-bordered tableFixHead" data-rtc-resizable-table="mainTable">
 				<thead class="table-secondary">
 					<tr>
 						@foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
 						{
-							<th>@c.Name</th>
+							<th data-rtc-resizable="@c.Name">@c.Name</th>
 						}
 					</tr>
 				</thead>
