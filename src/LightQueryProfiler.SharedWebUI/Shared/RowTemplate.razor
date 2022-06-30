@@ -18,6 +18,9 @@
 
 	private async void onClickRow()
 	{
-		await Task.Run(() => onClickRowCallBack?.Invoke(Row ?? new Dictionary<string, object>()));
+		if (onClickRowCallBack != null)
+		{
+			await Task.Run(() => onClickRowCallBack.Invoke(Row ?? new Dictionary<string, object>()));
+		}
 	}
 }

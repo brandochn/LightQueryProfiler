@@ -24,6 +24,12 @@ namespace LightQueryProfiler.SharedWebUI.Data
             return await module.InvokeAsync<string>("syntaxHighlight", sqlString);
         }
 
+        public async Task InitializeNavTab(string tabName)
+        {
+            var module = await moduleTask.Value;
+            await module.InvokeAsync<string>("initializeNavTab", tabName);
+        }
+
         public async ValueTask DisposeAsync()
         {
             if (moduleTask.IsValueCreated)

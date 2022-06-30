@@ -10,7 +10,6 @@ using LightQueryProfiler.SharedWebUI.Components;
 using LightQueryProfiler.SharedWebUI.Data;
 using LightQueryProfiler.SharedWebUI.Shared;
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 using System.Data.SqlClient;
 
 namespace LightQueryProfiler.SharedWebUI.Pages
@@ -31,22 +30,34 @@ namespace LightQueryProfiler.SharedWebUI.Pages
 
         private IXEventService? _xEventService;
 
-        [CascadingParameter(Name = "MessageComponent")]
-        protected IMessageComponent? MessageComponent { get; set; }
-
         [Inject]
         protected LightQueryProfilerInterop? LightQueryProfilerInterop { get; set; }
+
+        [CascadingParameter(Name = "MessageComponent")]
+        protected IMessageComponent? MessageComponent { get; set; }
 
         private AuthenticationMode AuthenticationMode { get; set; }
         private string? Password { get; set; }
         private BaseProfilerViewTemplate ProfilerViewTemplate { get; set; } = new DefaultProfilerViewTemplate();
         private MarkupString RawSqlTextAreaHtml { get; set; }
+        private RenderFragment? RowDetailRender { get; set; }
         private RenderFragment? RowRender { get; set; }
         private List<Dictionary<string, object>> Rows { get; set; } = new List<Dictionary<string, object>>();
         private string? Server { get; set; }
         private string SessionName { get; set; } = "lqpSession";
         private string? SqlTextArea { get; set; }
         private string? User { get; set; }
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (firstRender)
+            {
+                await ResizableRableColumnsInitAsync("mainTable");
+                await ResizableRableColumnsInitAsync("detailsTable");
+                await InitializeNavTab();
+            }
+        }
+
         private List<Dictionary<string, object>> AddRows(List<ProfilerEvent> events)
         {
             if (events == null)
@@ -107,6 +118,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         {
             Rows = new List<Dictionary<string, object>>();
             RowRender = null;
+            RowDetailRender = null;
             SqlTextArea = string.Empty;
             StateHasChanged();
         }
@@ -134,15 +146,22 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             _profilerService = new ProfilerService(_xEventRepository, _xEventService);
         }
 
-        private RenderFragment CreateRowComponent(List<Dictionary<string, object>> rows) => builder =>
+        private RenderFragment CreateRowComponent(List<Dictionary<string, object>> rows, MulticastDelegate? callBack) => builder =>
         {
             foreach (var r in rows)
             {
                 builder.OpenComponent(0, typeof(RowTemplate));
                 builder.AddAttribute(1, "Row", r);
-                builder.AddAttribute(2, "onClickRowCallBack", OnClickRowHandler);
+                builder.AddAttribute(2, "onClickRowCallBack", callBack);
                 builder.CloseComponent();
             }
+        };
+
+        private RenderFragment CreateRowDetailComponent(Dictionary<string, object> row) => builder =>
+        {
+            builder.OpenComponent(0, typeof(RowDetailTemplate));
+            builder.AddAttribute(1, "Row", row);
+            builder.CloseComponent();
         };
 
         private async Task GetLastEventsAsync(PauseToken pauseToken, CancellationToken cancelToken)
@@ -160,14 +179,22 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         {
             if (_profilerService != null)
             {
-                await Task.Delay(1000, cancelToken);
+                await Task.Delay(900, cancelToken);
                 List<ProfilerEvent>? _events = await _profilerService.GetLastEventsAsync(SessionName);
                 if (_events != null)
                 {
                     Rows.AddRange(AddRows(_events));
-                    RowRender = CreateRowComponent(Rows);
+                    RowRender = CreateRowComponent(Rows, OnClickRowHandler);
                     StateHasChanged();
                 }
+            }
+        }
+
+        private async Task InitializeNavTab()
+        {
+            if (LightQueryProfilerInterop != null)
+            {
+                await LightQueryProfilerInterop.InitializeNavTab("mainNavTab");
             }
         }
 
@@ -179,6 +206,8 @@ namespace LightQueryProfiler.SharedWebUI.Pages
                 {
                     SqlTextArea = row["TextData"]?.ToString() ?? string.Empty;
                     await RenderSqlTextAreaHtml(SqlTextArea);
+                    RowDetailRender = CreateRowDetailComponent(row);
+                    await InvokeAsync(StateHasChanged);
                 }
             });
         }
@@ -265,6 +294,14 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             await InvokeAsync(StateHasChanged);
         }
 
+        private async Task ResizableRableColumnsInitAsync(string tableName)
+        {
+            if (LightQueryProfilerInterop != null)
+            {
+                await LightQueryProfilerInterop.InitializeResizableTableColumns(tableName);
+            }
+        }
+
         private void SeverHandler(string server)
         {
             Server = server;
@@ -291,22 +328,6 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         private void UserHandler(string user)
         {
             User = user;
-        }
-
-        private async Task ResizableRableColumnsInitAsync()
-        {
-            if (LightQueryProfilerInterop != null)
-            {
-                await LightQueryProfilerInterop.InitializeResizableTableColumns("mainTable");
-            }
-        }
-
-        protected override async void OnAfterRender(bool firstRender)
-        {
-            if (firstRender)
-            {
-                await ResizableRableColumnsInitAsync();
-            }
         }
     }
 }

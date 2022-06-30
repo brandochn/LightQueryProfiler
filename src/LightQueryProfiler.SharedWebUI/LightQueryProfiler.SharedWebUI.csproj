@@ -25,4 +25,8 @@
     <ProjectReference Include="..\LightQueryProfiler.Shared\LightQueryProfiler.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\js\bootstrap\" />
+  </ItemGroup>
+
 </Project>
