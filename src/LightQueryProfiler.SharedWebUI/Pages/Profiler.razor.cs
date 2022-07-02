@@ -114,12 +114,13 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             AuthenticationMode = authenticationMode;
         }
 
-        private void ClearTableResults()
+        private void ClearResults()
         {
             Rows = new List<Dictionary<string, object>>();
             RowRender = null;
             RowDetailRender = null;
             SqlTextArea = string.Empty;
+            RawSqlTextAreaHtml = (MarkupString)string.Empty;
             StateHasChanged();
         }
 
@@ -238,7 +239,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         {
             try
             {
-                ClearTableResults();
+                ClearResults();
                 Configure();
                 StartProfiling();
                 //creating cancel and pause token sources
@@ -256,6 +257,8 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             }
             catch (Exception e)
             {
+                await ShowButtonsByAction();
+
                 if (MessageComponent != null)
                 {
                     MessageComponent.ShowMessage("An error has occurred", e.Message, MessageType.Error);
@@ -305,6 +308,14 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         private void SeverHandler(string server)
         {
             Server = server;
+        }
+
+        private async Task ShowButtonsByAction()
+        {
+            if (LightQueryProfilerInterop != null)
+            {
+                await LightQueryProfilerInterop.ShowButtonsByAction("default");
+            }
         }
 
         private void StartProfiling()

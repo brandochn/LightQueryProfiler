@@ -120,13 +120,13 @@
 	private bool collapseNavMenu = true;
 	private string? NavBarCssClass => collapseNavMenu ? null : "show";
 	private string? NavButtonCssClass => collapseNavMenu ? "collapsed" : null;
-	private bool StartButtonDisabled { get; set; }
-	private bool StopButtonDisabled { get; set; }
-	private bool PauseButtonDisabled { get; set; }
-	private bool ResumeButtonDisabled { get; set; }
-	private bool PauseButtonHidden { get; set; }
-	private bool ResumeButtonHidden { get; set; }
-	private bool SearchButtonDisabled { get; set; }
+	private static bool StartButtonDisabled { get; set; }
+	private static bool StopButtonDisabled { get; set; }
+	private static bool PauseButtonDisabled { get; set; }
+	private static bool ResumeButtonDisabled { get; set; }
+	private static bool PauseButtonHidden { get; set; }
+	private static bool ResumeButtonHidden { get; set; }
+	private static bool SearchButtonDisabled { get; set; }
 
 	private void ToggleNavMenu()
 	{
@@ -247,8 +247,9 @@
 		ShowButtonsByAction("resume");
 		ResumeButtonOnClickCallBack.InvokeAsync();
 	}
-
-	private void ShowButtonsByAction(string action)
+	
+	[JSInvokable]
+	public static void ShowButtonsByAction(string action)
 	{
 		switch (action.ToUpper())
 		{

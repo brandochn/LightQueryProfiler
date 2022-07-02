@@ -84,5 +84,9 @@ export function searchTable(input, table) {
 
 export function addSearchEventHandler(input, table) {
     var buttonElement = window.document.getElementById(input);
-    buttonElement.addEventListener('search', () => { searchTable(input, table) });   
+    buttonElement.addEventListener('search', () => { searchTable(input, table) });
+}
+
+export function showButtonsByAction(action) {
+    DotNet.invokeMethodAsync("LightQueryProfiler.SharedWebUI", "ShowButtonsByAction", action)
 }

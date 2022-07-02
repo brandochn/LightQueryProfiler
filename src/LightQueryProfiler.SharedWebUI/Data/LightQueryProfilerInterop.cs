@@ -42,6 +42,11 @@ namespace LightQueryProfiler.SharedWebUI.Data
             await module.InvokeAsync<string>("addSearchEventHandler", input, table);
         }
 
+        public async Task ShowButtonsByAction(string action)
+        {
+            var module = await moduleTask.Value;
+            await module.InvokeAsync<string>("showButtonsByAction", action);
+        }
 
         public async ValueTask DisposeAsync()
         {
