@@ -6,9 +6,9 @@ import { default as Tab } from "./bootstrap/tab.js";
 export function initializeResizableTableColumns(tableName) {
 
     // https://github.com/validide/resizable-table-columns
-    let tableElement = window.document.getElementById(tableName);
+    var tableElement = window.document.getElementById(tableName);
 
-    let options = {
+    var options = {
         // boolean - The resize handle will span the entire height of the table
         resizeFromBody: true,
 
@@ -52,4 +52,37 @@ export function initializeNavTab(tabName) {
             tabTrigger.show()
         })
     });
+}
+
+export function searchTable(input, table) {
+    // Declare variables
+    var input, filter, table, tr, td, i, txtValue;
+    input = document.getElementById(input);
+    filter = input.value.toUpperCase();
+    table = document.getElementById(table);
+    tr = table.getElementsByTagName("tr");
+
+    if (filter == "" || filter === undefined || filter === null) {
+        for (i = 0; i < tr.length; i++) {
+            tr[i].style.display = "";
+        }
+    } else {
+        // Loop through all table rows, and hide those who don't match the search query
+        for (i = 0; i < tr.length; i++) {
+            td = tr[i].getElementsByTagName("td")[1];
+            if (td) {
+                txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    }
+}
+
+export function addSearchEventHandler(input, table) {
+    var buttonElement = window.document.getElementById(input);
+    buttonElement.addEventListener('search', () => { searchTable(input, table) });   
 }

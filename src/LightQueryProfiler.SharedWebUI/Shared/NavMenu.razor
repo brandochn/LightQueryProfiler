@@ -1,6 +1,8 @@
 ﻿@using LightQueryProfiler.Shared.Extensions
 @using LightQueryProfiler.Shared.Enums
 @using Components
+@using LightQueryProfiler.SharedWebUI.Data
+@inject LightQueryProfilerInterop? LightQueryProfilerInterop
 
 <nav class="navbar navbar-expand-md navbar-dark bg-dark">
 	<div class="container-fluid">
@@ -77,6 +79,10 @@
 					</div>
 				</li>
 			</ul>
+			<div class="d-flex" role="search">
+				<input disabled="@SearchButtonDisabled" id="inputSearch" class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+				<button disabled="@SearchButtonDisabled" id="searchButton" class="btn btn-outline-light" type="button" @onclick="@SearchButtonOnClick">Search</button>
+			</div>
 		</div>
 	</div>
 </nav>
@@ -120,6 +126,7 @@
 	private bool ResumeButtonDisabled { get; set; }
 	private bool PauseButtonHidden { get; set; }
 	private bool ResumeButtonHidden { get; set; }
+	private bool SearchButtonDisabled { get; set; }
 
 	private void ToggleNavMenu()
 	{
@@ -151,6 +158,14 @@
 	{
 		CollapseUserAndPasswordInputs();
 		ShowButtonsByAction("default");
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			await AddSearchEventHandler();
+		}
 	}
 
 	private async void StartButtonOnClick()
@@ -244,6 +259,7 @@
 				ResumeButtonDisabled = true;
 				PauseButtonHidden = false;
 				ResumeButtonHidden = true;
+				SearchButtonDisabled = true;
 				break;
 			case "STOP":
 				StartButtonDisabled = false;
@@ -252,6 +268,7 @@
 				ResumeButtonDisabled = true;
 				PauseButtonHidden = false;
 				ResumeButtonHidden = true;
+				SearchButtonDisabled = false;
 				break;
 			case "PAUSE":
 				StartButtonDisabled = true;
@@ -260,6 +277,7 @@
 				ResumeButtonDisabled = false;
 				PauseButtonHidden = true;
 				ResumeButtonHidden = false;
+				SearchButtonDisabled = false;
 				break;
 			case "RESUME":
 				StartButtonDisabled = true;
@@ -268,6 +286,7 @@
 				ResumeButtonDisabled = true;
 				PauseButtonHidden = false;
 				ResumeButtonHidden = true;
+				SearchButtonDisabled = true;
 				break;
 			default:
 				StartButtonDisabled = false;
@@ -276,7 +295,29 @@
 				ResumeButtonDisabled = true;
 				PauseButtonHidden = false;
 				ResumeButtonHidden = true;
+				SearchButtonDisabled = true;
 				break;
+		}
+	}
+
+	private async Task SearchButtonOnClick()
+	{
+		await SearchTable();
+	}
+
+	private async Task SearchTable()
+	{
+		if (LightQueryProfilerInterop != null)
+		{
+			await LightQueryProfilerInterop.SearchTable("inputSearch", "mainTable");
+		}
+	}
+
+	private async Task AddSearchEventHandler()
+	{
+		if (LightQueryProfilerInterop != null)
+		{
+			await LightQueryProfilerInterop.AddSearchEventHandler("inputSearch", "mainTable");
 		}
 	}
 }

@@ -30,6 +30,19 @@ namespace LightQueryProfiler.SharedWebUI.Data
             await module.InvokeAsync<string>("initializeNavTab", tabName);
         }
 
+        public async Task SearchTable(string input, string table)
+        {
+            var module = await moduleTask.Value;
+            await module.InvokeAsync<string>("searchTable", input, table);
+        }
+
+        public async Task AddSearchEventHandler(string input, string table)
+        {
+            var module = await moduleTask.Value;
+            await module.InvokeAsync<string>("addSearchEventHandler", input, table);
+        }
+
+
         public async ValueTask DisposeAsync()
         {
             if (moduleTask.IsValueCreated)
