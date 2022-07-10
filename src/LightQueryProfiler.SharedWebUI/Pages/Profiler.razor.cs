@@ -10,6 +10,7 @@ using LightQueryProfiler.SharedWebUI.Components;
 using LightQueryProfiler.SharedWebUI.Data;
 using LightQueryProfiler.SharedWebUI.Shared;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using System.Data.SqlClient;
 
 namespace LightQueryProfiler.SharedWebUI.Pages
@@ -55,6 +56,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
                 await ResizableRableColumnsInitAsync("mainTable");
                 await ResizableRableColumnsInitAsync("detailsTable");
                 await InitializeNavTab();
+                await TableKeydownHandler("mainTable");
             }
         }
 
@@ -339,6 +341,22 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         private void UserHandler(string user)
         {
             User = user;
+        }
+
+        [Inject] private IJSRuntime? JSRuntime { get; set; }
+
+        public async Task TableKeydownHandler(string table)
+        {
+            if (JSRuntime == null)
+            {
+                throw new Exception("JSRuntime cannot be null.");
+            }
+
+            Lazy<Task<IJSObjectReference>> moduleTask = new(() => JSRuntime.InvokeAsync<IJSObjectReference>("import",
+                           "./_content/LightQueryProfiler.SharedWebUI/Pages/Profiler.razor.js").AsTask());
+            var module = await moduleTask.Value;
+            
+            await module.InvokeAsync<string>("tableKeydownHandler", table);
         }
     }
 }

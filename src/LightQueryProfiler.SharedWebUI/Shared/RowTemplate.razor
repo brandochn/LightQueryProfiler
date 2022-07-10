@@ -1,26 +1,64 @@
 ﻿
-<tr @onclick="@onClickRow">
-	@if (Row is not null)
-	{
-		foreach (var r in Row)
-		{
-			<td>@r.Value</td>
-		}
-	}
+<tr class="table-light" @onclick="@OnClickRow" @ref="@htmlRow" @ondblclick="@OnDoubleClickRow">
+    @if (Row is not null)
+    {
+        foreach (var r in Row)
+        {
+            <td>@r.Value</td>
+        }
+    }
 </tr>
 
 @code {
-	[Parameter]
-	public Dictionary<string, object>? Row { get; set; }
+    [Parameter]
+    public Dictionary<string, object>? Row { get; set; }
 
-	[Parameter]
-	public Action<Dictionary<string, object>>? onClickRowCallBack { get; set; }
+    [Parameter]
+    public Action<Dictionary<string, object>>? onClickRowCallBack { get; set; }
 
-	private async void onClickRow()
-	{
-		if (onClickRowCallBack != null)
-		{
-			await Task.Run(() => onClickRowCallBack.Invoke(Row ?? new Dictionary<string, object>()));
-		}
-	}
+    private async void OnClickRow()
+    {
+        if (onClickRowCallBack != null)
+        {
+            await Task.Run(() => onClickRowCallBack.Invoke(Row ?? new Dictionary<string, object>()));
+            await Task.Run(() => HighlightRow());
+        }
+    }
+
+    private ElementReference htmlRow;
+
+    private Lazy<Task<IJSObjectReference>>? _moduleTask;
+    private Lazy<Task<IJSObjectReference>> ModuleTask
+    {
+        get
+        {
+            if (_moduleTask == null)
+            {
+                if (JSRuntime == null)
+                {
+                    throw new Exception("JSRuntime cannot be null.");
+                }
+
+                _moduleTask = new(() => JSRuntime.InvokeAsync<IJSObjectReference>("import",
+                        "./_content/LightQueryProfiler.SharedWebUI/Pages/Profiler.razor.js").AsTask());
+            }
+
+            return _moduleTask;
+        }
+    }
+
+    [Inject] private IJSRuntime? JSRuntime { get; set; }
+    private async void HighlightRow()
+    {
+        var module = await ModuleTask.Value;
+        await module.InvokeAsync<string>("highlightRow", "mainTable", htmlRow);
+    }
+
+    private async void OnDoubleClickRow()
+    {
+        if (onClickRowCallBack != null)
+        {
+            await Task.Run(() => onClickRowCallBack.Invoke(Row ?? new Dictionary<string, object>()));
+        }
+    }
 }
