@@ -56,11 +56,11 @@ export function initializeNavTab(tabName) {
 
 export function searchTable(input, table) {
     // Declare variables
-    var input, filter, table, tr, td, i, txtValue;
+    var input, filter, table, tr, i;
     input = document.getElementById(input);
     filter = input.value.toUpperCase();
     table = document.getElementById(table);
-    tr = table.getElementsByTagName("tr");
+    tr = table.tBodies[0].getElementsByTagName("tr");
 
     if (filter == "" || filter === undefined || filter === null) {
         for (i = 0; i < tr.length; i++) {
@@ -69,13 +69,27 @@ export function searchTable(input, table) {
     } else {
         // Loop through all table rows, and hide those who don't match the search query
         for (i = 0; i < tr.length; i++) {
-            td = tr[i].getElementsByTagName("td")[1];
-            if (td) {
-                txtValue = td.textContent || td.innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    tr[i].style.display = "";
-                } else {
-                    tr[i].style.display = "none";
+
+            // define the row's cells
+            var tds = tr[i].getElementsByTagName("td");
+
+            if (tds.length > 0) {
+                // hide the row
+                tr[i].style.display = "none";
+
+                // loop through row cells
+                for (var cellI = 0; cellI < tds.length; cellI++) {
+
+                    // if there's a match
+                    if (tds[cellI].innerHTML.toUpperCase().indexOf(filter) > -1) {
+
+                        // show the row
+                        tr[i].style.display = "";
+
+                        // skip to the next row
+                        continue;
+
+                    }
                 }
             }
         }
