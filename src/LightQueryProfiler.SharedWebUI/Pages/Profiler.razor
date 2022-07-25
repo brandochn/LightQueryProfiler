@@ -5,66 +5,68 @@
 
 
 <NavMenu StartButtonOnClickCallBack="@OnStart"
-		 StopButtonOnClickCallBack="@OnStop"
-		 PauseButtonOnClickCallBack="@OnPause"
-		 ResumeButtonOnClickCallBack="@OnResume"
-		 ServerChanged="@SeverHandler"
-		 UserChanged="@UserHandler"
-		 PasswordChanged="@PasswordHandler"
-		 AuthModeChanged="@AuthenticationModeHandler" />
+         StopButtonOnClickCallBack="@OnStop"
+         PauseButtonOnClickCallBack="@OnPause"
+         ResumeButtonOnClickCallBack="@OnResume"
+         ServerChanged="@SeverHandler"
+         UserChanged="@UserHandler"
+         PasswordChanged="@PasswordHandler"
+         AuthModeChanged="@AuthenticationModeHandler" />
 
 
 <div class="contaier">
-	<div class="row mb-1">
-		<div class="col-12">
-			<div class="table-responsive" style="height: 45vh; overflow: auto;">
-				<table tabindex='0' id="mainTable" class="data table table-hover table-bordered " data-rtc-resizable-table="mainTable">
-					<thead class="table-secondary">
-						<tr>
-							@foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
-							{
-								<th data-rtc-resizable="@c.Name">@c.Name</th>
-							}
-						</tr>
-					</thead>
-					<tbody>
-						@RowRender
-					</tbody>
-				</table>
-			</div>
-		</div>
-	</div>
+    <div class="row mb-1">
+        <div class="col-12">
+            <div class="table-responsive" style="height: 45vh; overflow: auto;">
+                <table tabindex='0' id="mainTable" class="data table table-hover table-bordered " data-rtc-resizable-table="mainTable">
+                    <thead class="table-secondary">
+                        <tr>
+                            @foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
+                            {
+                                <th data-rtc-resizable="@c.Name">@c.Name</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @RowRender
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-12">
-			<nav id="mainNavTab">
-				<div class="nav nav-tabs" id="nav-tab" role="tablist">
-					<button class="nav-link active" id="nav-text-tab" data-bs-toggle="tab" data-bs-target="#nav-text" type="button" role="tab" aria-controls="nav-text" aria-selected="true">Text</button>
-					<button class="nav-link" id="nav-details-tab" data-bs-toggle="tab" data-bs-target="#nav-details" type="button" role="tab" aria-controls="nav-details" aria-selected="false">Details</button>
-				</div>
-			</nav>
-			<div class="tab-content" id="nav-tabContent">
-				<div class="tab-pane fade show active" id="nav-text" role="tabpanel" aria-labelledby="nav-text-tab" tabindex="0">
-					<div style="height: 39vh;" class="overflow-auto form-control" id="sqlTextarea">
-						@RawSqlTextAreaHtml
-					</div>
-				</div>
-				<div class="tab-pane fade" id="nav-details" role="tabpanel" aria-labelledby="nav-details-tab" tabindex="0">
-					<div class="table-responsive" style="height: 39vh; overflow: auto;">
-						<table id="detailsTable" class="data table table-hover" data-rtc-resizable-table="detailsTable">
-							<thead class="table-light">
-								<tr>
-									<th data-rtc-resizable="Name">Name</th>
-									<th data-rtc-resizable="Value">Value</th>
-								</tr>
-							</thead>
-							<tbody>
-								@RowDetailRender
-							</tbody>
-						</table>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-12">
+            <nav id="mainNavTab">
+                <div class="nav nav-tabs" id="nav-tab" role="tablist">
+                    <button class="nav-link active" id="nav-text-tab" data-bs-toggle="tab" data-bs-target="#nav-text" type="button" role="tab" aria-controls="nav-text" aria-selected="true">Text</button>
+                    <button class="nav-link" id="nav-details-tab" data-bs-toggle="tab" data-bs-target="#nav-details" type="button" role="tab" aria-controls="nav-details" aria-selected="false">Details</button>
+                </div>
+            </nav>
+            <div class="tab-content" id="nav-tabContent">
+                <div class="tab-pane fade show active" id="nav-text" role="tabpanel" aria-labelledby="nav-text-tab" tabindex="0">
+                    <div style="height: 39vh;" class="overflow-auto form-control" id="sqlTextarea">
+                        <pre>
+                            <code>@RawSqlTextAreaHtml</code>
+                        </pre>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="nav-details" role="tabpanel" aria-labelledby="nav-details-tab" tabindex="0">
+                    <div class="table-responsive" style="height: 39vh; overflow: auto;">
+                        <table id="detailsTable" class="data table table-hover" data-rtc-resizable-table="detailsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th data-rtc-resizable="Name">Name</th>
+                                    <th data-rtc-resizable="Value">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @RowDetailRender
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

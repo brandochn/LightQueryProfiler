@@ -1,7 +1,7 @@
 ﻿//writen by sql-highlight team, 2022.
 // https://github.com/scriptcoded/sql-highlight
 
-const KEYWORDS = [
+export default [
     'ADD CONSTRAINT',
     'ADD',
     'ALL',
@@ -250,9 +250,4 @@ const KEYWORDS = [
     'WITH',
     'WITHIN GROUP',
     'WRITETEXT',
-]
-
-export default [
-    ...KEYWORDS,
-    ...KEYWORDS.map((keyword) => keyword.toLowerCase())
 ]

@@ -123,7 +123,6 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             RowDetailRender = null;
             SqlTextArea = string.Empty;
             RawSqlTextAreaHtml = (MarkupString)string.Empty;
-            StateHasChanged();
         }
 
         private void Configure()
