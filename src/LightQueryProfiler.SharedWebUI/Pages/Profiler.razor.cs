@@ -1,5 +1,4 @@
-﻿using LightQueryProfiler.Shared;
-using LightQueryProfiler.Shared.Data;
+﻿using LightQueryProfiler.Shared.Data;
 using LightQueryProfiler.Shared.Enums;
 using LightQueryProfiler.Shared.Models;
 using LightQueryProfiler.Shared.Repositories;
@@ -19,16 +18,9 @@ namespace LightQueryProfiler.SharedWebUI.Pages
     {
         private IApplicationDbContext? _applicationDbContext;
 
-        //for cancaletation
-        private CancellationTokenSource? _cancelationTokenSource;
-
-        //for implementing pause in processing
-        private PauseTokenSource? _pauseTokeSource;
-
         private IProfilerService? _profilerService;
-
+        private bool _shouldStop = true;
         private IXEventRepository? _xEventRepository;
-
         private IXEventService? _xEventService;
 
         [Inject]
@@ -38,6 +30,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         protected IMessageComponent? MessageComponent { get; set; }
 
         private AuthenticationMode AuthenticationMode { get; set; }
+        [Inject] private IJSRuntime? JSRuntime { get; set; }
         private string? Password { get; set; }
         private BaseProfilerViewTemplate ProfilerViewTemplate { get; set; } = new DefaultProfilerViewTemplate();
         private MarkupString RawSqlTextAreaHtml { get; set; }
@@ -57,6 +50,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
                 await ResizableRableColumnsInitAsync("detailsTable");
                 await InitializeNavTab();
                 await TableKeydownHandler("mainTable");
+                await SortTableAsync("mainTable");
             }
         }
 
@@ -123,6 +117,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             RowDetailRender = null;
             SqlTextArea = string.Empty;
             RawSqlTextAreaHtml = (MarkupString)string.Empty;
+            _shouldStop = false;
         }
 
         private void Configure()
@@ -166,22 +161,19 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             builder.CloseComponent();
         };
 
-        private async Task GetLastEventsAsync(PauseToken pauseToken, CancellationToken cancelToken)
+        private async Task GetLastEventsAsync()
         {
-            while (true)
+            while (!_shouldStop)
             {
-                //if the pause is active the code will wait here but not block UI thread
-                await pauseToken.WaitWhilePausedAsync();
-
-                await GetLastEventsAsync(cancelToken);
+                await GetLastEventsInternalAsync();
             }
         }
 
-        private async Task GetLastEventsAsync(CancellationToken cancelToken)
+        private async Task GetLastEventsInternalAsync()
         {
             if (_profilerService != null)
             {
-                await Task.Delay(900, cancelToken);
+                await Task.Delay(900);
                 List<ProfilerEvent>? _events = await _profilerService.GetLastEventsAsync(SessionName);
                 if (_events != null)
                 {
@@ -214,47 +206,17 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             });
         }
 
-        private async void OnPause()
+        private void OnPause()
         {
-            await Task.Run(() =>
-            {
-                if (_pauseTokeSource != null)
-                {
-                    _pauseTokeSource.IsPaused = !_pauseTokeSource.IsPaused;
-                }
-            });
+            _shouldStop = true;
         }
 
         private async void OnResume()
         {
-            await Task.Run(() =>
-            {
-                if (_pauseTokeSource != null)
-                {
-                    _pauseTokeSource.IsPaused = !_pauseTokeSource.IsPaused;
-                }
-            });
-        }
-
-        private async void OnStart()
-        {
+            _shouldStop = false;
             try
             {
-                ClearResults();
-                Configure();
-                StartProfiling();
-                //creating cancel and pause token sources
-                _pauseTokeSource = new PauseTokenSource();
-                _cancelationTokenSource = new CancellationTokenSource();
-
-                await GetLastEventsAsync(_pauseTokeSource.Token, _cancelationTokenSource.Token);
-            }
-            catch (TaskCanceledException)
-            {
-                if (_cancelationTokenSource != null && _cancelationTokenSource.IsCancellationRequested)
-                {
-                    StopProfiling();
-                }
+                await GetLastEventsAsync();
             }
             catch (Exception e)
             {
@@ -267,11 +229,43 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             }
         }
 
-        private void OnStop()
+        private async void OnStart()
         {
-            if (_cancelationTokenSource != null)
+            try
             {
-                _cancelationTokenSource.Cancel();
+                ClearResults();
+                Configure();
+                StartProfiling();
+
+                await GetLastEventsAsync();
+            }
+            catch (Exception e)
+            {
+                await ShowButtonsByAction();
+
+                if (MessageComponent != null)
+                {
+                    MessageComponent.ShowMessage("An error has occurred", e.Message, MessageType.Error);
+                }
+            }
+        }
+
+        private async void OnStop()
+        {
+            _shouldStop = true;
+            try
+            {
+                await Task.Delay(1000);
+                StopProfiling();
+            }
+            catch (Exception e)
+            {
+                await ShowButtonsByAction();
+
+                if (MessageComponent != null)
+                {
+                    MessageComponent.ShowMessage("An error has occurred", e.Message, MessageType.Error);
+                }
             }
         }
 
@@ -319,6 +313,14 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             }
         }
 
+        private async Task SortTableAsync(string tableName)
+        {
+            if (LightQueryProfilerInterop != null)
+            {
+                await LightQueryProfilerInterop.SortTable(tableName);
+            }
+        }
+
         private void StartProfiling()
         {
             if (_profilerService == null)
@@ -337,14 +339,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             _profilerService.StopProfiling(SessionName);
         }
 
-        private void UserHandler(string user)
-        {
-            User = user;
-        }
-
-        [Inject] private IJSRuntime? JSRuntime { get; set; }
-
-        public async Task TableKeydownHandler(string table)
+        private async Task TableKeydownHandler(string table)
         {
             if (JSRuntime == null)
             {
@@ -354,8 +349,12 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             Lazy<Task<IJSObjectReference>> moduleTask = new(() => JSRuntime.InvokeAsync<IJSObjectReference>("import",
                            "./_content/LightQueryProfiler.SharedWebUI/Pages/Profiler.razor.js").AsTask());
             var module = await moduleTask.Value;
-            
+
             await module.InvokeAsync<string>("tableKeydownHandler", table);
+        }
+        private void UserHandler(string user)
+        {
+            User = user;
         }
     }
 }

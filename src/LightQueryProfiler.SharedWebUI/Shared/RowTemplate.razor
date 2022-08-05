@@ -1,5 +1,5 @@
 ﻿
-<tr class="table-light" @onclick="@OnClickRow" @ref="@htmlRow" @ondblclick="@OnDoubleClickRow">
+<tr class="table-light" @onclick="@OnClickRow" @ref="@_htmlRow" @ondblclick="@OnDoubleClickRow">
     @if (Row is not null)
     {
         foreach (var r in Row)
@@ -25,7 +25,7 @@
         }
     }
 
-    private ElementReference htmlRow;
+    private ElementReference _htmlRow;
 
     private Lazy<Task<IJSObjectReference>>? _moduleTask;
     private Lazy<Task<IJSObjectReference>> ModuleTask
@@ -51,7 +51,7 @@
     private async void HighlightRow()
     {
         var module = await ModuleTask.Value;
-        await module.InvokeAsync<string>("highlightRow", "mainTable", htmlRow);
+        await module.InvokeAsync<string>("highlightRow", "mainTable", _htmlRow);
     }
 
     private async void OnDoubleClickRow()

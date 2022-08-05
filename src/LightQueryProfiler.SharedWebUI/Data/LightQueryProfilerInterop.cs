@@ -48,6 +48,12 @@ namespace LightQueryProfiler.SharedWebUI.Data
             await module.InvokeAsync<string>("showButtonsByAction", action);
         }
 
+        public async Task SortTable(string table)
+        {
+            var module = await moduleTask.Value;
+            await module.InvokeAsync<string>("sortTable", table);
+        }
+
         public async ValueTask DisposeAsync()
         {
             if (moduleTask.IsValueCreated)

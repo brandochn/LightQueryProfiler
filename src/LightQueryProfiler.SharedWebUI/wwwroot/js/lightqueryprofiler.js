@@ -104,3 +104,44 @@ export function addSearchEventHandler(input, table) {
 export function showButtonsByAction(action) {
     DotNet.invokeMethodAsync("LightQueryProfiler.SharedWebUI", "ShowButtonsByAction", action)
 }
+
+export function sortTable(table) {
+    // writen by Nick Grealy.
+    // improved by jedwards
+    // https://stackoverflow.com/questions/14267781/sorting-html-table-with-javascript/49041392#49041392
+
+    var getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
+
+    // Returns a function responsible for sorting a specific column index 
+    // (idx = columnIndex, asc = ascending order?).
+    var comparer = function (idx, asc) {
+
+        // This is used by the array.sort() function...
+        return function (a, b) {
+
+            // This is a transient function, that is called straight away. 
+            // It allows passing in different order of args, based on 
+            // the ascending/descending order.
+            return function (v1, v2) {
+
+                // sort based on a numeric or localeCompare, based on type...
+                return (v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2))
+                    ? v1 - v2
+                    : v1.toString().localeCompare(v2);
+            }(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
+        }
+    };
+
+    var tableElement = document.getElementById(table);
+
+    // do the work...
+    tableElement.querySelectorAll('th').forEach(th => th.addEventListener('click', (() => {
+        var table = th.closest('table');
+        var tbody = table.querySelector('tbody');
+        var _this = tableElement;
+        Array.from(tbody.querySelectorAll('tr'))
+            .sort(comparer(Array.from(th.parentNode.children).indexOf(th), _this.asc = !_this.asc))
+            .forEach(tr => tbody.appendChild(tr));
+    })));
+
+}
