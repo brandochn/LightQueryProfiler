@@ -69,9 +69,18 @@ export function tableKeydownHandler(table) {
                 if (highlightedRows.length > 0) {
 
                     var highlightedRow = highlightedRows[0];
-
+                    // Ignore hidden rows
                     var prev = getpreviousSibling(highlightedRow);
+                    while (prev && window.getComputedStyle(prev).display === "none") {
+                        prev = getpreviousSibling(prev);
+                    }
+
+                    // Ignore hidden rows
                     var next = getnextSibling(highlightedRow);
+                    while (next && window.getComputedStyle(next).display === "none") {
+                        next = getnextSibling(next);
+                    }
+
                     var event = new MouseEvent('dblclick', {
                         'view': window,
                         'bubbles': true,
