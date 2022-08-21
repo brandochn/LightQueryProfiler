@@ -10,6 +10,7 @@
 }
 
 export function tableKeydownHandler(table) {
+    //derived from: https://stackoverflow.com/questions/17847618/adding-functionality-for-using-the-up-and-down-arrow-keys-to-select-a-table-row
 
     //From: http://forrst.com/posts/JavaScript_Cross_Browser_Event_Binding-yMd
     var addEvent = (function (window, document) {

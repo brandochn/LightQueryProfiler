@@ -28,7 +28,19 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @RowRender
+                        @foreach (Dictionary<string, Event> row in Rows)
+                        {
+                            if (row is not null)
+                            {
+                                int id = row.GetHashCode();
+                                <tr class="table-light" @onclick="row.Values.First().OnClickAction" @ref="_htmlRowComponents[id]" @ondblclick="row.Values.First().OnDoubleClickAction">
+                                    @foreach (var r in row)
+                                    {
+                                        <td>@r.Value.EventValue</td>
+                                    }
+                                </tr>
+                            }
+                        }
                     </tbody>
                 </table>
             </div>
@@ -47,7 +59,7 @@
                 <div class="tab-pane fade show active" id="nav-text" role="tabpanel" aria-labelledby="nav-text-tab" tabindex="0">
                     <div style="height: 39vh;" class="overflow-auto form-control" id="sqlTextarea">
                         <pre>
-                            <code>@RawSqlTextAreaHtml</code>
+                        <code>@RawSqlTextAreaHtml</code>
                         </pre>
                     </div>
                 </div>
@@ -69,4 +81,52 @@
             </div>
         </div>
     </div>
+
+    <div class="row">
+        <div class="col-1">
+            <h6>Events: <span class="badge bg-secondary">@Rows.Count</span></h6>
+        </div>
+    </div>
 </div>
+
+@code
+{
+    private async void OnClickRow(Dictionary<string, Event> row)
+    {
+        await OnClickRowHandler(row);
+        await HighlightRow(row.GetHashCode());
+    }
+
+    private Dictionary<int, ElementReference> _htmlRowComponents = new Dictionary<int, ElementReference>();
+
+    private Task<IJSObjectReference>? _moduleTask;
+    private Task<IJSObjectReference> ModuleTask
+    {
+        get
+        {
+            if (_moduleTask == null)
+            {
+                if (JSRuntime == null)
+                {
+                    throw new Exception("JSRuntime cannot be null.");
+                }
+
+                _moduleTask = JSRuntime.InvokeAsync<IJSObjectReference>("import",
+                        "./_content/LightQueryProfiler.SharedWebUI/Pages/Profiler.razor.js").AsTask();
+            }
+
+            return _moduleTask;
+        }
+    }
+
+    private async Task HighlightRow(int rowId)
+    {
+        var module = await ModuleTask;
+        await module.InvokeAsync<string>("highlightRow", "mainTable", _htmlRowComponents[rowId]);
+    }
+
+    private async void OnDoubleClickRow(Dictionary<string, Event> row)
+    {
+        await OnClickRowHandler(row);
+    }
+}

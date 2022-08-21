@@ -35,8 +35,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         private BaseProfilerViewTemplate ProfilerViewTemplate { get; set; } = new DefaultProfilerViewTemplate();
         private MarkupString RawSqlTextAreaHtml { get; set; }
         private RenderFragment? RowDetailRender { get; set; }
-        private RenderFragment? RowRender { get; set; }
-        private List<Dictionary<string, object>> Rows { get; set; } = new List<Dictionary<string, object>>();
+        private List<Dictionary<string, Event>> Rows { get; set; } = new List<Dictionary<string, Event>>();
         private string? Server { get; set; }
         private string SessionName { get; set; } = "lqpSession";
         private string? SqlTextArea { get; set; }
@@ -54,30 +53,30 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             }
         }
 
-        private List<Dictionary<string, object>> AddRows(List<ProfilerEvent> events)
+        private List<Dictionary<string, Event>> GetNewRows(List<ProfilerEvent> events)
         {
             if (events == null)
             {
-                return new List<Dictionary<string, object>>();
+                return new List<Dictionary<string, Event>>();
             }
 
-            List<Dictionary<string, object>> newEvents = new List<Dictionary<string, object>>();
-            Dictionary<string, object> data;
+            List<Dictionary<string, Event>> newEvents = new List<Dictionary<string, Event>>();
+            Dictionary<string, Event> data;
             foreach (var e in events)
             {
-                data = new Dictionary<string, object>();
+                data = new Dictionary<string, Event>();
 
                 foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
                 {
                     if (c.Name == "EventClass")
                     {
-                        data["EventClass"] = e.Name ?? string.Empty;
+                        data["EventClass"] = new Event() { EventValue = e.Name ?? string.Empty, Name = "EventClass" };
                         continue;
                     }
 
                     if (c.Name == "StartTime")
                     {
-                        data["StartTime"] = e.Timestamp ?? string.Empty;
+                        data["StartTime"] = new Event() { EventValue = e.Timestamp ?? string.Empty, Name = "StartTime" };
                         continue;
                     }
 
@@ -96,7 +95,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
                         }
                     }
 
-                    data[columName] = columValue;
+                    data[columName] = new Event() { EventValue = columValue, Name = columName };
                 }
 
                 newEvents.Add(data);
@@ -112,8 +111,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
 
         private void ClearResults()
         {
-            Rows = new List<Dictionary<string, object>>();
-            RowRender = null;
+            Rows = new List<Dictionary<string, Event>>();
             RowDetailRender = null;
             SqlTextArea = string.Empty;
             RawSqlTextAreaHtml = (MarkupString)string.Empty;
@@ -143,18 +141,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             _profilerService = new ProfilerService(_xEventRepository, _xEventService);
         }
 
-        private RenderFragment CreateRowComponent(List<Dictionary<string, object>> rows, MulticastDelegate? callBack) => builder =>
-        {
-            foreach (var r in rows)
-            {
-                builder.OpenComponent(0, typeof(RowTemplate));
-                builder.AddAttribute(1, "Row", r);
-                builder.AddAttribute(2, "onClickRowCallBack", callBack);
-                builder.CloseComponent();
-            }
-        };
-
-        private RenderFragment CreateRowDetailComponent(Dictionary<string, object> row) => builder =>
+        private RenderFragment CreateRowDetailComponent(Dictionary<string, Event> row) => builder =>
         {
             builder.OpenComponent(0, typeof(RowDetailTemplate));
             builder.AddAttribute(1, "Row", row);
@@ -163,9 +150,21 @@ namespace LightQueryProfiler.SharedWebUI.Pages
 
         private async Task GetLastEventsAsync()
         {
-            while (!_shouldStop)
+            try
             {
-                await GetLastEventsInternalAsync();
+                while (!_shouldStop)
+                {
+                    await GetLastEventsInternalAsync();
+                }
+            }
+            catch (Exception e)
+            {
+                await ShowButtonsByAction();
+
+                if (MessageComponent != null)
+                {
+                    MessageComponent.ShowMessage("An error has occurred", e.Message, MessageType.Error);
+                }
             }
         }
 
@@ -177,9 +176,18 @@ namespace LightQueryProfiler.SharedWebUI.Pages
                 List<ProfilerEvent>? _events = await _profilerService.GetLastEventsAsync(SessionName);
                 if (_events != null)
                 {
-                    Rows.AddRange(AddRows(_events));
-                    RowRender = CreateRowComponent(Rows, OnClickRowHandler);
-                    StateHasChanged();
+                    List<Dictionary<string, Event>> newRows = GetNewRows(_events);
+                    if (newRows != null && newRows.Count > 0)
+                    {
+                        foreach (Dictionary<string, Event> row in newRows)
+                        {
+                            row.Values.First().OnClickAction = () => OnClickRow(row);
+                            row.Values.First().OnDoubleClickAction = () => OnDoubleClickRow(row);
+                        }
+
+                        Rows.AddRange(newRows);
+                        StateHasChanged();
+                    }
                 }
             }
         }
@@ -192,16 +200,15 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             }
         }
 
-        private async void OnClickRowHandler(Dictionary<string, object> row)
+        private async Task OnClickRowHandler(Dictionary<string, Event> row)
         {
             await Task.Run(async () =>
             {
                 if (row != null && row.Count > 0)
                 {
-                    SqlTextArea = row["TextData"]?.ToString() ?? string.Empty;
+                    SqlTextArea = row["TextData"]?.EventValue?.ToString() ?? string.Empty;
                     await RenderSqlTextAreaHtml(SqlTextArea);
                     RowDetailRender = CreateRowDetailComponent(row);
-                    await InvokeAsync(StateHasChanged);
                 }
             });
         }
@@ -214,19 +221,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         private async void OnResume()
         {
             _shouldStop = false;
-            try
-            {
-                await GetLastEventsAsync();
-            }
-            catch (Exception e)
-            {
-                await ShowButtonsByAction();
-
-                if (MessageComponent != null)
-                {
-                    MessageComponent.ShowMessage("An error has occurred", e.Message, MessageType.Error);
-                }
-            }
+            await GetLastEventsAsync();
         }
 
         private async void OnStart()
@@ -255,7 +250,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             _shouldStop = true;
             try
             {
-                await Task.Delay(1000);
+                await Task.Delay(100);
                 StopProfiling();
             }
             catch (Exception e)
@@ -346,9 +341,9 @@ namespace LightQueryProfiler.SharedWebUI.Pages
                 throw new Exception("JSRuntime cannot be null.");
             }
 
-            Lazy<Task<IJSObjectReference>> moduleTask = new(() => JSRuntime.InvokeAsync<IJSObjectReference>("import",
-                           "./_content/LightQueryProfiler.SharedWebUI/Pages/Profiler.razor.js").AsTask());
-            var module = await moduleTask.Value;
+            Task<IJSObjectReference> moduleTask = JSRuntime.InvokeAsync<IJSObjectReference>("import",
+                           "./_content/LightQueryProfiler.SharedWebUI/Pages/Profiler.razor.js").AsTask();
+            var module = await moduleTask;
 
             await module.InvokeAsync<string>("tableKeydownHandler", table);
         }

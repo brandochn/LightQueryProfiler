@@ -1,15 +1,16 @@
-﻿@if (Row is not null)
+﻿@using LightQueryProfiler.Shared.Models
+@if (Row is not null)
 {
 	foreach (var r in Row)
 	{
 		<tr>
 			<td>@r.Key</td>
-			<td>@r.Value</td>
+			<td>@r.Value.EventValue</td>
 		</tr>
 	}
 }
 
 @code {
 	[Parameter]
-	public Dictionary<string, object>? Row { get; set; }
+	public Dictionary<string, Event>? Row { get; set; }
 }

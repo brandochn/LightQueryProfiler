@@ -2,7 +2,8 @@
 @using LightQueryProfiler.Shared.Enums
 @using Components
 @using LightQueryProfiler.SharedWebUI.Data
-@inject LightQueryProfilerInterop? LightQueryProfilerInterop
+@using LightQueryProfiler.SharedWebUI.Util
+@inject LightQueryProfilerInterop LightQueryProfilerInterop
 
 <nav class="navbar navbar-expand-md navbar-dark bg-dark">
 	<div class="container-fluid">
@@ -17,7 +18,7 @@
 					<div class="navbar-text ms-1">
 						<div class="input-group">
 							<span class="input-group-text" id="basic-addon1">Server</span>
-							<input id="inputServer" @oninput="OnServerChanged" value="@Server" type="text" class="form-control" placeholder="Server or IP address" aria-label="Server" aria-describedby="basic-addon1">
+							<input id="inputServer" disabled="@ServerDisabled" @oninput="OnServerChanged" value="@Server" type="text" class="form-control" placeholder="Server or IP address" aria-label="Server" aria-describedby="basic-addon1">
 						</div>
 					</div>
 				</li>
@@ -25,7 +26,7 @@
 					<div class="navbar-text ms-1">
 						<div class="input-group">
 							<span class="input-group-text" id="basic-addon2">Auth</span>
-							<select class="form-select" @bind="@AuthenticationMode" aria-label="Authentication select" @onclick="@CollapseUserAndPasswordInputs">
+							<select class="form-select" @bind="@AuthenticationMode" aria-label="Authentication select" @onclick="@CollapseUserAndPasswordInputs" disabled="@AuthenticationModeDisabled">
 								@foreach (var am in GetAuthenticationModes())
 								{
 									<option value="@am"> @am.GetString() </option>
@@ -53,28 +54,28 @@
 				<li class="nav-item">
 					<div class="navbar-text ms-2">
 						<div class="input-group">
-							<button disabled="@StartButtonDisabled" class="btn btn-outline-success" type="button" @onclick="@StartButtonOnClick">Start</button>
+							<button disabled="@StartButtonDisabled" class="btn btn-outline-success" type="button" @onclick="@EventUtil.AsNonRenderingEventHandler(StartButtonOnClick)">Start</button>
 						</div>
 					</div>
 				</li>
 				<li class="nav-item" hidden="@PauseButtonHidden">
 					<div class="navbar-text ms-2">
 						<div class="input-group">
-							<button disabled="@PauseButtonDisabled" class="btn btn-outline-secondary" type="button" @onclick="@PauseButtonOnClick">Pause</button>
+							<button disabled="@PauseButtonDisabled" class="btn btn-outline-secondary" type="button" @onclick="@EventUtil.AsNonRenderingEventHandler(PauseButtonOnClick)">Pause</button>
 						</div>
 					</div>
 				</li>
 				<li class="nav-item" hidden="@ResumeButtonHidden">
 					<div class="navbar-text ms-2">
 						<div class="input-group">
-							<button disabled="@ResumeButtonDisabled" class="btn btn-outline-info" type="button" @onclick="@ResumeButtonOnClick">Resume</button>
+							<button disabled="@ResumeButtonDisabled" class="btn btn-outline-info" type="button" @onclick="@EventUtil.AsNonRenderingEventHandler(ResumeButtonOnClick)">Resume</button>
 						</div>
 					</div>
 				</li>
 				<li class="nav-item">
 					<div class="navbar-text ms-2">
 						<div class="input-group">
-							<button disabled="@StopButtonDisabled" class="btn btn-outline-danger" type="button" @onclick="@StopButtonOnClick">Stop</button>
+							<button disabled="@StopButtonDisabled" class="btn btn-outline-danger" type="button" @onclick="@EventUtil.AsNonRenderingEventHandler(StopButtonOnClick)">Stop</button>
 						</div>
 					</div>
 				</li>
@@ -127,6 +128,8 @@
 	private static bool PauseButtonHidden { get; set; }
 	private static bool ResumeButtonHidden { get; set; }
 	private static bool SearchButtonDisabled { get; set; }
+	private static bool ServerDisabled { get; set; }
+	private static bool AuthenticationModeDisabled { get; set; }
 
 	private void ToggleNavMenu()
 	{
@@ -211,21 +214,21 @@
 
 	private Task OnServerChanged(ChangeEventArgs e)
 	{
-		Server = e?.Value?.ToString() ?? string.Empty;
+		Server = e.Value?.ToString() ?? string.Empty;
 
 		return ServerChanged.InvokeAsync(Server);
 	}
 
 	private Task OnUserChanged(ChangeEventArgs e)
 	{
-		User = e?.Value?.ToString() ?? string.Empty;
+		User = e.Value?.ToString() ?? string.Empty;
 
 		return UserChanged.InvokeAsync(User);
 	}
 
 	private Task OnPasswordChanged(ChangeEventArgs e)
 	{
-		Password = e?.Value?.ToString() ?? string.Empty;
+		Password = e.Value?.ToString() ?? string.Empty;
 
 		return PasswordChanged.InvokeAsync(Password);
 	}
@@ -247,7 +250,7 @@
 		ShowButtonsByAction("resume");
 		ResumeButtonOnClickCallBack.InvokeAsync();
 	}
-	
+
 	[JSInvokable]
 	public static void ShowButtonsByAction(string action)
 	{
@@ -261,6 +264,8 @@
 				PauseButtonHidden = false;
 				ResumeButtonHidden = true;
 				SearchButtonDisabled = true;
+				ServerDisabled = true;
+				AuthenticationModeDisabled = true;
 				break;
 			case "STOP":
 				StartButtonDisabled = false;
@@ -270,6 +275,8 @@
 				PauseButtonHidden = false;
 				ResumeButtonHidden = true;
 				SearchButtonDisabled = false;
+				ServerDisabled = false;
+				AuthenticationModeDisabled = false;
 				break;
 			case "PAUSE":
 				StartButtonDisabled = true;
@@ -279,6 +286,8 @@
 				PauseButtonHidden = true;
 				ResumeButtonHidden = false;
 				SearchButtonDisabled = false;
+				ServerDisabled = true;
+				AuthenticationModeDisabled = true;
 				break;
 			case "RESUME":
 				StartButtonDisabled = true;
@@ -288,6 +297,8 @@
 				PauseButtonHidden = false;
 				ResumeButtonHidden = true;
 				SearchButtonDisabled = true;
+				ServerDisabled = true;
+				AuthenticationModeDisabled = true;
 				break;
 			default:
 				StartButtonDisabled = false;
@@ -297,6 +308,8 @@
 				PauseButtonHidden = false;
 				ResumeButtonHidden = true;
 				SearchButtonDisabled = true;
+				ServerDisabled = false;
+				AuthenticationModeDisabled = false;
 				break;
 		}
 	}
