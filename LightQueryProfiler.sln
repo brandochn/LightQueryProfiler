@@ -15,6 +15,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{66D515C8
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LightQueryProfiler.Shared.UnitTests", "tests\LightQueryProfiler.Shared.UnitTests\LightQueryProfiler.Shared.UnitTests.csproj", "{50FB44D7-9878-447C-BA1B-829D2BC86B78}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightQueryProfiler.Highlight", "src\LightQueryProfiler.Highlight\LightQueryProfiler.Highlight.csproj", "{BFF93236-CB9F-4780-9B52-C0DB3286451F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +39,10 @@ Global
 		{50FB44D7-9878-447C-BA1B-829D2BC86B78}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{50FB44D7-9878-447C-BA1B-829D2BC86B78}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{50FB44D7-9878-447C-BA1B-829D2BC86B78}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BFF93236-CB9F-4780-9B52-C0DB3286451F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BFF93236-CB9F-4780-9B52-C0DB3286451F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BFF93236-CB9F-4780-9B52-C0DB3286451F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BFF93236-CB9F-4780-9B52-C0DB3286451F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -46,6 +52,7 @@ Global
 		{80A67545-D37A-45B5-9F0F-0C68E72B726B} = {51FC1EE8-5A57-4BD8-A682-0790A08C0FE7}
 		{50A4667C-2F4A-4DF8-A88F-E5BE71DA7CDB} = {51FC1EE8-5A57-4BD8-A682-0790A08C0FE7}
 		{50FB44D7-9878-447C-BA1B-829D2BC86B78} = {66D515C8-C16C-4429-A47D-DB296B7DC486}
+		{BFF93236-CB9F-4780-9B52-C0DB3286451F} = {51FC1EE8-5A57-4BD8-A682-0790A08C0FE7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E833AB64-9548-4BE4-ACB5-2059821BDCDB}

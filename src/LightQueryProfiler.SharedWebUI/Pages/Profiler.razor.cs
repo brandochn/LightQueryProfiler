@@ -1,4 +1,6 @@
-﻿using LightQueryProfiler.Shared.Data;
+﻿using LightQueryProfiler.Highlight.Configuration;
+using LightQueryProfiler.Highlight.Engines;
+using LightQueryProfiler.Shared.Data;
 using LightQueryProfiler.Shared.Enums;
 using LightQueryProfiler.Shared.Models;
 using LightQueryProfiler.Shared.Repositories;
@@ -22,6 +24,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         private bool _shouldStop = true;
         private IXEventRepository? _xEventRepository;
         private IXEventService? _xEventService;
+        private SqlHighlightService? _sqlHighlightService;
 
         [Inject]
         protected LightQueryProfilerInterop? LightQueryProfilerInterop { get; set; }
@@ -139,6 +142,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             _xEventRepository = new XEventRepository(_applicationDbContext);
             _xEventService = new XEventService();
             _profilerService = new ProfilerService(_xEventRepository, _xEventService);
+            _sqlHighlightService = new SqlHighlightService(new HtmlEngine(), new DefaultConfiguration());
         }
 
         private RenderFragment CreateRowDetailComponent(Dictionary<string, Event> row) => builder =>
@@ -273,9 +277,9 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         {
             if (!string.IsNullOrEmpty(sqlText))
             {
-                if (LightQueryProfilerInterop != null)
+                if (_sqlHighlightService != null)
                 {
-                    string? html = await LightQueryProfilerInterop.SyntaxHighlight(sqlText ?? string.Empty);
+                    string? html = _sqlHighlightService.SyntaxHighlight(sqlText);
                     RawSqlTextAreaHtml = new MarkupString(html);
                 }
             }

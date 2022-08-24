@@ -18,11 +18,11 @@ namespace LightQueryProfiler.SharedWebUI.Data
             await module.InvokeAsync<string>("initializeResizableTableColumns", tableName);
         }
 
-        public async ValueTask<string> SyntaxHighlight(string sqlString)
-        {
-            var module = await moduleTask;
-            return await module.InvokeAsync<string>("syntaxHighlight", sqlString);
-        }
+        //public async ValueTask<string> SyntaxHighlight(string sqlString)
+        //{
+        //    var module = await moduleTask;
+        //    return await module.InvokeAsync<string>("syntaxHighlight", sqlString);
+        //}
 
         public async Task InitializeNavTab(string tabName)
         {
