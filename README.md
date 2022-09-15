@@ -9,7 +9,9 @@
 * [Contact](#contact)
 
 ## General info
-Light Query Profiler uses [Extended Events](https://docs.microsoft.com/en-us/sql/relational-databases/extended-events/quick-start-extended-events-in-sql-server?view=sql-server-ver16) to collect data needed to monitor and troubleshoot problems in SQL Server.
+Light Query Profiler is a desktop application that uses Blazor Server hosting model with [Chromely](https://github.com/chromelyapps/Chromely) as Chromium desktop framework ([CEF](https://bitbucket.org/chromiumembedded/cef)).
+
+Light Query Profiler works with [Extended Events](https://docs.microsoft.com/en-us/sql/relational-databases/extended-events/quick-start-extended-events-in-sql-server?view=sql-server-ver16) to collect data needed to monitor and troubleshoot issues in SQL Server.
 
 &nbsp;
 ![image](https://user-images.githubusercontent.com/32686301/190280331-63ca6bb7-c07d-4c12-94c9-582ea36d26c4.png)
