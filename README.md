@@ -16,13 +16,14 @@ Light Query Profiler uses [Extended Events](https://docs.microsoft.com/en-us/sql
 &nbsp;
 
 ## Technologies
-* Blazor       -  v6.0
-* Bootstrap    -  v5.1.0
-* Chromely     -  v5.2.101
+* Blazor      -  v6.0
+* Bootstrap   -  v5.1.0
+* Chromely    -  v5.2.101
+* JavaScript  
 
 
 ## Status
-Project is: _in progress_, I am coding as fast as I can ;)
+Project is: _in progress_, I am coding as fast as I can ;). Contributions are always welcome, feel free to submit a pull request.
 
 ## References
 * Chromely - https://github.com/chromelyapps/Chromely
