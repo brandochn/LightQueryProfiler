@@ -1,5 +1,4 @@
 ﻿import { ResizableTableColumns } from "./ResizableTableColumns/resizable-table-columns.js"
-import { highlight } from "./sql-highlight/Index.js";
 import { default as Tab } from "./bootstrap/tab.js";
 
 
@@ -29,15 +28,6 @@ export function initializeResizableTableColumns(tableName) {
     }
 
     new ResizableTableColumns(tableElement, options);
-}
-
-export function syntaxHighlight(sqlString) {
-
-    let highlighted = highlight(sqlString, {
-        html: true
-    });
-
-    return highlighted;
 }
 
 export function initializeNavTab(tabName) {
