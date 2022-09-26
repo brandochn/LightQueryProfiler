@@ -142,7 +142,19 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             _xEventRepository = new XEventRepository(_applicationDbContext);
             _xEventService = new XEventService();
             _profilerService = new ProfilerService(_xEventRepository, _xEventService);
-            _sqlHighlightService = new SqlHighlightService(new HtmlEngine(), new DefaultConfiguration());
+            // Linux OS or Mac OSX don't have the Arial Font so here we use a specific font for each OS
+            switch (Environment.OSVersion.Platform)
+            {
+                case PlatformID.Unix:
+                    _sqlHighlightService = new SqlHighlightService(new HtmlEngine(), new LinuxConfiguration());
+                    break;
+                case PlatformID.MacOSX:
+                    _sqlHighlightService = new SqlHighlightService(new HtmlEngine(), new LinuxConfiguration()); // check if this font works on Mac OS
+                    break;
+                default:
+                    _sqlHighlightService = new SqlHighlightService(new HtmlEngine(), new DefaultConfiguration());
+                    break;
+            }
         }
 
         private RenderFragment CreateRowDetailComponent(Dictionary<string, Event> row) => builder =>

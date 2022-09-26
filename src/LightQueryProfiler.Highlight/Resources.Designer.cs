@@ -63,14 +63,17 @@ namespace LightQueryProfiler.Highlight {
         /// <summary>
         ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
         ///&lt;definitions&gt;
-        ///  &lt;definition name=&quot;ASPX&quot; caseSensitive=&quot;false&quot;&gt;
+        ///  &lt;definition name=&quot;SQL&quot; caseSensitive=&quot;false&quot;&gt;
         ///    &lt;default&gt;
-        ///      &lt;font name=&quot;Courier New&quot; size=&quot;11&quot; style=&quot;regular&quot; foreColor=&quot;black&quot; backColor=&quot;transparent&quot; /&gt;
+        ///      &lt;font name=&quot;Arial&quot; size=&quot;14&quot; style=&quot;regular&quot; foreColor=&quot;black&quot; backColor=&quot;transparent&quot; /&gt;
         ///    &lt;/default&gt;
-        ///    &lt;pattern name=&quot;ServerSideBlock&quot; type=&quot;block&quot; beginsWith=&quot;&amp;amp;lt;%&quot; endsWith=&quot;%&amp;amp;gt;&quot;&gt;
-        ///      &lt;font name=&quot;Courier New&quot; size=&quot;11&quot; style=&quot;regular&quot; foreColor=&quot;black&quot; backColor=&quot;yellow&quot; /&gt;
-        ///    &lt;/pattern&gt;
-        ///    &lt;pattern name=&quot;Markup&quot; type=&quot;markup&quot; highlightAttributes=&quot;tr [rest of string was truncated]&quot;;.
+        ///    &lt;pattern name=&quot;SysTable&quot; type=&quot;word&quot;&gt;
+        ///      &lt;font name=&quot;Arial&quot; size=&quot;14&quot; style=&quot;regular&quot; foreColor=&quot;lawngreen&quot; backColor=&quot;transparent&quot; /&gt;
+        ///      &lt;word&gt;sysaltfiles&lt;/word&gt;
+        ///      &lt;word&gt;syslockinfo&lt;/word&gt;
+        ///      &lt;word&gt;syscacheobjects&lt;/word&gt;
+        ///      &lt;word&gt;syslogins&lt;/word&gt;
+        ///       [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string DefaultDefinitions {
             get {
@@ -98,6 +101,26 @@ namespace LightQueryProfiler.Highlight {
         internal static string DefinitionsSchema {
             get {
                 return ResourceManager.GetString("DefinitionsSchema", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+        ///&lt;definitions&gt;
+        ///  &lt;definition name=&quot;SQL&quot; caseSensitive=&quot;false&quot;&gt;
+        ///    &lt;default&gt;
+        ///      &lt;font name=&quot;DejaVu Sans&quot; size=&quot;14&quot; style=&quot;regular&quot; foreColor=&quot;black&quot; backColor=&quot;transparent&quot; /&gt;
+        ///    &lt;/default&gt;
+        ///    &lt;pattern name=&quot;SysTable&quot; type=&quot;word&quot;&gt;
+        ///      &lt;font name=&quot;DejaVu Sans&quot; size=&quot;14&quot; style=&quot;regular&quot; foreColor=&quot;lawngreen&quot; backColor=&quot;transparent&quot; /&gt;
+        ///      &lt;word&gt;sysaltfiles&lt;/word&gt;
+        ///      &lt;word&gt;syslockinfo&lt;/word&gt;
+        ///      &lt;word&gt;syscacheobjects&lt;/word&gt;
+        ///      &lt;word&gt;syslogins&lt;/w [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string LinuxDefinitions {
+            get {
+                return ResourceManager.GetString("LinuxDefinitions", resourceCulture);
             }
         }
     }
