@@ -48,11 +48,11 @@ namespace LightQueryProfiler.Highlight.Engines
                 {
                     patternStyle.Append("font-size: " + font.Size + "px;");
                 }
-                if (font.Instance.Description.Style == FontStyle.Regular)
+                if (font.FontMetrics.Description.Style == FontStyle.Regular)
                 {
                     patternStyle.Append("font-weight: normal;");
                 }
-                if (font.Instance.Description.Style == FontStyle.Bold)
+                if (font.FontMetrics.Description.Style == FontStyle.Bold)
                 {
                     patternStyle.Append("font-weight: bold;");
                 }
