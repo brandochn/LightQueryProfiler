@@ -3,6 +3,7 @@ using LightQueryProfiler.Highlight.Patterns;
 using SixLabors.Fonts;
 using System.Drawing;
 using System.Text.RegularExpressions;
+using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
 
@@ -10,14 +11,14 @@ namespace LightQueryProfiler.Highlight.Configuration
 {
     public class XmlConfiguration : IConfiguration
     {
-        private IDictionary<string, Definition> definitions;
+        private IDictionary<string, Definition>? definitions;
 
         public IDictionary<string, Definition> Definitions
         {
             get { return GetDefinitions(); }
         }
 
-        public XDocument XmlDocument { get; protected set; }
+        public XDocument? XmlDocument { get; protected set; }
 
         public XmlConfiguration(XDocument xmlDocument)
         {
@@ -37,6 +38,12 @@ namespace LightQueryProfiler.Highlight.Configuration
         {
             if (definitions == null)
             {
+
+                if (XmlDocument == null)
+                {
+                    throw new ArgumentNullException(nameof(XmlDocument));
+                }
+
                 definitions = XmlDocument
                     .Descendants("definition")
                     .Select(GetDefinition)
@@ -147,18 +154,18 @@ namespace LightQueryProfiler.Highlight.Configuration
             return new ColorPair(foreColor, backColor);
         }
 
-        private Font GetPatternFont(XElement fontElement, Font defaultFont = null)
+        private Font GetPatternFont(XElement fontElement)
         {
             var fontFamily = fontElement.GetAttributeValue("name");
-            if (fontFamily != null)
+            if (fontFamily == null)
             {
-                var emSize = fontElement.GetAttributeValue("size").ToSingle(11f);
-                var style = Enum<FontStyle>.Parse(fontElement.GetAttributeValue("style"), FontStyle.Regular, true);
-
-                return SystemFonts.CreateFont(fontFamily, emSize, style);
+                throw new ArgumentNullException(nameof(fontElement));
             }
 
-            return defaultFont;
+            var emSize = fontElement.GetAttributeValue("size").ToSingle(11f);
+            var style = Enum<FontStyle>.Parse(fontElement.GetAttributeValue("style"), FontStyle.Regular, true);
+
+            return SystemFonts.CreateFont(fontFamily, emSize, style);
         }
 
         private ColorPair GetMarkupPatternBracketColors(XContainer patternElement)
@@ -190,7 +197,7 @@ namespace LightQueryProfiler.Highlight.Configuration
                 return colors;
             }
 
-            return null;
+            throw new ArgumentNullException(nameof(element));
         }
 
         private Style GetDefinitionStyle(XNode definitionElement)
@@ -203,16 +210,26 @@ namespace LightQueryProfiler.Highlight.Configuration
             return new Style(colors, font);
         }
 
-        private ColorPair GetDefinitionColors(XElement fontElement)
+        private ColorPair GetDefinitionColors(XElement? fontElement)
         {
+            if (fontElement == null)
+            {
+                throw new ArgumentNullException(nameof(fontElement));
+            }
+
             var foreColor = Color.FromName(fontElement.GetAttributeValue("foreColor"));
             var backColor = Color.FromName(fontElement.GetAttributeValue("backColor"));
 
             return new ColorPair(foreColor, backColor);
         }
 
-        private Font GetDefinitionFont(XElement fontElement)
+        private Font GetDefinitionFont(XElement? fontElement)
         {
+            if (fontElement == null)
+            {
+                throw new ArgumentNullException(nameof(fontElement));
+            }
+
             var fontName = fontElement.GetAttributeValue("name");
             var fontSize = Convert.ToSingle(fontElement.GetAttributeValue("size"));
             var fontStyle = (FontStyle)Enum.Parse(typeof(FontStyle), fontElement.GetAttributeValue("style"), true);

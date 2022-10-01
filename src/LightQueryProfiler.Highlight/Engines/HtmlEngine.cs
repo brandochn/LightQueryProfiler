@@ -36,7 +36,7 @@ namespace LightQueryProfiler.Highlight.Engines
                 return String.Format(StyleSpanFormat, cssStyle, input);
             }
 
-            var cssClassName = HtmlEngineHelper.CreateCssClassName(definition.Name, null);
+            var cssClassName = HtmlEngineHelper.CreateCssClassName(definition.Name, String.Empty);
 
             return String.Format(ClassSpanFormat, cssClassName, input);
         }

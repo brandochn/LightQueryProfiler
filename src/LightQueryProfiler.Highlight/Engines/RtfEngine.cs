@@ -45,8 +45,8 @@ namespace LightQueryProfiler.Highlight.Engines
             var builder = new StringBuilder();
             var style = CreateRtfPatternStyle(pattern.Style.Colors.ForeColor, pattern.Style.Colors.BackColor, pattern.Style.Font);
             var bracketStyle = CreateRtfPatternStyle(pattern.BracketColors.ForeColor, pattern.BracketColors.BackColor, pattern.Style.Font);
-            string attributeNameStyle = null;
-            string attributeValueStyle = null;
+            string? attributeNameStyle = null;
+            string? attributeValueStyle = null;
             if (pattern.HighlightAttributes)
             {
                 attributeNameStyle = CreateRtfPatternStyle(pattern.AttributeNameColors.ForeColor, pattern.AttributeNameColors.BackColor, pattern.Style.Font);
