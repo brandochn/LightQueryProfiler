@@ -114,7 +114,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
 
         private void ClearResults()
         {
-            Rows = new List<Dictionary<string, Event>>();
+            ClearEvents();
             RowDetailRender = null;
             SqlTextArea = string.Empty;
             RawSqlTextAreaHtml = (MarkupString)string.Empty;
@@ -366,6 +366,11 @@ namespace LightQueryProfiler.SharedWebUI.Pages
         private void UserHandler(string user)
         {
             User = user;
+        }
+
+        private void ClearEvents()
+        {
+            Rows = new List<Dictionary<string, Event>>();
         }
     }
 }
