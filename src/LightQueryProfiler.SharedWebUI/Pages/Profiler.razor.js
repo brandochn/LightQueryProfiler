@@ -6,7 +6,9 @@
         if (trow != this) { trow.className = "table-light" }
     }
 
-    _this.className = (this.className == "table-active") ? "table-light" : "table-active";
+    if (_this != undefined && _this != null) {
+        _this.className = (this.className == "table-active") ? "table-light" : "table-active";
+    }
 }
 
 export function tableKeydownHandler(table) {
