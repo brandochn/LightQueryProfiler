@@ -1,4 +1,6 @@
-﻿using LightQueryProfiler.SharedWebUI.Data;
+﻿using ElectronNET.API;
+using ElectronNET.API.Entities;
+using LightQueryProfiler.SharedWebUI.Data;
 using LightQueryProfiler.WebApp.Data;
 
 namespace LightQueryProfiler.WebApp
@@ -37,16 +39,48 @@ namespace LightQueryProfiler.WebApp
                 app.UseHsts();
             }
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
             app.UseStaticFiles();
 
             app.UseRouting();
 
+            // For regular
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapBlazorHub();
                 endpoints.MapFallbackToPage("/_Host");
             });
+
+            if (HybridSupport.IsElectronActive)
+            {
+                ElectronCreateWindow();
+            }
+        }
+
+        public async void ElectronCreateWindow()
+        {
+            var browserWindowOptions = new BrowserWindowOptions
+            {
+                Show = false, // wait to open it
+                WebPreferences = new WebPreferences
+                {
+                    WebSecurity = false
+                }
+            };
+
+            var browserWindow = await Electron.WindowManager.CreateWindowAsync(browserWindowOptions);
+            await browserWindow.WebContents.Session.ClearCacheAsync();
+
+            // Handler to show when it is ready
+            browserWindow.OnReadyToShow += () =>
+            {
+                browserWindow.Show();
+            };
+
+            // Close Handler
+            browserWindow.OnClose += () => Environment.Exit(0);
+            browserWindow.SetTitle("Light Query Profiler");
+            browserWindow.Maximize();
         }
     }
 }

@@ -9,10 +9,10 @@ namespace LightQueryProfiler.Shared.Extensions
             switch (am)
             {
                 case AuthenticationMode.WindowsAuth:
-                    return "Windows Auth";
+                    return "Windows Authentication";
 
                 case AuthenticationMode.SQLServerAuth:
-                    return "SQL Server Auth";
+                    return "SQL Server Authentication";
 
                 default:
                     return string.Empty;

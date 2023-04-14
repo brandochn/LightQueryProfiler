@@ -17,6 +17,12 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
+    "ElectronNet": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "electronize start",
+      "workingDirectory": "$(ProjectDir)"
+    },
     "IIS Express": {
       "commandName": "IISExpress",
       "launchBrowser": true,

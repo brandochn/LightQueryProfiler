@@ -1,5 +1,5 @@
 # Light Query Profiler
-> Light Query Profiler is a simple and cross platform query profiler for SQL Server and Azure SQL Database.
+> Light Query Profiler is a simple and cross platform query profiler for SQL Server and Azure SQL Databases.
 
 ## Table of contents
 * [General info](#general-info)
@@ -9,7 +9,7 @@
 * [Contact](#contact)
 
 ## General info
-Light Query Profiler is a desktop application that uses Blazor Server hosting model with [Chromely](https://github.com/chromelyapps/Chromely) as Chromium desktop framework ([CEF](https://bitbucket.org/chromiumembedded/cef)).
+Light Query Profiler is a desktop application that uses Blazor Server hosting model with [Electron.NET](https://github.com/ElectronNET/Electron.NET) as client side front-end.
 
 Light Query Profiler works with [Extended Events](https://docs.microsoft.com/en-us/sql/relational-databases/extended-events/quick-start-extended-events-in-sql-server?view=sql-server-ver16) to collect data needed to monitor and troubleshoot issues in SQL Server.
 
@@ -18,9 +18,9 @@ Light Query Profiler works with [Extended Events](https://docs.microsoft.com/en-
 &nbsp;
 
 ## Technologies
-* Blazor      -  v6.0
-* Bootstrap   -  v5.1.0
-* Chromely    -  v5.2.101
+* Blazor        -  v7.0
+* Bootstrap     -  v5.1.0
+* Electron.NET  -  v23.6.1
 * JavaScript  
 
 
@@ -28,7 +28,7 @@ Light Query Profiler works with [Extended Events](https://docs.microsoft.com/en-
 Project is: _in progress_, I am coding as fast as I can ;). Contributions are always welcome, feel free to submit a pull request.
 
 ## References
-* Chromely - https://github.com/chromelyapps/Chromely
+* Electron.NET - https://github.com/ElectronNET/Electron.NET
 
 ## Contact
 Created by [Hildebrando Chávez](mailto:brandochn@gmail.com) - feel free to contact me!
