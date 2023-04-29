@@ -86,6 +86,20 @@
 						</div>
 					</div>
 				</li>
+				<li class="nav-item">
+					<div class="navbar-text ms-2">
+						<div class="input-group">
+							<button class="btn btn-outline-light" type="button" @onclick="@EventUtil.AsNonRenderingEventHandler(ShowFiltersOnClick)">Filters</button>
+						</div>
+					</div>
+				</li>
+				<li class="nav-item">
+					<div class="navbar-text ms-2">
+						<div class="input-group">
+							<button class="btn btn-outline-light" type="button" @onclick="@EventUtil.AsNonRenderingEventHandler(ClearFiltersOnClick)">Clear Filters</button>
+						</div>
+					</div>
+				</li>
 			</ul>
 			<div class="d-flex" role="search">
 				<input disabled="@SearchButtonDisabled" id="inputSearch" class="form-control me-2" type="search" placeholder="Filter..." aria-label="Search">
@@ -126,6 +140,12 @@
 
 	[Parameter]
 	public EventCallback ClearEventsButtonOnClickCallBack { get; set; }
+
+	[Parameter]
+	public EventCallback ShowFiltersCallBack { get; set; }
+
+	[Parameter]
+	public EventCallback ClearFiltersCallBack { get; set; }
 
 	private bool ShowUserAndPasswordInputs { get; set; }
 	private bool collapseNavMenu = true;
@@ -354,5 +374,35 @@
 	private async void ClearEventsButtonOnClick()
 	{
 		await ClearEventsButtonOnClickCallBack.InvokeAsync();		
+	}
+
+	private async void ShowFiltersOnClick()
+	{
+		try
+		{
+			await ShowFiltersCallBack.InvokeAsync();
+		}		
+		catch (Exception e)
+		{
+			if (MessageComponent != null)
+			{
+				MessageComponent.ShowMessage("An error has occurred", e.Message, MessageType.Error);
+			}
+		}
+	}
+
+	private async void ClearFiltersOnClick()
+	{
+		try
+		{
+			await ClearFiltersCallBack.InvokeAsync();
+		}
+		catch (Exception e)
+		{
+			if (MessageComponent != null)
+			{
+				MessageComponent.ShowMessage("An error has occurred", e.Message, MessageType.Error);
+			}
+		}
 	}
 }

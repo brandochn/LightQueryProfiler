@@ -89,34 +89,7 @@ namespace LightQueryProfiler.Shared.Repositories
 
         public void DisconnectSession(string sessionName)
         {
-            if (string.IsNullOrEmpty(sessionName))
-            {
-                throw new Exception("sessionName cannot be null or empty");
-            }
-
-            using (DbConnection connection = _applicationDbContext.GetConnection())
-            {
-                DbCommand cmd = new SqlCommand();
-                cmd.Connection = connection;
-                cmd.CommandType = CommandType.Text;
-                cmd.CommandText = @$"IF EXISTS (SELECT TOP 1 1
-						                FROM sys.server_event_sessions
-						                WHERE name = @sessionName)
-					                BEGIN
-						                ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = STOP
-					                END";
-
-                cmd.Parameters.Add(new SqlParameter()
-                {
-                    ParameterName = "@sessionName",
-                    Direction = ParameterDirection.Input,
-                    SqlDbType = SqlDbType.VarChar,
-                    Value = sessionName
-                });
-
-                connection.Open();
-                cmd.ExecuteNonQuery();
-            }
+            StopProfiling(sessionName);
 
             DeleteXEventSession(sessionName);
         }
