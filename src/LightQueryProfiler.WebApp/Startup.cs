@@ -2,6 +2,7 @@
 using ElectronNET.API.Entities;
 using LightQueryProfiler.SharedWebUI.Data;
 using LightQueryProfiler.WebApp.Data;
+using Blazored.Modal;
 
 namespace LightQueryProfiler.WebApp
 {
@@ -23,6 +24,7 @@ namespace LightQueryProfiler.WebApp
             services.AddServerSideBlazor();
             services.AddSingleton<WeatherForecastService>();
             services.AddScoped<LightQueryProfilerInterop>();
+            services.AddBlazoredModal();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
