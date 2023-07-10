@@ -12,6 +12,12 @@ namespace LightQueryProfiler.WinFormsApp.Views
             CreateEventHandlers();
         }
 
+        public event EventHandler? OnClearEvents;
+
+        public event EventHandler OnClearFiltersClick;
+
+        public event EventHandler? OnFiltersClick;
+
         public event EventHandler? OnPause;
 
         public event EventHandler? OnResume;
@@ -21,6 +27,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
         public event EventHandler? OnStop;
 
         public event EventHandler? RowEnter;
+        ComboBox IMainView.AuthenticationComboBox => cboAuthentication;
 
         IList<AuthenticationMode> IMainView.AuthenticationModes
         {
@@ -32,6 +39,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         string? IMainView.Password { get => txtPassword.Text; set => txtPassword.Text = value; }
 
+        TextBox IMainView.PasswordTextBox => txtPassword;
         Button IMainView.PauseButton => btnPause;
         DataGridViewColumn[] IMainView.ProfilerColumns { set => dgvEvents.Columns.AddRange(value); }
 
@@ -54,11 +62,28 @@ namespace LightQueryProfiler.WinFormsApp.Views
         }
 
         string? IMainView.Server { get => txtServer.Text; set => txtServer.Text = value; }
+        TextBox IMainView.ServerTexBox => txtServer;
         string IMainView.SessionName { get => "lqpSession"; }
         string? IMainView.SqlTextArea { get => webBrowser.DocumentText; set => webBrowser.DocumentText = value; }
         Button IMainView.StartButton => btnStart;
         Button IMainView.StopButton => btnStop;
         string? IMainView.User { get => txtUser.Text; set => txtUser.Text = value; }
+        TextBox IMainView.UserTextBox => txtUser;
+
+        private void BtnClearEvents_Click(object? sender, EventArgs e)
+        {
+            OnClearEvents?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void BtnClearFilters_Click(object? sender, EventArgs e)
+        {
+            OnClearFiltersClick?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void BtnFilters_Click(object? sender, EventArgs e)
+        {
+            OnFiltersClick?.Invoke(this, EventArgs.Empty);
+        }
 
         private void BtnPause_Click(object? sender, EventArgs e)
         {
@@ -80,6 +105,26 @@ namespace LightQueryProfiler.WinFormsApp.Views
             OnStop?.Invoke(this, EventArgs.Empty);
         }
 
+        private void CboAuthentication_SelectionChangeCommitted(object? sender, EventArgs e)
+        {
+            ComboBox? senderComboBox = sender as ComboBox;
+
+            if (senderComboBox?.SelectionLength > 0)
+            {
+                int selectedAuthenticationMode = Convert.ToInt32(senderComboBox.SelectedValue);
+                if ((Shared.Enums.AuthenticationMode)selectedAuthenticationMode == Shared.Enums.AuthenticationMode.WindowsAuth)
+                {
+                    txtUser.Visible = false;
+                    txtPassword.Visible = false;
+                }
+                else
+                {
+                    txtUser.Visible = true;
+                    txtPassword.Visible = true;
+                }
+            }
+        }
+
         private void CreateEventHandlers()
         {
             Load += MainWindow_Load;
@@ -88,8 +133,10 @@ namespace LightQueryProfiler.WinFormsApp.Views
             dgvEvents.RowEnter += DgvEvents_RowEnter;
             btnPause.Click += BtnPause_Click;
             btnResume.Click += BtnResume_Click;
+            btnClearEvents.Click += BtnClearEvents_Click;
+            btnFilters.Click += BtnFilters_Click;
+            btnClearFilters.Click += BtnClearFilters_Click;
         }
-
         private void DgvEvents_RowEnter(object? sender, DataGridViewCellEventArgs e)
         {
             RowEnter?.Invoke(sender, e);
@@ -99,6 +146,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
         {
             cboAuthentication.DisplayMember = "Name";
             cboAuthentication.ValueMember = "Value";
+            cboAuthentication.SelectionChangeCommitted += CboAuthentication_SelectionChangeCommitted;
         }
 
         private void MainWindow_Load(object? sender, EventArgs e)

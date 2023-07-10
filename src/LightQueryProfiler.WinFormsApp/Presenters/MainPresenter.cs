@@ -51,8 +51,13 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             view.RowEnter += RowEnter;
             view.OnPause += OnPause;
             view.OnResume += OnResume;
+            view.OnClearEvents += OnClearEvents;
+            view.OnFiltersClick += OnFiltersClick;
+            view.OnClearFiltersClick += OnClearFiltersClick;
             view.Show();
         }
+
+        private EventFilter EventFilterModel { get; set; } = new EventFilter();
 
         private BaseProfilerViewTemplate ProfilerViewTemplate { get; set; } = new DefaultProfilerViewTemplate();
 
@@ -89,6 +94,17 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         private void ClearEvents()
         {
             view.ProfilerGridView.Rows.Clear();
+        }
+
+        private void ClearFilters()
+        {
+            DialogResult dialogResult = MessageBox.Show("Are you sure you want to clear the filters?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (dialogResult == DialogResult.Yes)
+            {
+                Filters = new Dictionary<string, object>();
+                EventFilterModel = new Shared.Models.EventFilter();
+            }
         }
 
         private void ClearResults()
@@ -138,7 +154,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             }
         }
 
-        private void CreateFilters(LightQueryProfiler.Shared.Models.EventFilter eventFilter)
+        private void CreateFilters(Shared.Models.EventFilter eventFilter)
         {
             Filters = new Dictionary<string, object>();
             if (!string.IsNullOrEmpty(eventFilter.EventClass))
@@ -306,16 +322,47 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             return newEvents;
         }
 
-        private void OnPause(object? sender, EventArgs e)
+        private void HandleCancellationRequest()
         {
-            _shouldStop = true;
-            ShowButtonsByAction("pause");
             if (_tokenSource != null && !_tokenSource.IsCancellationRequested)
             {
                 _tokenSource?.Cancel(); // Request cancellation.
                 _thread?.Join(); // If you want to wait for cancellation, `Join` blocks the calling thread until the thread represented by this instance terminates.
                 _tokenSource?.Dispose(); // Dispose the token source.
             }
+        }
+
+        private void OnClearEvents(object? sender, EventArgs e)
+        {
+            ClearEvents();
+        }
+
+        private void OnClearFiltersClick(object? sender, EventArgs e)
+        {
+            ClearFilters();
+        }
+
+        private void OnFiltersClick(object? sender, EventArgs e)
+        {
+            using (var form = new FiltersView())
+            {
+                var presenter = new FiltersPresenter(form);
+                presenter.SetEventFilter(EventFilterModel);
+                var result = form.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    EventFilterModel = presenter.GetEventFilter();
+                    CreateFilters(EventFilterModel);
+                    ClearEvents();
+                }
+            }
+        }
+
+        private void OnPause(object? sender, EventArgs e)
+        {
+            _shouldStop = true;
+            ShowButtonsByAction("pause");
+            HandleCancellationRequest();
         }
 
         private void OnResume(object? sender, EventArgs e)
@@ -353,12 +400,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         {
             _shouldStop = true;
             ShowButtonsByAction("stop");
-            if (_tokenSource != null && !_tokenSource.IsCancellationRequested)
-            {
-                _tokenSource?.Cancel(); // Request cancellation.
-                _thread?.Join(); // If you want to wait for cancellation, `Join` blocks the calling thread until the thread represented by this instance terminates.
-                _tokenSource?.Dispose(); // Dispose the token source.
-            }
+            HandleCancellationRequest();
 
             try
             {
@@ -396,10 +438,8 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     view.ResumeButton.Enabled = false;
                     view.PauseButton.Visible = true;
                     view.ResumeButton.Visible = false;
-                    //SearchButtonDisabled = true;
-                    //ServerDisabled = true;
-                    //AuthenticationModeDisabled = true;
-                    //ClearEventsButtonDisabled = false;
+                    view.ServerTexBox.Enabled = false;
+                    view.AuthenticationComboBox.Enabled = false;
                     break;
 
                 case "STOP":
@@ -409,10 +449,8 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     view.ResumeButton.Enabled = false;
                     view.PauseButton.Visible = true;
                     view.ResumeButton.Visible = false;
-                    //SearchButtonDisabled = false;
-                    //ServerDisabled = false;
-                    //AuthenticationModeDisabled = false;
-                    //ClearEventsButtonDisabled = false;
+                    view.ServerTexBox.Enabled = true;
+                    view.AuthenticationComboBox.Enabled = true;
                     break;
 
                 case "PAUSE":
@@ -422,10 +460,8 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     view.ResumeButton.Enabled = true;
                     view.PauseButton.Visible = false;
                     view.ResumeButton.Visible = true;
-                    //SearchButtonDisabled = false;
-                    //ServerDisabled = true;
-                    //AuthenticationModeDisabled = true;
-                    //ClearEventsButtonDisabled = false;
+                    view.ServerTexBox.Enabled = false;
+                    view.AuthenticationComboBox.Enabled = false;
                     break;
 
                 case "RESUME":
@@ -435,10 +471,8 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     view.ResumeButton.Enabled = false;
                     view.PauseButton.Visible = true;
                     view.ResumeButton.Visible = false;
-                    //SearchButtonDisabled = true;
-                    //ServerDisabled = true;
-                    //AuthenticationModeDisabled = true;
-                    //ClearEventsButtonDisabled = false;
+                    view.ServerTexBox.Enabled = false;
+                    view.AuthenticationComboBox.Enabled = false;
                     break;
 
                 default:
@@ -448,10 +482,8 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     view.ResumeButton.Enabled = false;
                     view.PauseButton.Visible = true;
                     view.ResumeButton.Visible = false;
-                    //SearchButtonDisabled = true;
-                    //ServerDisabled = false;
-                    //AuthenticationModeDisabled = false;
-                    //ClearEventsButtonDisabled = true;
+                    view.ServerTexBox.Enabled = true;
+                    view.AuthenticationComboBox.Enabled = true;
                     break;
             }
         }
