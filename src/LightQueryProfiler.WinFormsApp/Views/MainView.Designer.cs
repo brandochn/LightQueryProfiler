@@ -39,28 +39,31 @@
             btnResume = new Button();
             btnStop = new Button();
             btnClearEvents = new Button();
-            pnlGrid = new Panel();
+            btnFilters = new Button();
+            btnClearFilters = new Button();
+            splitContainer = new SplitContainer();
             dgvEvents = new DataGridView();
-            pnlDetails = new Panel();
             tabControl1 = new TabControl();
             tabPageText = new TabPage();
             tabPageDetails = new TabPage();
             lvDetails = new ListView();
             ColName = new ColumnHeader();
             ColValue = new ColumnHeader();
-            btnFilters = new Button();
-            btnClearFilters = new Button();
+            statusBar = new StatusStrip();
+            toolStripStatusEvents = new ToolStripStatusLabel();
             pnlHeader.SuspendLayout();
-            pnlGrid.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)splitContainer).BeginInit();
+            splitContainer.Panel1.SuspendLayout();
+            splitContainer.Panel2.SuspendLayout();
+            splitContainer.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvEvents).BeginInit();
-            pnlDetails.SuspendLayout();
             tabControl1.SuspendLayout();
             tabPageDetails.SuspendLayout();
+            statusBar.SuspendLayout();
             SuspendLayout();
             // 
             // pnlHeader
             // 
-            pnlHeader.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             pnlHeader.Controls.Add(txtServer);
             pnlHeader.Controls.Add(cboAuthentication);
             pnlHeader.Controls.Add(txtUser);
@@ -72,9 +75,10 @@
             pnlHeader.Controls.Add(btnClearEvents);
             pnlHeader.Controls.Add(btnFilters);
             pnlHeader.Controls.Add(btnClearFilters);
-            pnlHeader.Location = new Point(3, 1);
+            pnlHeader.Dock = DockStyle.Top;
+            pnlHeader.Location = new Point(0, 0);
             pnlHeader.Name = "pnlHeader";
-            pnlHeader.Size = new Size(1443, 50);
+            pnlHeader.Size = new Size(1449, 50);
             pnlHeader.TabIndex = 0;
             // 
             // txtServer
@@ -82,8 +86,8 @@
             txtServer.AcceptsTab = true;
             txtServer.Dock = DockStyle.Top;
             txtServer.Font = new Font("Segoe UI", 11F, FontStyle.Regular, GraphicsUnit.Point);
-            txtServer.Location = new Point(3, 10);
-            txtServer.Margin = new Padding(3, 10, 3, 3);
+            txtServer.Location = new Point(10, 10);
+            txtServer.Margin = new Padding(10, 10, 3, 3);
             txtServer.Name = "txtServer";
             txtServer.PlaceholderText = "Server or IP address";
             txtServer.Size = new Size(200, 27);
@@ -94,7 +98,7 @@
             // 
             cboAuthentication.Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point);
             cboAuthentication.FormattingEnabled = true;
-            cboAuthentication.Location = new Point(209, 11);
+            cboAuthentication.Location = new Point(216, 11);
             cboAuthentication.Margin = new Padding(3, 11, 3, 3);
             cboAuthentication.Name = "cboAuthentication";
             cboAuthentication.Size = new Size(200, 25);
@@ -105,7 +109,7 @@
             txtUser.AcceptsTab = true;
             txtUser.Dock = DockStyle.Top;
             txtUser.Font = new Font("Segoe UI", 11F, FontStyle.Regular, GraphicsUnit.Point);
-            txtUser.Location = new Point(415, 10);
+            txtUser.Location = new Point(422, 10);
             txtUser.Margin = new Padding(3, 10, 3, 3);
             txtUser.Name = "txtUser";
             txtUser.PlaceholderText = "User Name";
@@ -119,7 +123,7 @@
             txtPassword.AcceptsTab = true;
             txtPassword.Dock = DockStyle.Top;
             txtPassword.Font = new Font("Segoe UI", 11F, FontStyle.Regular, GraphicsUnit.Point);
-            txtPassword.Location = new Point(621, 10);
+            txtPassword.Location = new Point(628, 10);
             txtPassword.Margin = new Padding(3, 10, 3, 3);
             txtPassword.Name = "txtPassword";
             txtPassword.PlaceholderText = "Password";
@@ -131,7 +135,7 @@
             // btnStart
             // 
             btnStart.FlatStyle = FlatStyle.Flat;
-            btnStart.Location = new Point(827, 10);
+            btnStart.Location = new Point(834, 10);
             btnStart.Margin = new Padding(3, 10, 3, 3);
             btnStart.Name = "btnStart";
             btnStart.Size = new Size(75, 27);
@@ -142,7 +146,7 @@
             // btnPause
             // 
             btnPause.FlatStyle = FlatStyle.Flat;
-            btnPause.Location = new Point(908, 10);
+            btnPause.Location = new Point(915, 10);
             btnPause.Margin = new Padding(3, 10, 3, 3);
             btnPause.Name = "btnPause";
             btnPause.Size = new Size(75, 27);
@@ -153,7 +157,7 @@
             // btnResume
             // 
             btnResume.FlatStyle = FlatStyle.Flat;
-            btnResume.Location = new Point(989, 10);
+            btnResume.Location = new Point(996, 10);
             btnResume.Margin = new Padding(3, 10, 3, 3);
             btnResume.Name = "btnResume";
             btnResume.Size = new Size(75, 27);
@@ -164,7 +168,7 @@
             // btnStop
             // 
             btnStop.FlatStyle = FlatStyle.Flat;
-            btnStop.Location = new Point(1070, 10);
+            btnStop.Location = new Point(1077, 10);
             btnStop.Margin = new Padding(3, 10, 3, 3);
             btnStop.Name = "btnStop";
             btnStop.Size = new Size(75, 27);
@@ -175,7 +179,7 @@
             // btnClearEvents
             // 
             btnClearEvents.FlatStyle = FlatStyle.Flat;
-            btnClearEvents.Location = new Point(1151, 10);
+            btnClearEvents.Location = new Point(1158, 10);
             btnClearEvents.Margin = new Padding(3, 10, 3, 3);
             btnClearEvents.Name = "btnClearEvents";
             btnClearEvents.Size = new Size(85, 27);
@@ -183,14 +187,46 @@
             btnClearEvents.Text = "Clear Events";
             btnClearEvents.UseVisualStyleBackColor = true;
             // 
-            // pnlGrid
+            // btnFilters
             // 
-            pnlGrid.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            pnlGrid.Controls.Add(dgvEvents);
-            pnlGrid.Location = new Point(6, 57);
-            pnlGrid.Name = "pnlGrid";
-            pnlGrid.Size = new Size(1440, 317);
-            pnlGrid.TabIndex = 1;
+            btnFilters.FlatStyle = FlatStyle.Flat;
+            btnFilters.Location = new Point(1249, 10);
+            btnFilters.Margin = new Padding(3, 10, 3, 3);
+            btnFilters.Name = "btnFilters";
+            btnFilters.Size = new Size(75, 27);
+            btnFilters.TabIndex = 9;
+            btnFilters.Text = "Filters";
+            btnFilters.UseVisualStyleBackColor = true;
+            // 
+            // btnClearFilters
+            // 
+            btnClearFilters.FlatStyle = FlatStyle.Flat;
+            btnClearFilters.Location = new Point(1330, 10);
+            btnClearFilters.Margin = new Padding(3, 10, 3, 3);
+            btnClearFilters.Name = "btnClearFilters";
+            btnClearFilters.Size = new Size(82, 27);
+            btnClearFilters.TabIndex = 10;
+            btnClearFilters.Text = "Clear Filters";
+            btnClearFilters.UseVisualStyleBackColor = true;
+            // 
+            // splitContainer
+            // 
+            splitContainer.Dock = DockStyle.Fill;
+            splitContainer.Location = new Point(0, 50);
+            splitContainer.Name = "splitContainer";
+            splitContainer.Orientation = Orientation.Horizontal;
+            // 
+            // splitContainer.Panel1
+            // 
+            splitContainer.Panel1.Controls.Add(dgvEvents);
+            // 
+            // splitContainer.Panel2
+            // 
+            splitContainer.Panel2.Controls.Add(tabControl1);
+            splitContainer.Panel2.Controls.Add(statusBar);
+            splitContainer.Size = new Size(1449, 679);
+            splitContainer.SplitterDistance = 339;
+            splitContainer.TabIndex = 3;
             // 
             // dgvEvents
             // 
@@ -204,17 +240,8 @@
             dgvEvents.Location = new Point(0, 0);
             dgvEvents.Name = "dgvEvents";
             dgvEvents.ReadOnly = true;
-            dgvEvents.Size = new Size(1440, 317);
-            dgvEvents.TabIndex = 0;
-            // 
-            // pnlDetails
-            // 
-            pnlDetails.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            pnlDetails.Controls.Add(tabControl1);
-            pnlDetails.Location = new Point(6, 380);
-            pnlDetails.Name = "pnlDetails";
-            pnlDetails.Size = new Size(1440, 347);
-            pnlDetails.TabIndex = 2;
+            dgvEvents.Size = new Size(1449, 339);
+            dgvEvents.TabIndex = 1;
             // 
             // tabControl1
             // 
@@ -224,15 +251,15 @@
             tabControl1.Location = new Point(0, 0);
             tabControl1.Name = "tabControl1";
             tabControl1.SelectedIndex = 0;
-            tabControl1.Size = new Size(1440, 347);
-            tabControl1.TabIndex = 0;
+            tabControl1.Size = new Size(1449, 314);
+            tabControl1.TabIndex = 3;
             // 
             // tabPageText
             // 
             tabPageText.Location = new Point(4, 24);
             tabPageText.Name = "tabPageText";
             tabPageText.Padding = new Padding(3);
-            tabPageText.Size = new Size(1432, 319);
+            tabPageText.Size = new Size(1441, 286);
             tabPageText.TabIndex = 0;
             tabPageText.Text = "Text";
             tabPageText.UseVisualStyleBackColor = true;
@@ -243,7 +270,7 @@
             tabPageDetails.Location = new Point(4, 24);
             tabPageDetails.Name = "tabPageDetails";
             tabPageDetails.Padding = new Padding(3);
-            tabPageDetails.Size = new Size(1270, 319);
+            tabPageDetails.Size = new Size(1441, 286);
             tabPageDetails.TabIndex = 1;
             tabPageDetails.Text = "Details";
             tabPageDetails.UseVisualStyleBackColor = true;
@@ -256,7 +283,7 @@
             lvDetails.FullRowSelect = true;
             lvDetails.Location = new Point(3, 3);
             lvDetails.Name = "lvDetails";
-            lvDetails.Size = new Size(1264, 313);
+            lvDetails.Size = new Size(1435, 280);
             lvDetails.TabIndex = 0;
             lvDetails.UseCompatibleStateImageBehavior = false;
             lvDetails.View = View.Details;
@@ -271,46 +298,44 @@
             ColValue.Text = "Value";
             ColValue.Width = 500;
             // 
-            // btnFilters
+            // statusBar
             // 
-            btnFilters.FlatStyle = FlatStyle.Flat;
-            btnFilters.Location = new Point(1242, 10);
-            btnFilters.Margin = new Padding(3, 10, 3, 3);
-            btnFilters.Name = "btnFilters";
-            btnFilters.Size = new Size(75, 27);
-            btnFilters.TabIndex = 9;
-            btnFilters.Text = "Filters";
-            btnFilters.UseVisualStyleBackColor = true;
+            statusBar.Items.AddRange(new ToolStripItem[] { toolStripStatusEvents });
+            statusBar.Location = new Point(0, 314);
+            statusBar.Name = "statusBar";
+            statusBar.Size = new Size(1449, 22);
+            statusBar.TabIndex = 2;
+            statusBar.Text = "statusStrip1";
             // 
-            // btnClearFilters
+            // toolStripStatusEvents
             // 
-            btnClearFilters.FlatStyle = FlatStyle.Flat;
-            btnClearFilters.Location = new Point(1323, 10);
-            btnClearFilters.Margin = new Padding(3, 10, 3, 3);
-            btnClearFilters.Name = "btnClearFilters";
-            btnClearFilters.Size = new Size(82, 27);
-            btnClearFilters.TabIndex = 10;
-            btnClearFilters.Text = "Clear Filters";
-            btnClearFilters.UseVisualStyleBackColor = true;
+            toolStripStatusEvents.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
+            toolStripStatusEvents.Name = "toolStripStatusEvents";
+            toolStripStatusEvents.Size = new Size(48, 17);
+            toolStripStatusEvents.Text = "Events:";
             // 
             // MainView
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1449, 729);
-            Controls.Add(pnlDetails);
-            Controls.Add(pnlGrid);
+            Controls.Add(splitContainer);
             Controls.Add(pnlHeader);
             Name = "MainView";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "ProfilerWindow";
             pnlHeader.ResumeLayout(false);
             pnlHeader.PerformLayout();
-            pnlGrid.ResumeLayout(false);
+            splitContainer.Panel1.ResumeLayout(false);
+            splitContainer.Panel2.ResumeLayout(false);
+            splitContainer.Panel2.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)splitContainer).EndInit();
+            splitContainer.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvEvents).EndInit();
-            pnlDetails.ResumeLayout(false);
             tabControl1.ResumeLayout(false);
             tabPageDetails.ResumeLayout(false);
+            statusBar.ResumeLayout(false);
+            statusBar.PerformLayout();
             ResumeLayout(false);
         }
 
@@ -320,22 +345,23 @@
         private TextBox txtServer;
         private ComboBox cboAuthentication;
         private Button btnStart;
-        private Panel pnlGrid;
-        private Panel pnlDetails;
-        private DataGridView dgvEvents;
-        private TabControl tabControl1;
-        private TabPage tabPageText;
-        private TabPage tabPageDetails;
         private TextBox txtUser;
         private TextBox txtPassword;
         private Button btnStop;
-        private ListView lvDetails;
-        private ColumnHeader ColName;
-        private ColumnHeader ColValue;
         private Button btnResume;
         private Button btnPause;
         private Button btnClearEvents;
         private Button btnFilters;
         private Button btnClearFilters;
+        private SplitContainer splitContainer;
+        private DataGridView dgvEvents;
+        private TabControl tabControl1;
+        private TabPage tabPageText;
+        private TabPage tabPageDetails;
+        private ListView lvDetails;
+        private ColumnHeader ColName;
+        private ColumnHeader ColValue;
+        private StatusStrip statusBar;
+        private ToolStripStatusLabel toolStripStatusEvents;
     }
 }

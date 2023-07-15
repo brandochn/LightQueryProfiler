@@ -14,7 +14,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         public event EventHandler? OnClearEvents;
 
-        public event EventHandler OnClearFiltersClick;
+        public event EventHandler? OnClearFiltersClick;
 
         public event EventHandler? OnFiltersClick;
 
@@ -69,6 +69,8 @@ namespace LightQueryProfiler.WinFormsApp.Views
         Button IMainView.StopButton => btnStop;
         string? IMainView.User { get => txtUser.Text; set => txtUser.Text = value; }
         TextBox IMainView.UserTextBox => txtUser;
+
+        StatusStrip IMainView.StatusBar => statusBar;
 
         private void BtnClearEvents_Click(object? sender, EventArgs e)
         {

@@ -21,7 +21,6 @@ namespace LightQueryProfiler.WinFormsApp.Views
         event EventHandler RowEnter;
 
         ComboBox AuthenticationComboBox { get; }
-
         IList<AuthenticationMode> AuthenticationModes { set; }
         string? Password { get; set; }
         TextBox PasswordTextBox { get; }
@@ -36,6 +35,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
         string SessionName { get; }
         string? SqlTextArea { get; set; }
         Button StartButton { get; }
+        StatusStrip StatusBar { get; }
         Button StopButton { get; }
         string? User { get; set; }
         TextBox UserTextBox { get; }

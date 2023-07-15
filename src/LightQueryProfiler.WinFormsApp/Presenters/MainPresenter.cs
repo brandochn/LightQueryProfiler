@@ -206,33 +206,33 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             }
         }
 
-        private List<Dictionary<string, Event>> FilterRowsOut(List<Dictionary<string, Event>> rows)
+        private List<Dictionary<string, Event>> FilterRows(List<Dictionary<string, Event>> rows)
         {
             List<Dictionary<string, Event>> result = new List<Dictionary<string, Event>>();
             string filterValue;
             string? eventValue;
 
-            if (Filters?.Count > 0)
+            if (Filters?.Count > 0 && rows?.Count > 0)
             {
-                if (rows?.Count > 0)
+                foreach (Dictionary<string, Event> r in rows)
                 {
                     foreach (KeyValuePair<string, object> f in Filters)
                     {
-                        foreach (Dictionary<string, Event> r in rows)
+                        if (r.ContainsKey(f.Key))
                         {
-                            if (r.ContainsKey(f.Key))
+                            filterValue = (f.Value?.ToString() ?? string.Empty).Trim();
+                            eventValue = r[f.Key].EventValue?.ToString();
+                            if (eventValue?.Contains(filterValue, StringComparison.OrdinalIgnoreCase) == true)
                             {
-                                filterValue = (f.Value?.ToString() ?? string.Empty).Trim();
-                                eventValue = r[f.Key].EventValue?.ToString();
-                                if (eventValue != null &&
-                                    eventValue.Contains(filterValue, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    result.Add(r);
-                                }
+                                result.Add(r);
                             }
                         }
                     }
                 }
+            }
+            else
+            {
+                return rows ?? new List<Dictionary<string, Event>>();
             }
 
             return result;
@@ -249,10 +249,11 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     List<Dictionary<string, Event>> newRows = GetNewRows(_events);
                     if (newRows?.Count > 0)
                     {
+                        List<Dictionary<string, Event>> _rows = FilterRows(newRows);
                         view.ProfilerGridView.Invoke(() =>
                         {
                             int rowId = 0;
-                            foreach (Dictionary<string, Event> r in newRows)
+                            foreach (Dictionary<string, Event> r in _rows)
                             {
                                 rowId = view.ProfilerGridView.Rows.Add();
                                 DataGridViewRow row = view.ProfilerGridView.Rows[rowId];
@@ -260,11 +261,15 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                                 {
                                     row.Cells[c.Name].Value = r[c.Name].EventValue;
                                 }
-                                // TODO: Check is the better option
-                                //row.HeaderCell.Style = new DataGridViewCellStyle() { Alignment = DataGridViewContentAlignment.MiddleLeft };
-                                //row.HeaderCell.Value = (rowId + 1).ToString();
+                                view.StatusBar.Invoke(() =>
+                                {
+                                    view.StatusBar.Items[0].Text = $"Events: {view.ProfilerGridView.Rows.Count}";
+                                });
                             }
-                            view.ProfilerGridView.FirstDisplayedScrollingRowIndex = rowId;
+                            if (rowId > 0)
+                            {
+                                view.ProfilerGridView.FirstDisplayedScrollingRowIndex = rowId;
+                            }
                         });
                     }
                 }
@@ -372,7 +377,6 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             _tokenSource = new CancellationTokenSource();
             _thread = new Thread(() => StartGetLastEvents(_tokenSource.Token)) { IsBackground = true };
             _thread.Start();
-            //await GetLastEventsAsync();
         }
 
         private void OnStart(object? sender, EventArgs e)
@@ -386,8 +390,6 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                 _tokenSource = new CancellationTokenSource();
                 _thread = new Thread(() => StartGetLastEvents(_tokenSource.Token)) { IsBackground = true };
                 _thread.Start();
-
-                //await GetLastEventsAsync();
             }
             catch (Exception ex)
             {
@@ -432,58 +434,58 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             switch (action.ToUpper())
             {
                 case "START":
-                    view.StartButton.Enabled = false;
-                    view.StopButton.Enabled = !view.StartButton.Enabled;
-                    view.PauseButton.Enabled = true;
-                    view.ResumeButton.Enabled = false;
-                    view.PauseButton.Visible = true;
-                    view.ResumeButton.Visible = false;
-                    view.ServerTexBox.Enabled = false;
-                    view.AuthenticationComboBox.Enabled = false;
+                    if (view.AuthenticationComboBox.InvokeRequired) view.AuthenticationComboBox.Invoke(() => view.AuthenticationComboBox.Enabled = false); else view.AuthenticationComboBox.Enabled = false;
+                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Enabled = true); else view.PauseButton.Enabled = true;
+                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Visible = true); else view.PauseButton.Visible = true;
+                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Enabled = false); else view.ResumeButton.Enabled = false;
+                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Visible = false); else view.ResumeButton.Visible = false;
+                    if (view.ServerTexBox.InvokeRequired) view.ServerTexBox.Invoke(() => view.ServerTexBox.Enabled = false); else view.ServerTexBox.Enabled = false;
+                    if (view.StartButton.InvokeRequired) view.StartButton.Invoke(() => view.StartButton.Enabled = false); else view.StartButton.Enabled = false;
+                    if (view.StopButton.InvokeRequired) view.StopButton.Invoke(() => view.StopButton.Enabled = !view.StartButton.Enabled); else view.StopButton.Enabled = !view.StartButton.Enabled;
                     break;
 
                 case "STOP":
-                    view.StartButton.Enabled = true;
-                    view.StopButton.Enabled = !view.StartButton.Enabled;
-                    view.PauseButton.Enabled = false;
-                    view.ResumeButton.Enabled = false;
-                    view.PauseButton.Visible = true;
-                    view.ResumeButton.Visible = false;
-                    view.ServerTexBox.Enabled = true;
-                    view.AuthenticationComboBox.Enabled = true;
+                    if (view.AuthenticationComboBox.InvokeRequired) view.AuthenticationComboBox.Invoke(() => view.AuthenticationComboBox.Enabled = true); else view.AuthenticationComboBox.Enabled = true;
+                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Enabled = false); else view.PauseButton.Enabled = false;
+                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Visible = true); else view.PauseButton.Visible = true;
+                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Enabled = false); else view.ResumeButton.Enabled = false;
+                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Visible = false); else view.ResumeButton.Visible = false;
+                    if (view.ServerTexBox.InvokeRequired) view.ServerTexBox.Invoke(() => view.ServerTexBox.Enabled = true); else view.ServerTexBox.Enabled = true;
+                    if (view.StartButton.InvokeRequired) view.StartButton.Invoke(() => view.StartButton.Enabled = true); else view.StartButton.Enabled = true;
+                    if (view.StopButton.InvokeRequired) view.StopButton.Invoke(() => view.StopButton.Enabled = !view.StartButton.Enabled); else view.StopButton.Enabled = !view.StartButton.Enabled;
                     break;
 
                 case "PAUSE":
-                    view.StartButton.Enabled = false;
-                    view.StopButton.Enabled = !view.StartButton.Enabled;
-                    view.PauseButton.Enabled = false;
-                    view.ResumeButton.Enabled = true;
-                    view.PauseButton.Visible = false;
-                    view.ResumeButton.Visible = true;
-                    view.ServerTexBox.Enabled = false;
-                    view.AuthenticationComboBox.Enabled = false;
+                    if (view.AuthenticationComboBox.InvokeRequired) view.AuthenticationComboBox.Invoke(() => view.AuthenticationComboBox.Enabled = false); else view.AuthenticationComboBox.Enabled = false;
+                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Enabled = false); else view.PauseButton.Enabled = false;
+                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Visible = false); else view.PauseButton.Visible = false;
+                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Enabled = true); else view.ResumeButton.Enabled = true;
+                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Visible = true); else view.ResumeButton.Visible = true;
+                    if (view.ServerTexBox.InvokeRequired) view.ServerTexBox.Invoke(() => view.ServerTexBox.Enabled = false); else view.ServerTexBox.Enabled = false;
+                    if (view.StartButton.InvokeRequired) view.StartButton.Invoke(() => view.StartButton.Enabled = false); else view.StartButton.Enabled = false;
+                    if (view.StopButton.InvokeRequired) view.StopButton.Invoke(() => view.StopButton.Enabled = !view.StartButton.Enabled); else view.StopButton.Enabled = !view.StartButton.Enabled;
                     break;
 
                 case "RESUME":
-                    view.StartButton.Enabled = false;
-                    view.StopButton.Enabled = !view.StartButton.Enabled;
-                    view.PauseButton.Enabled = true;
-                    view.ResumeButton.Enabled = false;
-                    view.PauseButton.Visible = true;
-                    view.ResumeButton.Visible = false;
-                    view.ServerTexBox.Enabled = false;
-                    view.AuthenticationComboBox.Enabled = false;
+                    if (view.AuthenticationComboBox.InvokeRequired) view.AuthenticationComboBox.Invoke(() => view.AuthenticationComboBox.Enabled = false); else view.AuthenticationComboBox.Enabled = false;
+                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Enabled = true); else view.PauseButton.Enabled = true;
+                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Visible = true); else view.PauseButton.Visible = true;
+                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Enabled = false); else view.ResumeButton.Enabled = false;
+                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Visible = false); else view.ResumeButton.Visible = false;
+                    if (view.ServerTexBox.InvokeRequired) view.ServerTexBox.Invoke(() => view.ServerTexBox.Enabled = false); else view.ServerTexBox.Enabled = false;
+                    if (view.StartButton.InvokeRequired) view.StartButton.Invoke(() => view.StartButton.Enabled = false); else view.StartButton.Enabled = false;
+                    if (view.StopButton.InvokeRequired) view.StopButton.Invoke(() => view.StopButton.Enabled = !view.StartButton.Enabled); else view.StopButton.Enabled = !view.StartButton.Enabled;
                     break;
 
                 default:
-                    view.StartButton.Enabled = true;
-                    view.StopButton.Enabled = !view.StartButton.Enabled;
-                    view.PauseButton.Enabled = false;
-                    view.ResumeButton.Enabled = false;
-                    view.PauseButton.Visible = true;
-                    view.ResumeButton.Visible = false;
-                    view.ServerTexBox.Enabled = true;
-                    view.AuthenticationComboBox.Enabled = true;
+                    if (view.AuthenticationComboBox.InvokeRequired) view.AuthenticationComboBox.Invoke(() => view.AuthenticationComboBox.Enabled = true); else view.AuthenticationComboBox.Enabled = true;
+                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Enabled = false); else view.PauseButton.Enabled = false;
+                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Visible = true); else view.PauseButton.Visible = true;
+                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Enabled = false); else view.ResumeButton.Enabled = false;
+                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Visible = false); else view.ResumeButton.Visible = false;
+                    if (view.ServerTexBox.InvokeRequired) view.ServerTexBox.Invoke(() => view.ServerTexBox.Enabled = true); else view.ServerTexBox.Enabled = true;
+                    if (view.StartButton.InvokeRequired) view.StartButton.Invoke(() => view.StartButton.Enabled = true); else view.StartButton.Enabled = true;
+                    if (view.StopButton.InvokeRequired) view.StopButton.Invoke(() => view.StopButton.Enabled = !view.StartButton.Enabled); else view.StopButton.Enabled = !view.StartButton.Enabled;
                     break;
             }
         }

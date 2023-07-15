@@ -58,6 +58,7 @@
             txtEventClass.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
             txtEventClass.Location = new Point(19, 43);
             txtEventClass.Name = "txtEventClass";
+            txtEventClass.PlaceholderText = "Contains";
             txtEventClass.Size = new Size(355, 25);
             txtEventClass.TabIndex = 1;
             // 
@@ -66,6 +67,7 @@
             txtTextData.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
             txtTextData.Location = new Point(19, 97);
             txtTextData.Name = "txtTextData";
+            txtTextData.PlaceholderText = "Contains";
             txtTextData.Size = new Size(355, 25);
             txtTextData.TabIndex = 3;
             // 
@@ -83,6 +85,7 @@
             txtApplicationName.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
             txtApplicationName.Location = new Point(19, 154);
             txtApplicationName.Name = "txtApplicationName";
+            txtApplicationName.PlaceholderText = "Contains";
             txtApplicationName.Size = new Size(355, 25);
             txtApplicationName.TabIndex = 5;
             // 
@@ -100,6 +103,7 @@
             txtNTUserName.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
             txtNTUserName.Location = new Point(19, 212);
             txtNTUserName.Name = "txtNTUserName";
+            txtNTUserName.PlaceholderText = "Contains";
             txtNTUserName.Size = new Size(355, 25);
             txtNTUserName.TabIndex = 7;
             // 
@@ -117,6 +121,7 @@
             txtLoginName.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
             txtLoginName.Location = new Point(19, 268);
             txtLoginName.Name = "txtLoginName";
+            txtLoginName.PlaceholderText = "Contains";
             txtLoginName.Size = new Size(355, 25);
             txtLoginName.TabIndex = 9;
             // 
@@ -134,6 +139,7 @@
             txtDatabaseName.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
             txtDatabaseName.Location = new Point(19, 324);
             txtDatabaseName.Name = "txtDatabaseName";
+            txtDatabaseName.PlaceholderText = "Contains";
             txtDatabaseName.Size = new Size(355, 25);
             txtDatabaseName.TabIndex = 11;
             // 
@@ -168,8 +174,10 @@
             // 
             // FiltersView
             // 
+            AcceptButton = btnApply;
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
+            CancelButton = btnClose;
             ClientSize = new Size(392, 422);
             Controls.Add(btnClose);
             Controls.Add(btnApply);
