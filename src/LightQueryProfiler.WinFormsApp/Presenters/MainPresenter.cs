@@ -38,6 +38,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         private CancellationTokenSource? _tokenSource;
         private IXEventRepository? _xEventRepository;
         private IXEventService? _xEventService;
+        private Dictionary<string, ProfilerEvent> CurrentRows = new();
         private Dictionary<string, object>? Filters;
 
         public MainPresenter(IMainView mainView)
@@ -94,6 +95,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         private void ClearEvents()
         {
             view.ProfilerGridView.Rows.Clear();
+            CurrentRows = new();
         }
 
         private void ClearFilters()
@@ -261,11 +263,8 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                                 {
                                     row.Cells[c.Name].Value = r[c.Name].EventValue;
                                 }
-                                view.StatusBar.Invoke(() =>
-                                {
-                                    view.StatusBar.Items[0].Text = $"Events: {view.ProfilerGridView.Rows.Count}";
-                                });
                             }
+                            view.StatusBar.Invoke(() => view.StatusBar.Items[0].Text = $"Events: {view.ProfilerGridView.Rows.Count}");
                             if (rowId > 0)
                             {
                                 view.ProfilerGridView.FirstDisplayedScrollingRowIndex = rowId;
@@ -278,50 +277,49 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
 
         private List<Dictionary<string, Event>> GetNewRows(List<ProfilerEvent> events)
         {
-            if (events == null)
-            {
-                return new List<Dictionary<string, Event>>();
-            }
-
             List<Dictionary<string, Event>> newEvents = new List<Dictionary<string, Event>>();
             Dictionary<string, Event> data;
             foreach (var e in events)
             {
-                data = new Dictionary<string, Event>();
-
-                foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
+                if (!CurrentRows.ContainsKey(e.GetEventKey()))
                 {
-                    if (c.Name == "EventClass")
-                    {
-                        data["EventClass"] = new Event() { EventValue = e.Name ?? string.Empty, Name = "EventClass" };
-                        continue;
-                    }
+                    data = new Dictionary<string, Event>();
 
-                    if (c.Name == "StartTime")
+                    foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
                     {
-                        data["StartTime"] = new Event() { EventValue = e.Timestamp ?? string.Empty, Name = "StartTime" };
-                        continue;
-                    }
-
-                    string columnName = c.Name;
-                    object columnValue = string.Empty;
-
-                    if (e.Actions?.Any(a => c.EventsMapped.Contains(a.Key)) ?? false)
-                    {
-                        columnValue = e.Actions.FirstOrDefault(a => c.EventsMapped.Contains(a.Key)).Value ?? string.Empty;
-                    }
-                    else
-                    {
-                        if (e.Fields?.Any(f => c.EventsMapped.Contains(f.Key)) ?? false)
+                        if (c.Name == "EventClass")
                         {
-                            columnValue = e.Fields.FirstOrDefault(f => c.EventsMapped.Contains(f.Key)).Value ?? string.Empty;
+                            data["EventClass"] = new Event() { EventValue = e.Name ?? string.Empty, Name = "EventClass" };
+                            continue;
                         }
+
+                        if (c.Name == "StartTime")
+                        {
+                            data["StartTime"] = new Event() { EventValue = e.Timestamp ?? string.Empty, Name = "StartTime" };
+                            continue;
+                        }
+
+                        string columnName = c.Name;
+                        object columnValue = string.Empty;
+
+                        if (e.Actions?.Any(a => c.EventsMapped.Contains(a.Key)) ?? false)
+                        {
+                            columnValue = e.Actions.FirstOrDefault(a => c.EventsMapped.Contains(a.Key)).Value ?? string.Empty;
+                        }
+                        else
+                        {
+                            if (e.Fields?.Any(f => c.EventsMapped.Contains(f.Key)) ?? false)
+                            {
+                                columnValue = e.Fields.FirstOrDefault(f => c.EventsMapped.Contains(f.Key)).Value ?? string.Empty;
+                            }
+                        }
+
+                        data[columnName] = new Event() { EventValue = columnValue, Name = columnName };
                     }
 
-                    data[columnName] = new Event() { EventValue = columnValue, Name = columnName };
+                    newEvents.Add(data);
+                    SetCurrentRows(e);
                 }
-
-                newEvents.Add(data);
             }
 
             return newEvents;
@@ -426,6 +424,14 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     view.SqlTextArea = string.Format(htmlDocument, _sqlHighlightService.SyntaxHighlight(cell.Value?.ToString() ?? ""));
                     CreateRowDetails(view.ProfilerGridView.Rows[dataGridViewCellEventArgs.RowIndex]);
                 }
+            }
+        }
+
+        private void SetCurrentRows(ProfilerEvent? _event)
+        {
+            if (_event != null)
+            {
+                CurrentRows.Add(_event.GetEventKey(), _event);
             }
         }
 

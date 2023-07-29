@@ -9,7 +9,6 @@ namespace LightQueryProfiler.Shared.Services
         private const string TargetName = "ring_buffer";
         private readonly IXEventRepository _xEventRepository;
         private readonly IXEventService _xEventService;
-        private List<ProfilerEvent>? lastRead;
 
         public ProfilerService(IXEventRepository xEventRepository, IXEventService xEventService)
         {
@@ -20,41 +19,16 @@ namespace LightQueryProfiler.Shared.Services
         public async Task<List<ProfilerEvent>> GetLastEventsAsync(string sessionName)
         {
             List<ProfilerEvent> readEvents = await ReadXEventsAsync(sessionName);
-
-            if (lastRead == null || lastRead.Count == 0)
-            {
-                lastRead = readEvents.Where(p => !p.GetEventKey().Contains("LightQueryProfiler")).ToList();
-                return lastRead;
-            }
-
             List<ProfilerEvent> newEvents = new List<ProfilerEvent>();
+
             foreach (ProfilerEvent readEvent in readEvents)
             {
-                bool eventFound = false;
-                foreach (ProfilerEvent lr in lastRead)
-                {
-                    // ignore duplicate events
-                    if (string.Equals(readEvent.GetEventKey(), lr.GetEventKey(), StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        eventFound = true;
-                        break;
-                    }
-
-                    // ignore events created by itself
-                    if (readEvent.GetEventKey().Contains("LightQueryProfiler"))
-                    {
-                        eventFound = true;
-                        break;
-                    }
-                }
-
-                if (eventFound == false)
+                // ignore events created by itself
+                if (!readEvent.GetEventKey().Contains("LightQueryProfiler", StringComparison.OrdinalIgnoreCase))
                 {
                     newEvents.Add(readEvent);
                 }
             }
-
-            lastRead = readEvents;
 
             return newEvents;
         }
