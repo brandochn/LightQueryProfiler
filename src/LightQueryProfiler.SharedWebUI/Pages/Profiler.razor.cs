@@ -175,29 +175,25 @@ namespace LightQueryProfiler.SharedWebUI.Pages
             builder.CloseComponent();
         };
 
-        private List<Dictionary<string, Event>> FilterRowsOut(List<Dictionary<string, Event>> rows)
+        private List<Dictionary<string, Event>> FilterRows(List<Dictionary<string, Event>> rows)
         {
             List<Dictionary<string, Event>> result = new List<Dictionary<string, Event>>();
             string filterValue;
             string? eventValue;
 
-            if (Filters != null && Filters.Count > 0)
+            if (Filters?.Count > 0 && rows?.Count > 0)
             {
-                if (rows != null && rows.Count > 0)
+                foreach (Dictionary<string, Event> r in rows)
                 {
                     foreach (KeyValuePair<string, object> f in Filters)
                     {
-                        foreach (Dictionary<string, Event> r in rows)
+                        if (r.ContainsKey(f.Key))
                         {
-                            if (r.ContainsKey(f.Key))
+                            filterValue = (f.Value?.ToString() ?? string.Empty).Trim();
+                            eventValue = r[f.Key].EventValue?.ToString();
+                            if (eventValue?.Contains(filterValue, StringComparison.OrdinalIgnoreCase) == true)
                             {
-                                filterValue = (f.Value?.ToString() ?? string.Empty).Trim();
-                                eventValue = r[f.Key].EventValue?.ToString();
-                                if (eventValue != null &&
-                                    eventValue.Contains(filterValue, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    result.Add(r);
-                                }
+                                result.Add(r);
                             }
                         }
                     }
@@ -246,7 +242,7 @@ namespace LightQueryProfiler.SharedWebUI.Pages
 
                         if (Filters != null && Filters.Count > 0)
                         {
-                            List<Dictionary<string, Event>> filterRows = FilterRowsOut(newRows);
+                            List<Dictionary<string, Event>> filterRows = FilterRows(newRows);
                             if (filterRows != null && filterRows.Count > 0)
                             {
                                 Rows.AddRange(filterRows);
