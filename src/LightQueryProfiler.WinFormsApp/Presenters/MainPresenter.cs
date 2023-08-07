@@ -55,6 +55,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             view.OnClearEvents += OnClearEvents;
             view.OnFiltersClick += OnFiltersClick;
             view.OnClearFiltersClick += OnClearFiltersClick;
+            view.OnSearch += OnSearch;
             view.Show();
         }
 
@@ -95,7 +96,6 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         private void ClearEvents()
         {
             view.ProfilerGridView.Rows.Clear();
-            CurrentRows = new();
         }
 
         private void ClearFilters()
@@ -115,6 +115,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             view.SqlTextArea = string.Empty;
             view.ProfilerDetails.Items.Clear();
             _shouldStop = false;
+            CurrentRows = new();
         }
 
         private void Configure()
@@ -377,6 +378,11 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             _thread.Start();
         }
 
+        private void OnSearch(object? sender, EventArgs e)
+        {
+            SearchGridValue(view.SearchValue ?? "");
+        }
+
         private void OnStart(object? sender, EventArgs e)
         {
             try
@@ -423,6 +429,45 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                 {
                     view.SqlTextArea = string.Format(htmlDocument, _sqlHighlightService.SyntaxHighlight(cell.Value?.ToString() ?? ""));
                     CreateRowDetails(view.ProfilerGridView.Rows[dataGridViewCellEventArgs.RowIndex]);
+                }
+            }
+        }
+
+        private void SearchGridValue(string searchValue)
+        {
+            if (view.ProfilerGridView.Rows.Count > 0)
+            {
+                view.ProfilerGridView.ClearSelection();
+                try
+                {
+                    List<int> foundRows = new List<int>();
+                    foreach (DataGridViewRow row in view.ProfilerGridView.Rows)
+                    {
+                        for (int i = 0; i < row.Cells.Count; i++)
+                        {
+                            string celValue = row.Cells[i]?.Value?.ToString() ?? "";
+                            if (celValue.Contains(searchValue, StringComparison.OrdinalIgnoreCase))
+                            {
+                                int rowIndex = row.Index;
+                                view.ProfilerGridView.Rows[rowIndex].Selected = true;
+                                foundRows.Add(rowIndex);
+                                break;
+                            }
+                        }
+                    }
+                    if (foundRows?.Count > 0)
+                    {
+                        view.ProfilerGridView.FirstDisplayedScrollingRowIndex = foundRows[0];
+                    }
+                    else
+                    {
+                        MessageBox.Show($"{searchValue} not found.", "LightQueryProfiler", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+                catch (Exception exc)
+                {
+                    MessageBox.Show(exc.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    ShowButtonsByAction("default");
                 }
             }
         }

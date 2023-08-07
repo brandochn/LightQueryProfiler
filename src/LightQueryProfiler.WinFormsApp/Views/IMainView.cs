@@ -20,6 +20,8 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         event EventHandler RowEnter;
 
+        event EventHandler OnSearch;
+
         ComboBox AuthenticationComboBox { get; }
         IList<AuthenticationMode> AuthenticationModes { set; }
         string? Password { get; set; }
@@ -39,6 +41,9 @@ namespace LightQueryProfiler.WinFormsApp.Views
         Button StopButton { get; }
         string? User { get; set; }
         TextBox UserTextBox { get; }
+        string? SearchValue { get; set; }
+        Button SearchButton { get; }
+
 
         void Show();
     }

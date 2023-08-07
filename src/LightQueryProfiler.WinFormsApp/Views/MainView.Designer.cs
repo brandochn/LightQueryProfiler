@@ -41,6 +41,8 @@
             btnClearEvents = new Button();
             btnFilters = new Button();
             btnClearFilters = new Button();
+            txtSearch = new TextBox();
+            btnSearch = new Button();
             splitContainer = new SplitContainer();
             dgvEvents = new DataGridView();
             tabControl1 = new TabControl();
@@ -75,10 +77,12 @@
             pnlHeader.Controls.Add(btnClearEvents);
             pnlHeader.Controls.Add(btnFilters);
             pnlHeader.Controls.Add(btnClearFilters);
+            pnlHeader.Controls.Add(txtSearch);
+            pnlHeader.Controls.Add(btnSearch);
             pnlHeader.Dock = DockStyle.Top;
             pnlHeader.Location = new Point(0, 0);
             pnlHeader.Name = "pnlHeader";
-            pnlHeader.Size = new Size(1449, 50);
+            pnlHeader.Size = new Size(1774, 50);
             pnlHeader.TabIndex = 0;
             // 
             // txtServer
@@ -209,6 +213,30 @@
             btnClearFilters.Text = "Clear Filters";
             btnClearFilters.UseVisualStyleBackColor = true;
             // 
+            // txtSearch
+            // 
+            txtSearch.AcceptsTab = true;
+            txtSearch.Dock = DockStyle.Right;
+            txtSearch.Font = new Font("Segoe UI", 11F, FontStyle.Regular, GraphicsUnit.Point);
+            txtSearch.Location = new Point(1418, 10);
+            txtSearch.Margin = new Padding(3, 10, 3, 3);
+            txtSearch.Name = "txtSearch";
+            txtSearch.Size = new Size(200, 27);
+            txtSearch.TabIndex = 11;
+            txtSearch.WordWrap = false;
+            // 
+            // btnSearch
+            // 
+            btnSearch.Dock = DockStyle.Right;
+            btnSearch.FlatStyle = FlatStyle.Flat;
+            btnSearch.Location = new Point(1624, 10);
+            btnSearch.Margin = new Padding(3, 10, 3, 3);
+            btnSearch.Name = "btnSearch";
+            btnSearch.Size = new Size(75, 27);
+            btnSearch.TabIndex = 12;
+            btnSearch.Text = "Search";
+            btnSearch.UseVisualStyleBackColor = true;
+            // 
             // splitContainer
             // 
             splitContainer.Dock = DockStyle.Fill;
@@ -224,7 +252,7 @@
             // 
             splitContainer.Panel2.Controls.Add(tabControl1);
             splitContainer.Panel2.Controls.Add(statusBar);
-            splitContainer.Size = new Size(1449, 679);
+            splitContainer.Size = new Size(1774, 679);
             splitContainer.SplitterDistance = 339;
             splitContainer.TabIndex = 3;
             // 
@@ -240,7 +268,8 @@
             dgvEvents.Location = new Point(0, 0);
             dgvEvents.Name = "dgvEvents";
             dgvEvents.ReadOnly = true;
-            dgvEvents.Size = new Size(1449, 339);
+            dgvEvents.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgvEvents.Size = new Size(1774, 339);
             dgvEvents.TabIndex = 1;
             // 
             // tabControl1
@@ -251,7 +280,7 @@
             tabControl1.Location = new Point(0, 0);
             tabControl1.Name = "tabControl1";
             tabControl1.SelectedIndex = 0;
-            tabControl1.Size = new Size(1449, 314);
+            tabControl1.Size = new Size(1774, 314);
             tabControl1.TabIndex = 3;
             // 
             // tabPageText
@@ -259,7 +288,7 @@
             tabPageText.Location = new Point(4, 24);
             tabPageText.Name = "tabPageText";
             tabPageText.Padding = new Padding(3);
-            tabPageText.Size = new Size(1441, 286);
+            tabPageText.Size = new Size(1766, 286);
             tabPageText.TabIndex = 0;
             tabPageText.Text = "Text";
             tabPageText.UseVisualStyleBackColor = true;
@@ -270,7 +299,7 @@
             tabPageDetails.Location = new Point(4, 24);
             tabPageDetails.Name = "tabPageDetails";
             tabPageDetails.Padding = new Padding(3);
-            tabPageDetails.Size = new Size(1441, 286);
+            tabPageDetails.Size = new Size(1766, 286);
             tabPageDetails.TabIndex = 1;
             tabPageDetails.Text = "Details";
             tabPageDetails.UseVisualStyleBackColor = true;
@@ -283,7 +312,7 @@
             lvDetails.FullRowSelect = true;
             lvDetails.Location = new Point(3, 3);
             lvDetails.Name = "lvDetails";
-            lvDetails.Size = new Size(1435, 280);
+            lvDetails.Size = new Size(1760, 280);
             lvDetails.TabIndex = 0;
             lvDetails.UseCompatibleStateImageBehavior = false;
             lvDetails.View = View.Details;
@@ -303,7 +332,7 @@
             statusBar.Items.AddRange(new ToolStripItem[] { toolStripStatusEvents });
             statusBar.Location = new Point(0, 314);
             statusBar.Name = "statusBar";
-            statusBar.Size = new Size(1449, 22);
+            statusBar.Size = new Size(1774, 22);
             statusBar.TabIndex = 2;
             statusBar.Text = "statusStrip1";
             // 
@@ -318,7 +347,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1449, 729);
+            ClientSize = new Size(1774, 729);
             Controls.Add(splitContainer);
             Controls.Add(pnlHeader);
             Name = "MainView";
@@ -363,5 +392,7 @@
         private ColumnHeader ColValue;
         private StatusStrip statusBar;
         private ToolStripStatusLabel toolStripStatusEvents;
+        private TextBox txtSearch;
+        private Button btnSearch;
     }
 }

@@ -22,11 +22,14 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         public event EventHandler? OnResume;
 
+        public event EventHandler? OnSearch;
+
         public event EventHandler? OnStart;
 
         public event EventHandler? OnStop;
 
         public event EventHandler? RowEnter;
+
         ComboBox IMainView.AuthenticationComboBox => cboAuthentication;
 
         IList<AuthenticationMode> IMainView.AuthenticationModes
@@ -49,6 +52,10 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         Button IMainView.ResumeButton => btnResume;
 
+        Button IMainView.SearchButton => btnSearch;
+
+        string? IMainView.SearchValue { get => txtSearch.Text; set => txtSearch.Text = value; }
+
         object? IMainView.SelectedAuthenticationMode
         {
             get
@@ -66,11 +73,10 @@ namespace LightQueryProfiler.WinFormsApp.Views
         string IMainView.SessionName { get => "lqpSession"; }
         string? IMainView.SqlTextArea { get => webBrowser.DocumentText; set => webBrowser.DocumentText = value; }
         Button IMainView.StartButton => btnStart;
+        StatusStrip IMainView.StatusBar => statusBar;
         Button IMainView.StopButton => btnStop;
         string? IMainView.User { get => txtUser.Text; set => txtUser.Text = value; }
         TextBox IMainView.UserTextBox => txtUser;
-
-        StatusStrip IMainView.StatusBar => statusBar;
 
         private void BtnClearEvents_Click(object? sender, EventArgs e)
         {
@@ -95,6 +101,11 @@ namespace LightQueryProfiler.WinFormsApp.Views
         private void BtnResume_Click(object? sender, EventArgs e)
         {
             OnResume?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void BtnSearch_Click(object? sender, EventArgs e)
+        {
+            OnSearch?.Invoke(sender, e);
         }
 
         private void BtnStart_Click(object? sender, EventArgs e)
@@ -138,7 +149,9 @@ namespace LightQueryProfiler.WinFormsApp.Views
             btnClearEvents.Click += BtnClearEvents_Click;
             btnFilters.Click += BtnFilters_Click;
             btnClearFilters.Click += BtnClearFilters_Click;
+            btnSearch.Click += BtnSearch_Click;
         }
+
         private void DgvEvents_RowEnter(object? sender, DataGridViewCellEventArgs e)
         {
             RowEnter?.Invoke(sender, e);
