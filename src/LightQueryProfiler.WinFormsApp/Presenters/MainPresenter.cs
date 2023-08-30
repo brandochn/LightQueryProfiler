@@ -380,7 +380,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
 
         private void OnSearch(object? sender, EventArgs e)
         {
-            SearchGridValue(view.SearchValue ?? "");
+            SearchGridValue(view.SearchValue?.Trim() ?? "");
         }
 
         private void OnStart(object? sender, EventArgs e)
@@ -485,58 +485,58 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             switch (action.ToUpper())
             {
                 case "START":
-                    if (view.AuthenticationComboBox.InvokeRequired) view.AuthenticationComboBox.Invoke(() => view.AuthenticationComboBox.Enabled = false); else view.AuthenticationComboBox.Enabled = false;
-                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Enabled = true); else view.PauseButton.Enabled = true;
-                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Visible = true); else view.PauseButton.Visible = true;
-                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Enabled = false); else view.ResumeButton.Enabled = false;
-                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Visible = false); else view.ResumeButton.Visible = false;
-                    if (view.ServerTexBox.InvokeRequired) view.ServerTexBox.Invoke(() => view.ServerTexBox.Enabled = false); else view.ServerTexBox.Enabled = false;
-                    if (view.StartButton.InvokeRequired) view.StartButton.Invoke(() => view.StartButton.Enabled = false); else view.StartButton.Enabled = false;
-                    if (view.StopButton.InvokeRequired) view.StopButton.Invoke(() => view.StopButton.Enabled = !view.StartButton.Enabled); else view.StopButton.Enabled = !view.StartButton.Enabled;
+                    view.AuthenticationComboBox.Enabled = false;
+                    view.PauseButton.Enabled = true;
+                    view.PauseButton.Visible = true;
+                    view.ResumeButton.Enabled = false;
+                    view.ResumeButton.Visible = false;
+                    view.ServerTexBox.Enabled = false;
+                    view.StartButton.Enabled = false;
+                    view.StopButton.Enabled = !view.StartButton.Enabled;
                     break;
 
                 case "STOP":
-                    if (view.AuthenticationComboBox.InvokeRequired) view.AuthenticationComboBox.Invoke(() => view.AuthenticationComboBox.Enabled = true); else view.AuthenticationComboBox.Enabled = true;
-                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Enabled = false); else view.PauseButton.Enabled = false;
-                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Visible = true); else view.PauseButton.Visible = true;
-                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Enabled = false); else view.ResumeButton.Enabled = false;
-                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Visible = false); else view.ResumeButton.Visible = false;
-                    if (view.ServerTexBox.InvokeRequired) view.ServerTexBox.Invoke(() => view.ServerTexBox.Enabled = true); else view.ServerTexBox.Enabled = true;
-                    if (view.StartButton.InvokeRequired) view.StartButton.Invoke(() => view.StartButton.Enabled = true); else view.StartButton.Enabled = true;
-                    if (view.StopButton.InvokeRequired) view.StopButton.Invoke(() => view.StopButton.Enabled = !view.StartButton.Enabled); else view.StopButton.Enabled = !view.StartButton.Enabled;
+                    view.AuthenticationComboBox.Enabled = true;
+                    view.PauseButton.Enabled = false;
+                    view.PauseButton.Visible = true;
+                    view.ResumeButton.Enabled = false;
+                    view.ResumeButton.Visible = false;
+                    view.ServerTexBox.Enabled = true;
+                    view.StartButton.Enabled = true;
+                    view.StopButton.Enabled = !view.StartButton.Enabled;
                     break;
 
                 case "PAUSE":
-                    if (view.AuthenticationComboBox.InvokeRequired) view.AuthenticationComboBox.Invoke(() => view.AuthenticationComboBox.Enabled = false); else view.AuthenticationComboBox.Enabled = false;
-                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Enabled = false); else view.PauseButton.Enabled = false;
-                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Visible = false); else view.PauseButton.Visible = false;
-                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Enabled = true); else view.ResumeButton.Enabled = true;
-                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Visible = true); else view.ResumeButton.Visible = true;
-                    if (view.ServerTexBox.InvokeRequired) view.ServerTexBox.Invoke(() => view.ServerTexBox.Enabled = false); else view.ServerTexBox.Enabled = false;
-                    if (view.StartButton.InvokeRequired) view.StartButton.Invoke(() => view.StartButton.Enabled = false); else view.StartButton.Enabled = false;
-                    if (view.StopButton.InvokeRequired) view.StopButton.Invoke(() => view.StopButton.Enabled = !view.StartButton.Enabled); else view.StopButton.Enabled = !view.StartButton.Enabled;
+                    view.AuthenticationComboBox.Enabled = false;
+                    view.PauseButton.Enabled = false;
+                    view.PauseButton.Visible = false;
+                    view.ResumeButton.Enabled = true;
+                    view.ResumeButton.Visible = true;
+                    view.ServerTexBox.Enabled = false;
+                    view.StartButton.Enabled = false;
+                    view.StopButton.Enabled = !view.StartButton.Enabled;
                     break;
 
                 case "RESUME":
-                    if (view.AuthenticationComboBox.InvokeRequired) view.AuthenticationComboBox.Invoke(() => view.AuthenticationComboBox.Enabled = false); else view.AuthenticationComboBox.Enabled = false;
-                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Enabled = true); else view.PauseButton.Enabled = true;
-                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Visible = true); else view.PauseButton.Visible = true;
-                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Enabled = false); else view.ResumeButton.Enabled = false;
-                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Visible = false); else view.ResumeButton.Visible = false;
-                    if (view.ServerTexBox.InvokeRequired) view.ServerTexBox.Invoke(() => view.ServerTexBox.Enabled = false); else view.ServerTexBox.Enabled = false;
-                    if (view.StartButton.InvokeRequired) view.StartButton.Invoke(() => view.StartButton.Enabled = false); else view.StartButton.Enabled = false;
-                    if (view.StopButton.InvokeRequired) view.StopButton.Invoke(() => view.StopButton.Enabled = !view.StartButton.Enabled); else view.StopButton.Enabled = !view.StartButton.Enabled;
+                    view.AuthenticationComboBox.Enabled = false;
+                    view.PauseButton.Enabled = true;
+                    view.PauseButton.Visible = true;
+                    view.ResumeButton.Enabled = false;
+                    view.ResumeButton.Visible = false;
+                    view.ServerTexBox.Enabled = false;
+                    view.StartButton.Enabled = false;
+                    view.StopButton.Enabled = !view.StartButton.Enabled;
                     break;
 
                 default:
-                    if (view.AuthenticationComboBox.InvokeRequired) view.AuthenticationComboBox.Invoke(() => view.AuthenticationComboBox.Enabled = true); else view.AuthenticationComboBox.Enabled = true;
-                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Enabled = false); else view.PauseButton.Enabled = false;
-                    if (view.PauseButton.InvokeRequired) view.PauseButton.Invoke(() => view.PauseButton.Visible = true); else view.PauseButton.Visible = true;
-                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Enabled = false); else view.ResumeButton.Enabled = false;
-                    if (view.ResumeButton.InvokeRequired) view.ResumeButton.Invoke(() => view.ResumeButton.Visible = false); else view.ResumeButton.Visible = false;
-                    if (view.ServerTexBox.InvokeRequired) view.ServerTexBox.Invoke(() => view.ServerTexBox.Enabled = true); else view.ServerTexBox.Enabled = true;
-                    if (view.StartButton.InvokeRequired) view.StartButton.Invoke(() => view.StartButton.Enabled = true); else view.StartButton.Enabled = true;
-                    if (view.StopButton.InvokeRequired) view.StopButton.Invoke(() => view.StopButton.Enabled = !view.StartButton.Enabled); else view.StopButton.Enabled = !view.StartButton.Enabled;
+                    view.AuthenticationComboBox.Enabled = true;
+                    view.PauseButton.Enabled = false;
+                    view.PauseButton.Visible = false;
+                    view.ResumeButton.Enabled = false;
+                    view.ResumeButton.Visible = false;
+                    view.ServerTexBox.Enabled = true;
+                    view.StartButton.Enabled = true;
+                    view.StopButton.Enabled = !view.StartButton.Enabled;
                     break;
             }
         }

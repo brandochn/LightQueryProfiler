@@ -22,27 +22,27 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         event EventHandler OnSearch;
 
-        ComboBox AuthenticationComboBox { get; }
+        ToolStripComboBox AuthenticationComboBox { get; }
         IList<AuthenticationMode> AuthenticationModes { set; }
         string? Password { get; set; }
-        TextBox PasswordTextBox { get; }
-        Button PauseButton { get; }
+        ToolStripTextBox PasswordTextBox { get; }
+        ToolStripButton PauseButton { get; }
         DataGridViewColumn[] ProfilerColumns { set; }
         ListView ProfilerDetails { get; }
         DataGridView ProfilerGridView { get; }
-        Button ResumeButton { get; }
+        ToolStripButton ResumeButton { get; }
         object? SelectedAuthenticationMode { get; set; }
         string? Server { get; set; }
-        TextBox ServerTexBox { get; }
+        ToolStripTextBox ServerTexBox { get; }
         string SessionName { get; }
         string? SqlTextArea { get; set; }
-        Button StartButton { get; }
+        ToolStripButton StartButton { get; }
         StatusStrip StatusBar { get; }
-        Button StopButton { get; }
+        ToolStripButton StopButton { get; }
         string? User { get; set; }
-        TextBox UserTextBox { get; }
+        ToolStripTextBox UserTextBox { get; }
         string? SearchValue { get; set; }
-        Button SearchButton { get; }
+        ToolStripButton SearchButton { get; }
 
 
         void Show();
