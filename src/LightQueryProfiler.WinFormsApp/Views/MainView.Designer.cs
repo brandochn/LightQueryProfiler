@@ -29,20 +29,6 @@
         private void InitializeComponent()
         {
             DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
-            pnlHeader = new FlowLayoutPanel();
-            txtServer = new TextBox();
-            cboAuthentication = new ComboBox();
-            txtUser = new TextBox();
-            txtPassword = new TextBox();
-            btnStart = new Button();
-            btnPause = new Button();
-            btnResume = new Button();
-            btnStop = new Button();
-            btnClearEvents = new Button();
-            btnFilters = new Button();
-            btnClearFilters = new Button();
-            txtSearch = new TextBox();
-            btnSearch = new Button();
             splitContainer = new SplitContainer();
             dgvEvents = new DataGridView();
             tabControl1 = new TabControl();
@@ -53,7 +39,7 @@
             ColValue = new ColumnHeader();
             statusBar = new StatusStrip();
             toolStripStatusEvents = new ToolStripStatusLabel();
-            pnlHeader.SuspendLayout();
+            pnlHeader = new FlowLayoutPanel();
             ((System.ComponentModel.ISupportInitialize)splitContainer).BeginInit();
             splitContainer.Panel1.SuspendLayout();
             splitContainer.Panel2.SuspendLayout();
@@ -64,183 +50,10 @@
             statusBar.SuspendLayout();
             SuspendLayout();
             // 
-            // pnlHeader
-            // 
-            pnlHeader.Controls.Add(txtServer);
-            pnlHeader.Controls.Add(cboAuthentication);
-            pnlHeader.Controls.Add(txtUser);
-            pnlHeader.Controls.Add(txtPassword);
-            pnlHeader.Controls.Add(btnStart);
-            pnlHeader.Controls.Add(btnPause);
-            pnlHeader.Controls.Add(btnResume);
-            pnlHeader.Controls.Add(btnStop);
-            pnlHeader.Controls.Add(btnClearEvents);
-            pnlHeader.Controls.Add(btnFilters);
-            pnlHeader.Controls.Add(btnClearFilters);
-            pnlHeader.Controls.Add(txtSearch);
-            pnlHeader.Controls.Add(btnSearch);
-            pnlHeader.Dock = DockStyle.Top;
-            pnlHeader.Location = new Point(0, 0);
-            pnlHeader.Name = "pnlHeader";
-            pnlHeader.Size = new Size(1774, 50);
-            pnlHeader.TabIndex = 0;
-            // 
-            // txtServer
-            // 
-            txtServer.AcceptsTab = true;
-            txtServer.Dock = DockStyle.Top;
-            txtServer.Font = new Font("Segoe UI", 11F, FontStyle.Regular, GraphicsUnit.Point);
-            txtServer.Location = new Point(10, 10);
-            txtServer.Margin = new Padding(10, 10, 3, 3);
-            txtServer.Name = "txtServer";
-            txtServer.PlaceholderText = "Server or IP address";
-            txtServer.Size = new Size(200, 27);
-            txtServer.TabIndex = 0;
-            txtServer.WordWrap = false;
-            // 
-            // cboAuthentication
-            // 
-            cboAuthentication.Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point);
-            cboAuthentication.FormattingEnabled = true;
-            cboAuthentication.Location = new Point(216, 11);
-            cboAuthentication.Margin = new Padding(3, 11, 3, 3);
-            cboAuthentication.Name = "cboAuthentication";
-            cboAuthentication.Size = new Size(200, 25);
-            cboAuthentication.TabIndex = 1;
-            // 
-            // txtUser
-            // 
-            txtUser.AcceptsTab = true;
-            txtUser.Dock = DockStyle.Top;
-            txtUser.Font = new Font("Segoe UI", 11F, FontStyle.Regular, GraphicsUnit.Point);
-            txtUser.Location = new Point(422, 10);
-            txtUser.Margin = new Padding(3, 10, 3, 3);
-            txtUser.Name = "txtUser";
-            txtUser.PlaceholderText = "User Name";
-            txtUser.Size = new Size(200, 27);
-            txtUser.TabIndex = 3;
-            txtUser.Visible = false;
-            txtUser.WordWrap = false;
-            // 
-            // txtPassword
-            // 
-            txtPassword.AcceptsTab = true;
-            txtPassword.Dock = DockStyle.Top;
-            txtPassword.Font = new Font("Segoe UI", 11F, FontStyle.Regular, GraphicsUnit.Point);
-            txtPassword.Location = new Point(628, 10);
-            txtPassword.Margin = new Padding(3, 10, 3, 3);
-            txtPassword.Name = "txtPassword";
-            txtPassword.PlaceholderText = "Password";
-            txtPassword.Size = new Size(200, 27);
-            txtPassword.TabIndex = 4;
-            txtPassword.Visible = false;
-            txtPassword.WordWrap = false;
-            // 
-            // btnStart
-            // 
-            btnStart.FlatStyle = FlatStyle.Flat;
-            btnStart.Location = new Point(834, 10);
-            btnStart.Margin = new Padding(3, 10, 3, 3);
-            btnStart.Name = "btnStart";
-            btnStart.Size = new Size(75, 27);
-            btnStart.TabIndex = 2;
-            btnStart.Text = "Start";
-            btnStart.UseVisualStyleBackColor = true;
-            // 
-            // btnPause
-            // 
-            btnPause.FlatStyle = FlatStyle.Flat;
-            btnPause.Location = new Point(915, 10);
-            btnPause.Margin = new Padding(3, 10, 3, 3);
-            btnPause.Name = "btnPause";
-            btnPause.Size = new Size(75, 27);
-            btnPause.TabIndex = 7;
-            btnPause.Text = "Pause";
-            btnPause.UseVisualStyleBackColor = true;
-            // 
-            // btnResume
-            // 
-            btnResume.FlatStyle = FlatStyle.Flat;
-            btnResume.Location = new Point(996, 10);
-            btnResume.Margin = new Padding(3, 10, 3, 3);
-            btnResume.Name = "btnResume";
-            btnResume.Size = new Size(75, 27);
-            btnResume.TabIndex = 6;
-            btnResume.Text = "Resume";
-            btnResume.UseVisualStyleBackColor = true;
-            // 
-            // btnStop
-            // 
-            btnStop.FlatStyle = FlatStyle.Flat;
-            btnStop.Location = new Point(1077, 10);
-            btnStop.Margin = new Padding(3, 10, 3, 3);
-            btnStop.Name = "btnStop";
-            btnStop.Size = new Size(75, 27);
-            btnStop.TabIndex = 5;
-            btnStop.Text = "Stop";
-            btnStop.UseVisualStyleBackColor = true;
-            // 
-            // btnClearEvents
-            // 
-            btnClearEvents.FlatStyle = FlatStyle.Flat;
-            btnClearEvents.Location = new Point(1158, 10);
-            btnClearEvents.Margin = new Padding(3, 10, 3, 3);
-            btnClearEvents.Name = "btnClearEvents";
-            btnClearEvents.Size = new Size(85, 27);
-            btnClearEvents.TabIndex = 8;
-            btnClearEvents.Text = "Clear Events";
-            btnClearEvents.UseVisualStyleBackColor = true;
-            // 
-            // btnFilters
-            // 
-            btnFilters.FlatStyle = FlatStyle.Flat;
-            btnFilters.Location = new Point(1249, 10);
-            btnFilters.Margin = new Padding(3, 10, 3, 3);
-            btnFilters.Name = "btnFilters";
-            btnFilters.Size = new Size(75, 27);
-            btnFilters.TabIndex = 9;
-            btnFilters.Text = "Filters";
-            btnFilters.UseVisualStyleBackColor = true;
-            // 
-            // btnClearFilters
-            // 
-            btnClearFilters.FlatStyle = FlatStyle.Flat;
-            btnClearFilters.Location = new Point(1330, 10);
-            btnClearFilters.Margin = new Padding(3, 10, 3, 3);
-            btnClearFilters.Name = "btnClearFilters";
-            btnClearFilters.Size = new Size(82, 27);
-            btnClearFilters.TabIndex = 10;
-            btnClearFilters.Text = "Clear Filters";
-            btnClearFilters.UseVisualStyleBackColor = true;
-            // 
-            // txtSearch
-            // 
-            txtSearch.AcceptsTab = true;
-            txtSearch.Dock = DockStyle.Right;
-            txtSearch.Font = new Font("Segoe UI", 11F, FontStyle.Regular, GraphicsUnit.Point);
-            txtSearch.Location = new Point(1418, 10);
-            txtSearch.Margin = new Padding(3, 10, 3, 3);
-            txtSearch.Name = "txtSearch";
-            txtSearch.Size = new Size(200, 27);
-            txtSearch.TabIndex = 11;
-            txtSearch.WordWrap = false;
-            // 
-            // btnSearch
-            // 
-            btnSearch.Dock = DockStyle.Right;
-            btnSearch.FlatStyle = FlatStyle.Flat;
-            btnSearch.Location = new Point(1624, 10);
-            btnSearch.Margin = new Padding(3, 10, 3, 3);
-            btnSearch.Name = "btnSearch";
-            btnSearch.Size = new Size(75, 27);
-            btnSearch.TabIndex = 12;
-            btnSearch.Text = "Search";
-            btnSearch.UseVisualStyleBackColor = true;
-            // 
             // splitContainer
             // 
             splitContainer.Dock = DockStyle.Fill;
-            splitContainer.Location = new Point(0, 50);
+            splitContainer.Location = new Point(0, 40);
             splitContainer.Name = "splitContainer";
             splitContainer.Orientation = Orientation.Horizontal;
             // 
@@ -252,8 +65,8 @@
             // 
             splitContainer.Panel2.Controls.Add(tabControl1);
             splitContainer.Panel2.Controls.Add(statusBar);
-            splitContainer.Size = new Size(1774, 679);
-            splitContainer.SplitterDistance = 339;
+            splitContainer.Size = new Size(1774, 689);
+            splitContainer.SplitterDistance = 342;
             splitContainer.TabIndex = 3;
             // 
             // dgvEvents
@@ -269,7 +82,7 @@
             dgvEvents.Name = "dgvEvents";
             dgvEvents.ReadOnly = true;
             dgvEvents.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvEvents.Size = new Size(1774, 339);
+            dgvEvents.Size = new Size(1774, 342);
             dgvEvents.TabIndex = 1;
             // 
             // tabControl1
@@ -280,7 +93,7 @@
             tabControl1.Location = new Point(0, 0);
             tabControl1.Name = "tabControl1";
             tabControl1.SelectedIndex = 0;
-            tabControl1.Size = new Size(1774, 314);
+            tabControl1.Size = new Size(1774, 321);
             tabControl1.TabIndex = 3;
             // 
             // tabPageText
@@ -288,7 +101,7 @@
             tabPageText.Location = new Point(4, 24);
             tabPageText.Name = "tabPageText";
             tabPageText.Padding = new Padding(3);
-            tabPageText.Size = new Size(1766, 286);
+            tabPageText.Size = new Size(1766, 293);
             tabPageText.TabIndex = 0;
             tabPageText.Text = "Text";
             tabPageText.UseVisualStyleBackColor = true;
@@ -299,7 +112,7 @@
             tabPageDetails.Location = new Point(4, 24);
             tabPageDetails.Name = "tabPageDetails";
             tabPageDetails.Padding = new Padding(3);
-            tabPageDetails.Size = new Size(1766, 286);
+            tabPageDetails.Size = new Size(1766, 293);
             tabPageDetails.TabIndex = 1;
             tabPageDetails.Text = "Details";
             tabPageDetails.UseVisualStyleBackColor = true;
@@ -312,7 +125,7 @@
             lvDetails.FullRowSelect = true;
             lvDetails.Location = new Point(3, 3);
             lvDetails.Name = "lvDetails";
-            lvDetails.Size = new Size(1760, 280);
+            lvDetails.Size = new Size(1760, 287);
             lvDetails.TabIndex = 0;
             lvDetails.UseCompatibleStateImageBehavior = false;
             lvDetails.View = View.Details;
@@ -330,7 +143,7 @@
             // statusBar
             // 
             statusBar.Items.AddRange(new ToolStripItem[] { toolStripStatusEvents });
-            statusBar.Location = new Point(0, 314);
+            statusBar.Location = new Point(0, 321);
             statusBar.Name = "statusBar";
             statusBar.Size = new Size(1774, 22);
             statusBar.TabIndex = 2;
@@ -343,6 +156,14 @@
             toolStripStatusEvents.Size = new Size(48, 17);
             toolStripStatusEvents.Text = "Events:";
             // 
+            // pnlHeader
+            // 
+            pnlHeader.Dock = DockStyle.Top;
+            pnlHeader.Location = new Point(0, 0);
+            pnlHeader.Name = "pnlHeader";
+            pnlHeader.Size = new Size(1774, 40);
+            pnlHeader.TabIndex = 0;
+            // 
             // MainView
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -353,8 +174,7 @@
             Name = "MainView";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "ProfilerWindow";
-            pnlHeader.ResumeLayout(false);
-            pnlHeader.PerformLayout();
+            WindowState = FormWindowState.Maximized;
             splitContainer.Panel1.ResumeLayout(false);
             splitContainer.Panel2.ResumeLayout(false);
             splitContainer.Panel2.PerformLayout();
@@ -369,19 +189,6 @@
         }
 
         #endregion
-
-        private FlowLayoutPanel pnlHeader;
-        private TextBox txtServer;
-        private ComboBox cboAuthentication;
-        private Button btnStart;
-        private TextBox txtUser;
-        private TextBox txtPassword;
-        private Button btnStop;
-        private Button btnResume;
-        private Button btnPause;
-        private Button btnClearEvents;
-        private Button btnFilters;
-        private Button btnClearFilters;
         private SplitContainer splitContainer;
         private DataGridView dgvEvents;
         private TabControl tabControl1;
@@ -392,7 +199,6 @@
         private ColumnHeader ColValue;
         private StatusStrip statusBar;
         private ToolStripStatusLabel toolStripStatusEvents;
-        private TextBox txtSearch;
-        private Button btnSearch;
+        private FlowLayoutPanel pnlHeader;
     }
 }
