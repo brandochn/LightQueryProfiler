@@ -20,6 +20,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         {
             view.EventFilter = eventFilter;
         }
+
         private void OnApply(object? sender, EventArgs e)
         {
             view.Form.DialogResult = DialogResult.OK;

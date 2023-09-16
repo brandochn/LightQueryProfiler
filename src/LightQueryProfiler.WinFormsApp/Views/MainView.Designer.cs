@@ -173,7 +173,7 @@
             Controls.Add(pnlHeader);
             Name = "MainView";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "ProfilerWindow";
+            Text = "Light Query Profiler";
             WindowState = FormWindowState.Maximized;
             splitContainer.Panel1.ResumeLayout(false);
             splitContainer.Panel2.ResumeLayout(false);
