@@ -1,4 +1,5 @@
 ﻿using LightQueryProfiler.WinFormsApp.Models;
+using LightQueryProfiler.WinFormsApp.Presenters;
 
 namespace LightQueryProfiler.WinFormsApp.Views
 {
@@ -143,6 +144,15 @@ namespace LightQueryProfiler.WinFormsApp.Views
             return new Bitmap(stream);
         }
 
+        private void AboutMenu_Click(object? sender, EventArgs e)
+        {
+            using (var form = new AboutView())
+            {
+                var presenter = new AboutPresenter(form);
+                form.ShowDialog();
+            }
+        }
+
         private void BtnClearEvents_Click(object? sender, EventArgs e)
         {
             OnClearEvents?.Invoke(this, EventArgs.Empty);
@@ -235,17 +245,20 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
             ToolStripMenuItem fileMenu = new ToolStripMenuItem("File");
             ToolStripMenuItem exitMenu = new ToolStripMenuItem("Exit");
+            ToolStripMenuItem helpMenu = new ToolStripMenuItem("Help");
             ToolStripMenuItem aboutMenu = new ToolStripMenuItem("About");
 
             exitMenu.Click += ExitMenu_Click;
             fileMenu.DropDownItems.Add(exitMenu);
 
+            aboutMenu.Click += AboutMenu_Click;
+            helpMenu.DropDownItems.Add(aboutMenu);
+
             ms.Items.Add(fileMenu);
-            ms.Items.Add(aboutMenu);
+            ms.Items.Add(helpMenu);
 
             Controls.Add(ms);
         }
-
         private void CreateMainToolBar()
         {
             toolStripMain.Dock = DockStyle.Top;
