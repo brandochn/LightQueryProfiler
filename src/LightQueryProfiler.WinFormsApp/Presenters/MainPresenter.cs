@@ -7,7 +7,7 @@ using LightQueryProfiler.Shared.Repositories;
 using LightQueryProfiler.Shared.Repositories.Interfaces;
 using LightQueryProfiler.Shared.Services;
 using LightQueryProfiler.Shared.Services.Interfaces;
-using LightQueryProfiler.SharedWebUI.Data;
+using LightQueryProfiler.WinFormsApp.Data;
 using LightQueryProfiler.WinFormsApp.Views;
 using System.Data.SqlClient;
 
