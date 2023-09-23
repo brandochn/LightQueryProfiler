@@ -50,11 +50,11 @@
             // 
             lblVersion.AutoSize = true;
             lblVersion.Font = new Font("Segoe UI", 14.25F, FontStyle.Bold, GraphicsUnit.Point);
-            lblVersion.Location = new Point(118, 65);
+            lblVersion.Location = new Point(82, 65);
             lblVersion.Name = "lblVersion";
-            lblVersion.Size = new Size(127, 25);
+            lblVersion.Size = new Size(205, 25);
             lblVersion.TabIndex = 1;
-            lblVersion.Text = "Version 1.0.0";
+            lblVersion.Text = "Version 1.0.0-alpha01";
             // 
             // lkbIcons
             // 
