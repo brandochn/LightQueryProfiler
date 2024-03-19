@@ -1,4 +1,5 @@
-﻿using LightQueryProfiler.WinFormsApp.Models;
+﻿using LightQueryProfiler.Shared.Data;
+using LightQueryProfiler.WinFormsApp.Models;
 using LightQueryProfiler.WinFormsApp.Presenters;
 
 namespace LightQueryProfiler.WinFormsApp.Views
@@ -54,10 +55,12 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         private ToolStripTextBox tstUser = new ToolStripTextBox();
 
+
         public MainView()
         {
             InitializeComponent();
             CreateEventHandlers();
+            SqliteContext.InitializeDatabase();
         }
 
         public event EventHandler? OnClearEvents;
@@ -68,6 +71,8 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         public event EventHandler? OnPause;
 
+        public event EventHandler? OnRecentConnectionsClick;
+
         public event EventHandler? OnResume;
 
         public event EventHandler? OnSearch;
@@ -77,7 +82,6 @@ namespace LightQueryProfiler.WinFormsApp.Views
         public event EventHandler? OnStop;
 
         public event EventHandler? RowEnter;
-
         ToolStripComboBox IMainView.AuthenticationComboBox => tscAuthentication;
 
         IList<AuthenticationMode> IMainView.AuthenticationModes
@@ -244,6 +248,8 @@ namespace LightQueryProfiler.WinFormsApp.Views
             };
 
             ToolStripMenuItem fileMenu = new ToolStripMenuItem("File");
+            ToolStripMenuItem recentMenu = new ToolStripMenuItem("Recent");
+            ToolStripMenuItem selectConnectionMenu = new ToolStripMenuItem("Select Connection");
             ToolStripMenuItem exitMenu = new ToolStripMenuItem("Exit");
             ToolStripMenuItem helpMenu = new ToolStripMenuItem("Help");
             ToolStripMenuItem aboutMenu = new ToolStripMenuItem("About");
@@ -254,11 +260,16 @@ namespace LightQueryProfiler.WinFormsApp.Views
             aboutMenu.Click += AboutMenu_Click;
             helpMenu.DropDownItems.Add(aboutMenu);
 
+            selectConnectionMenu.Click += SelectConnectionMenu_Click;
+            recentMenu.DropDownItems.Add(selectConnectionMenu);
+
             ms.Items.Add(fileMenu);
+            ms.Items.Add(recentMenu);
             ms.Items.Add(helpMenu);
 
             Controls.Add(ms);
         }
+
         private void CreateMainToolBar()
         {
             toolStripMain.Dock = DockStyle.Top;
@@ -295,6 +306,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
             toolStripMain.Items.Add(tslPassword);
 
             tstPassWord.Size = new Size(150, 27);
+            tstPassWord.TextBox.PasswordChar = '*';
             toolStripMain.Items.Add(tstPassWord);
 
             toolStripMain.Items.Add(toolStripSeparator4);
@@ -368,6 +380,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
             tscAuthentication.ComboBox.DisplayMember = "Name";
             tscAuthentication.ComboBox.ValueMember = "Value";
             tscAuthentication.ComboBox.SelectionChangeCommitted += ComboAuthentication_SelectionChangeCommitted;
+            tscAuthentication.ComboBox.SelectedIndexChanged += ComboAuthentication_SelectionChangeCommitted;
             tscAuthentication.ComboBox.SelectedIndex = 0;
             ComboAuthentication_SelectionChangeCommitted(tscAuthentication.ComboBox, EventArgs.Empty);
         }
@@ -382,6 +395,10 @@ namespace LightQueryProfiler.WinFormsApp.Views
             SetupWebBrowser();
         }
 
+        private void SelectConnectionMenu_Click(object? sender, EventArgs e)
+        {
+            OnRecentConnectionsClick?.Invoke(this, EventArgs.Empty);
+        }
         private void SetupDgvEvents()
         {
             dgvEvents.ReadOnly = true;

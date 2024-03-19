@@ -31,6 +31,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         private readonly IMainView view;
         private IApplicationDbContext? _applicationDbContext;
 
+        private IRepository<Connection>? _connectionRepository;
         private IProfilerService? _profilerService;
         private bool _shouldStop = true;
         private SqlHighlightService? _sqlHighlightService;
@@ -40,7 +41,6 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         private IXEventService? _xEventService;
         private Dictionary<string, ProfilerEvent> CurrentRows = new();
         private Dictionary<string, object>? Filters;
-
         public MainPresenter(IMainView mainView)
         {
             view = mainView;
@@ -56,6 +56,8 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             view.OnFiltersClick += OnFiltersClick;
             view.OnClearFiltersClick += OnClearFiltersClick;
             view.OnSearch += OnSearch;
+            view.OnRecentConnectionsClick += OnRecentConnectionsClick;
+            _connectionRepository = new ConnectionRepository(new SqliteContext());
             view.Show();
         }
 
@@ -369,6 +371,36 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             HandleCancellationRequest();
         }
 
+        private void OnRecentConnectionsClick(object? sender, EventArgs e)
+        {
+            using (var form = new RecentConnectionsView())
+            {
+                var presenter = new RecentConnectionsPresenter(form, _connectionRepository);
+                var result = form.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    var connection = presenter.GetConnection();
+                    if (connection != null)
+                    {
+                        view.Server = connection.DataSource;
+                        if (connection.IntegratedSecurity)
+                        {
+                            view.User = string.Empty;
+                            view.Password = string.Empty;
+                            view.SelectedAuthenticationMode = Shared.Enums.AuthenticationMode.WindowsAuth;
+                            view.AuthenticationComboBox.SelectedIndex = 0;
+                        }
+                        else
+                        {
+                            view.User = connection.UserId;
+                            view.Password = connection.Password;
+                            view.SelectedAuthenticationMode = Shared.Enums.AuthenticationMode.SQLServerAuth;
+                            view.AuthenticationComboBox.SelectedIndex = 1;
+                        }
+                    }
+                }
+            }
+        }
         private void OnResume(object? sender, EventArgs e)
         {
             _shouldStop = false;
@@ -402,7 +434,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             }
         }
 
-        private void OnStop(object? sender, EventArgs e)
+        private async void OnStop(object? sender, EventArgs e)
         {
             _shouldStop = true;
             ShowButtonsByAction("stop");
@@ -411,6 +443,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             try
             {
                 StopProfiling();
+                await SaveRecentConnection();
             }
             catch (Exception ex)
             {
@@ -429,6 +462,20 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                 {
                     view.SqlTextArea = string.Format(htmlDocument, _sqlHighlightService.SyntaxHighlight(cell.Value?.ToString() ?? ""));
                     CreateRowDetails(view.ProfilerGridView.Rows[dataGridViewCellEventArgs.RowIndex]);
+                }
+            }
+        }
+
+        private async Task SaveRecentConnection()
+        {
+            if (_connectionRepository != null && view.Server != null)
+            {
+                var newConnection = new Connection(0, "master", DateTime.UtcNow, view.Server, view.User?.Length == 0, view.Password, view.User);
+                var existingConnection = await _connectionRepository.Find(f => string.Equals(f.DataSource, newConnection.DataSource, StringComparison.InvariantCultureIgnoreCase)
+                                                                && string.Equals(f.UserId, newConnection.UserId, StringComparison.InvariantCultureIgnoreCase));
+                if (existingConnection == null)
+                {
+                    await _connectionRepository.AddAsync(newConnection);
                 }
             }
         }
