@@ -21,6 +21,9 @@ namespace LightQueryProfiler.WinFormsApp.Views
         event EventHandler OnStop;
 
         event EventHandler RowEnter;
+
+        event EventHandler OnRecentConnectionsClick;
+
         ToolStripComboBox AuthenticationComboBox { get; }
         IList<AuthenticationMode> AuthenticationModes { set; }
         string? Password { get; set; }
