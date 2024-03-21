@@ -5,10 +5,6 @@ VisualStudioVersion = 17.2.32505.173
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{51FC1EE8-5A57-4BD8-A682-0790A08C0FE7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LightQueryProfiler.WebApp", "src\LightQueryProfiler.WebApp\LightQueryProfiler.WebApp.csproj", "{EEDD20F6-D536-4576-A9C0-AA631BACA1DA}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LightQueryProfiler.SharedWebUI", "src\LightQueryProfiler.SharedWebUI\LightQueryProfiler.SharedWebUI.csproj", "{80A67545-D37A-45B5-9F0F-0C68E72B726B}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LightQueryProfiler.Shared", "src\LightQueryProfiler.Shared\LightQueryProfiler.Shared.csproj", "{50A4667C-2F4A-4DF8-A88F-E5BE71DA7CDB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{66D515C8-C16C-4429-A47D-DB296B7DC486}"
@@ -17,7 +13,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LightQueryProfiler.Shared.U
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LightQueryProfiler.Highlight", "src\LightQueryProfiler.Highlight\LightQueryProfiler.Highlight.csproj", "{BFF93236-CB9F-4780-9B52-C0DB3286451F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightQueryProfiler.WinFormsApp", "src\LightQueryProfiler.WinFormsApp\LightQueryProfiler.WinFormsApp.csproj", "{BA5AD370-10BB-40D7-8FD5-F7055DBA9D29}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LightQueryProfiler.WinFormsApp", "src\LightQueryProfiler.WinFormsApp\LightQueryProfiler.WinFormsApp.csproj", "{BA5AD370-10BB-40D7-8FD5-F7055DBA9D29}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,14 +21,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{EEDD20F6-D536-4576-A9C0-AA631BACA1DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EEDD20F6-D536-4576-A9C0-AA631BACA1DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EEDD20F6-D536-4576-A9C0-AA631BACA1DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EEDD20F6-D536-4576-A9C0-AA631BACA1DA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{80A67545-D37A-45B5-9F0F-0C68E72B726B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{80A67545-D37A-45B5-9F0F-0C68E72B726B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{80A67545-D37A-45B5-9F0F-0C68E72B726B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{80A67545-D37A-45B5-9F0F-0C68E72B726B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{50A4667C-2F4A-4DF8-A88F-E5BE71DA7CDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{50A4667C-2F4A-4DF8-A88F-E5BE71DA7CDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{50A4667C-2F4A-4DF8-A88F-E5BE71DA7CDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -54,8 +42,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{EEDD20F6-D536-4576-A9C0-AA631BACA1DA} = {51FC1EE8-5A57-4BD8-A682-0790A08C0FE7}
-		{80A67545-D37A-45B5-9F0F-0C68E72B726B} = {51FC1EE8-5A57-4BD8-A682-0790A08C0FE7}
 		{50A4667C-2F4A-4DF8-A88F-E5BE71DA7CDB} = {51FC1EE8-5A57-4BD8-A682-0790A08C0FE7}
 		{50FB44D7-9878-447C-BA1B-829D2BC86B78} = {66D515C8-C16C-4429-A47D-DB296B7DC486}
 		{BFF93236-CB9F-4780-9B52-C0DB3286451F} = {51FC1EE8-5A57-4BD8-A682-0790A08C0FE7}
