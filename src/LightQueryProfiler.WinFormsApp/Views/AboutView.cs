@@ -16,6 +16,8 @@
 
         public Form Form => this;
 
+        public string Version { get => lblVersion.Text; set => lblVersion.Text = value; }
+
         private void BtnOK_Click(object? sender, EventArgs e)
         {
             OnOK?.Invoke(this, EventArgs.Empty);

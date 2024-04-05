@@ -1,4 +1,5 @@
 ﻿using LightQueryProfiler.WinFormsApp.Views;
+using System.Reflection;
 
 namespace LightQueryProfiler.WinFormsApp.Presenters
 {
@@ -11,6 +12,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             view = aboutView;
             view.OnIconLicenseLinkClick += OnIconLicenseLinkClick;
             view.OnLicenseLinkClick += OnLicenseLinkClick;
+            SetVersion();
             view.OnOK += View_OnOK;
         }
 
@@ -29,6 +31,12 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         {
             // Navigate to a URL.
             System.Diagnostics.Process.Start("explorer.exe", "https://github.com/brandochn/LightQueryProfiler/blob/main/LICENSE.md");
+        }
+
+        private void SetVersion()
+        {
+            string version = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "No version found.";
+            view.Version = $"Version: {version.Split('+')[0]}";
         }
     }
 }
