@@ -8,5 +8,7 @@
 
         event EventHandler? OnOK;
         Form Form { get; }
+
+        string Version { get; set; }
     }
 }

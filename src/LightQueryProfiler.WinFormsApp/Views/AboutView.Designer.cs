@@ -49,12 +49,12 @@
             // lblVersion
             // 
             lblVersion.AutoSize = true;
-            lblVersion.Font = new Font("Segoe UI", 14.25F, FontStyle.Bold, GraphicsUnit.Point);
-            lblVersion.Location = new Point(82, 65);
+            lblVersion.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point);
+            lblVersion.Location = new Point(66, 70);
             lblVersion.Name = "lblVersion";
-            lblVersion.Size = new Size(205, 25);
+            lblVersion.Size = new Size(71, 21);
             lblVersion.TabIndex = 1;
-            lblVersion.Text = "Version 1.0.0-alpha01";
+            lblVersion.Text = "Version:";
             // 
             // lkbIcons
             // 
@@ -79,7 +79,7 @@
             // 
             lblDescription.AutoSize = true;
             lblDescription.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
-            lblDescription.Location = new Point(44, 130);
+            lblDescription.Location = new Point(47, 137);
             lblDescription.Name = "lblDescription";
             lblDescription.Size = new Size(278, 17);
             lblDescription.TabIndex = 4;
