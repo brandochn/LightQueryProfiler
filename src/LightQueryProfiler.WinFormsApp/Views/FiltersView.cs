@@ -1,4 +1,5 @@
 ﻿using LightQueryProfiler.Shared.Models;
+using System.ComponentModel;
 
 namespace LightQueryProfiler.WinFormsApp.Views
 {
@@ -14,6 +15,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         public event EventHandler? OnClose;
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public EventFilter EventFilter { get => GetEventFilter(); set => SetEventFilter(value); }
 
         public Form Form => this;

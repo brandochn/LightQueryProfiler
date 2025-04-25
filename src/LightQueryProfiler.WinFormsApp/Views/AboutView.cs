@@ -1,4 +1,6 @@
-﻿namespace LightQueryProfiler.WinFormsApp.Views
+﻿using System.ComponentModel;
+
+namespace LightQueryProfiler.WinFormsApp.Views
 {
     public partial class AboutView : Form, IAboutView
     {
@@ -16,6 +18,7 @@
 
         public Form Form => this;
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Version { get => lblVersion.Text; set => lblVersion.Text = value; }
 
         private void BtnOK_Click(object? sender, EventArgs e)

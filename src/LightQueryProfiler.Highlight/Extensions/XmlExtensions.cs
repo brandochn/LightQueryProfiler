@@ -14,7 +14,9 @@ namespace LightQueryProfiler.Highlight.Extensions
             var attribute = element.Attribute(name);
             if (attribute == null)
             {
+#pragma warning disable CS8603 // Possible null reference return.
                 return null;
+#pragma warning restore CS8603 // Possible null reference return.
             }
 
             return attribute.Value;

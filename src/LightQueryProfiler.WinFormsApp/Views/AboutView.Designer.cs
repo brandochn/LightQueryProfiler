@@ -39,7 +39,7 @@
             // lblAppName
             // 
             lblAppName.AutoSize = true;
-            lblAppName.Font = new Font("Segoe UI", 18F, FontStyle.Bold, GraphicsUnit.Point);
+            lblAppName.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
             lblAppName.Location = new Point(66, 21);
             lblAppName.Name = "lblAppName";
             lblAppName.Size = new Size(241, 32);
@@ -49,7 +49,7 @@
             // lblVersion
             // 
             lblVersion.AutoSize = true;
-            lblVersion.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point);
+            lblVersion.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
             lblVersion.Location = new Point(66, 70);
             lblVersion.Name = "lblVersion";
             lblVersion.Size = new Size(71, 21);
@@ -68,6 +68,7 @@
             // 
             // btnOK
             // 
+            btnOK.FlatStyle = FlatStyle.System;
             btnOK.Location = new Point(291, 220);
             btnOK.Name = "btnOK";
             btnOK.Size = new Size(75, 30);
@@ -78,7 +79,7 @@
             // lblDescription
             // 
             lblDescription.AutoSize = true;
-            lblDescription.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
+            lblDescription.Font = new Font("Segoe UI", 9.75F);
             lblDescription.Location = new Point(47, 137);
             lblDescription.Name = "lblDescription";
             lblDescription.Size = new Size(278, 17);

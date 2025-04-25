@@ -55,7 +55,7 @@
             // 
             // txtEventClass
             // 
-            txtEventClass.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
+            txtEventClass.Font = new Font("Segoe UI", 9.75F);
             txtEventClass.Location = new Point(19, 43);
             txtEventClass.Name = "txtEventClass";
             txtEventClass.PlaceholderText = "Contains";
@@ -64,7 +64,7 @@
             // 
             // txtTextData
             // 
-            txtTextData.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
+            txtTextData.Font = new Font("Segoe UI", 9.75F);
             txtTextData.Location = new Point(19, 97);
             txtTextData.Name = "txtTextData";
             txtTextData.PlaceholderText = "Contains";
@@ -82,7 +82,7 @@
             // 
             // txtApplicationName
             // 
-            txtApplicationName.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
+            txtApplicationName.Font = new Font("Segoe UI", 9.75F);
             txtApplicationName.Location = new Point(19, 154);
             txtApplicationName.Name = "txtApplicationName";
             txtApplicationName.PlaceholderText = "Contains";
@@ -100,7 +100,7 @@
             // 
             // txtNTUserName
             // 
-            txtNTUserName.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
+            txtNTUserName.Font = new Font("Segoe UI", 9.75F);
             txtNTUserName.Location = new Point(19, 212);
             txtNTUserName.Name = "txtNTUserName";
             txtNTUserName.PlaceholderText = "Contains";
@@ -118,7 +118,7 @@
             // 
             // txtLoginName
             // 
-            txtLoginName.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
+            txtLoginName.Font = new Font("Segoe UI", 9.75F);
             txtLoginName.Location = new Point(19, 268);
             txtLoginName.Name = "txtLoginName";
             txtLoginName.PlaceholderText = "Contains";
@@ -136,7 +136,7 @@
             // 
             // txtDatabaseName
             // 
-            txtDatabaseName.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
+            txtDatabaseName.Font = new Font("Segoe UI", 9.75F);
             txtDatabaseName.Location = new Point(19, 324);
             txtDatabaseName.Name = "txtDatabaseName";
             txtDatabaseName.PlaceholderText = "Contains";
@@ -154,7 +154,7 @@
             // 
             // btnApply
             // 
-            btnApply.FlatStyle = FlatStyle.Flat;
+            btnApply.FlatStyle = FlatStyle.System;
             btnApply.Location = new Point(19, 372);
             btnApply.Name = "btnApply";
             btnApply.Size = new Size(75, 30);
@@ -164,7 +164,7 @@
             // 
             // btnClose
             // 
-            btnClose.FlatStyle = FlatStyle.Flat;
+            btnClose.FlatStyle = FlatStyle.System;
             btnClose.Location = new Point(100, 372);
             btnClose.Name = "btnClose";
             btnClose.Size = new Size(75, 30);
