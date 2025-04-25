@@ -9,7 +9,7 @@ using LightQueryProfiler.Shared.Services;
 using LightQueryProfiler.Shared.Services.Interfaces;
 using LightQueryProfiler.WinFormsApp.Data;
 using LightQueryProfiler.WinFormsApp.Views;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 
 namespace LightQueryProfiler.WinFormsApp.Presenters
 {

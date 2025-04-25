@@ -263,6 +263,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
             selectConnectionMenu.Click += SelectConnectionMenu_Click;
             recentMenu.DropDownItems.Add(selectConnectionMenu);
 
+            ms.RenderMode = ToolStripRenderMode.System;
             ms.Items.Add(fileMenu);
             ms.Items.Add(recentMenu);
             ms.Items.Add(helpMenu);
@@ -272,6 +273,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         private void CreateMainToolBar()
         {
+            toolStripMain.RenderMode = ToolStripRenderMode.System;
             toolStripMain.Dock = DockStyle.Top;
             toolStripMain.AutoSize = true;
 

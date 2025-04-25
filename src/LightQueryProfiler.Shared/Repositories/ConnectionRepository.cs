@@ -18,7 +18,7 @@ namespace LightQueryProfiler.Shared.Repositories
             const string sql = @"INSERT INTO Connections (DataSource, InitialCatalog, UserId, Password, IntegratedSecurity, CreationDate)
                                    VALUES (@DataSource, @InitialCatalog, @UserId, @Password, @IntegratedSecurity, @CreationDate)";
 
-            await using var db = _context.GetConnection() as SqliteConnection;
+            await using var db = _context.GetConnection() as SqliteConnection ?? throw new Exception("db cannot be null or empty"); ;
             await using SqliteCommand sqliteCommand = new SqliteCommand(sql, db);
             sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
             sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
@@ -45,7 +45,7 @@ namespace LightQueryProfiler.Shared.Repositories
         public async Task Delete(int id)
         {
             const string sql = "DELETE FROM Connections WHERE Id = @Id";
-            await using var db = _context.GetConnection() as SqliteConnection;
+            await using var db = _context.GetConnection() as SqliteConnection ?? throw new Exception("db cannot be null or empty");
             await using SqliteCommand sqliteCommand = new SqliteCommand(sql, db);
             sqliteCommand.Parameters.AddWithValue("@Id", id);
 
@@ -57,7 +57,7 @@ namespace LightQueryProfiler.Shared.Repositories
         {
             const string sql = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId FROM Connections";
             List<Connection> connections = new List<Connection>();
-            await using var db = _context.GetConnection() as SqliteConnection;
+            await using var db = _context.GetConnection() as SqliteConnection ?? throw new Exception("db cannot be null or empty");
             await using SqliteCommand sqliteCommand = new SqliteCommand(sql, db);
 
             await db.OpenAsync();
@@ -86,7 +86,7 @@ namespace LightQueryProfiler.Shared.Repositories
         {
             const string sql = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId FROM Connections WHERE Id = @Id";
             Connection? connection = null;
-            await using var db = _context.GetConnection() as SqliteConnection;
+            await using var db = _context.GetConnection() as SqliteConnection ?? throw new Exception("db cannot be null or empty");
             await using SqliteCommand sqliteCommand = new SqliteCommand(sql, db);
             sqliteCommand.Parameters.AddWithValue("@Id", id);
 
@@ -117,7 +117,7 @@ namespace LightQueryProfiler.Shared.Repositories
         public async Task UpdateAsync(Connection entity)
         {
             const string sql = "UPDATE Connections SET DataSource=@DataSource, InitialCatalog=@InitialCatalog, UserId=@UserId, Password=@Password, IntegratedSecurity=@IntegratedSecurity WHERE Id = @Id";
-            await using var db = _context.GetConnection() as SqliteConnection;
+            await using var db = _context.GetConnection() as SqliteConnection ?? throw new Exception("db cannot be null or empty");
             await using SqliteCommand sqliteCommand = new SqliteCommand(sql, db);
             sqliteCommand.Parameters.AddWithValue("@Id", entity);
             sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
