@@ -41,6 +41,8 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         private IXEventService? _xEventService;
         private Dictionary<string, ProfilerEvent> CurrentRows = new();
         private Dictionary<string, object>? Filters;
+        private int currentIndex = 0;
+
         public MainPresenter(IMainView mainView)
         {
             view = mainView;
@@ -55,7 +57,8 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             view.OnClearEvents += OnClearEvents;
             view.OnFiltersClick += OnFiltersClick;
             view.OnClearFiltersClick += OnClearFiltersClick;
-            view.OnSearch += OnSearch;
+            view.OnClearSearch += OnClearSearch;
+            view.OnFindNext += OnNextSearch;
             view.OnRecentConnectionsClick += OnRecentConnectionsClick;
             _connectionRepository = new ConnectionRepository(new SqliteContext());
             view.Show();
@@ -410,9 +413,48 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             _thread.Start();
         }
 
-        private void OnSearch(object? sender, EventArgs e)
+        private void OnClearSearch(object? sender, EventArgs e)
         {
-            SearchGridValue(view.SearchValue?.Trim() ?? "");
+            view.SearchValue = string.Empty;
+            currentIndex = 0;
+            view.ProfilerGridView.ClearSelection();
+        }
+
+        private void OnNextSearch(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (view.ProfilerGridView.Rows.Count > 0)
+                {
+                    if (string.IsNullOrEmpty(view.SearchValue))
+                    {
+                        MessageBox.Show("Please enter a search value.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    currentIndex = FindGridValue(view.SearchValue, currentIndex);
+                    if (currentIndex != -1)
+                    {
+                        view.ProfilerGridView.ClearSelection();
+                        view.ProfilerGridView.FirstDisplayedScrollingRowIndex = currentIndex;
+                        view.ProfilerGridView.Rows[currentIndex].Selected = true;
+                        RowEnter(sender, new DataGridViewCellEventArgs(0, currentIndex));
+                        currentIndex++;
+                    }
+                    else
+                    {
+                        MessageBox.Show("No more results found.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        currentIndex = 0;
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                currentIndex = 0;
+                MessageBox.Show(exc.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ShowButtonsByAction("default");
+            }
+
         }
 
         private void OnStart(object? sender, EventArgs e)
@@ -480,43 +522,22 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             }
         }
 
-        private void SearchGridValue(string searchValue)
+        private int FindGridValue(string searchValue, int startIndex)
         {
-            if (view.ProfilerGridView.Rows.Count > 0)
+            for (int index = startIndex; index < view.ProfilerGridView.Rows.Count; index++)
             {
-                view.ProfilerGridView.ClearSelection();
-                try
+                DataGridViewRow row = view.ProfilerGridView.Rows[index];
+                for (int i = 0; i < row.Cells.Count; i++)
                 {
-                    List<int> foundRows = new List<int>();
-                    foreach (DataGridViewRow row in view.ProfilerGridView.Rows)
+                    string celValue = row.Cells[i]?.Value?.ToString() ?? "";
+                    if (celValue.Contains(searchValue, StringComparison.OrdinalIgnoreCase))
                     {
-                        for (int i = 0; i < row.Cells.Count; i++)
-                        {
-                            string celValue = row.Cells[i]?.Value?.ToString() ?? "";
-                            if (celValue.Contains(searchValue, StringComparison.OrdinalIgnoreCase))
-                            {
-                                int rowIndex = row.Index;
-                                view.ProfilerGridView.Rows[rowIndex].Selected = true;
-                                foundRows.Add(rowIndex);
-                                break;
-                            }
-                        }
+                        return row.Index;
                     }
-                    if (foundRows?.Count > 0)
-                    {
-                        view.ProfilerGridView.FirstDisplayedScrollingRowIndex = foundRows[0];
-                    }
-                    else
-                    {
-                        MessageBox.Show($"{searchValue} not found.", "LightQueryProfiler", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                }
-                catch (Exception exc)
-                {
-                    MessageBox.Show(exc.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    ShowButtonsByAction("default");
                 }
             }
+
+            return -1;
         }
 
         private void SetCurrentRows(ProfilerEvent? _event)
