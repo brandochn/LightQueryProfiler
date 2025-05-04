@@ -1,5 +1,5 @@
-﻿using System.Data.Common;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
+using System.Data.Common;
 
 namespace LightQueryProfiler.Shared.Data
 {

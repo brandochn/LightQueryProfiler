@@ -14,7 +14,7 @@ namespace LightQueryProfiler.WinFormsApp
             Application.EnableVisualStyles();
             // Optional: Improve text rendering
             Application.SetCompatibleTextRenderingDefault(false);
-            
+
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
 
             // To customize application configuration such as set high DPI settings or default font,

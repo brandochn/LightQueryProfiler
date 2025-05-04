@@ -8,10 +8,11 @@ namespace LightQueryProfiler.WinFormsApp.Views
     {
         private static Bitmap? clearBmp;
         private static Bitmap? clearFiltersBmp;
+        private static Bitmap? findNextBmp;
+        private static Bitmap? clearSearchBmp;
         private static Bitmap? pauseBmp;
         private static Bitmap? playBmp;
         private static Bitmap? resumeBmp;
-        private static Bitmap? searchBmp;
         private static Bitmap? stopBmp;
         private readonly WebBrowser webBrowser = new WebBrowser();
 
@@ -31,7 +32,8 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         private ToolStripButton tsbResume = new ToolStripButton();
 
-        private ToolStripButton tsbSearch = new ToolStripButton();
+        private ToolStripButton tsbClearSearch = new ToolStripButton();
+        private ToolStripButton tsbFindNext = new ToolStripButton();
 
         private ToolStripButton tsbStart = new ToolStripButton();
 
@@ -55,7 +57,6 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         private ToolStripTextBox tstUser = new ToolStripTextBox();
 
-
         public MainView()
         {
             InitializeComponent();
@@ -75,13 +76,16 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         public event EventHandler? OnResume;
 
-        public event EventHandler? OnSearch;
+        public event EventHandler? OnClearSearch;
+
+        public event EventHandler? OnFindNext;
 
         public event EventHandler? OnStart;
 
         public event EventHandler? OnStop;
 
         public event EventHandler? RowEnter;
+
         ToolStripComboBox IMainView.AuthenticationComboBox => tscAuthentication;
 
         IList<AuthenticationMode> IMainView.AuthenticationModes
@@ -104,7 +108,8 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         ToolStripButton IMainView.ResumeButton => tsbResume;
 
-        ToolStripButton IMainView.SearchButton => tsbSearch;
+        ToolStripButton IMainView.ClearSearchButton => tsbClearSearch;
+        ToolStripButton IMainView.FindNextButton => tsbFindNext;
 
         string? IMainView.SearchValue { get => tstSearch.Text; set => tstSearch.Text = value; }
 
@@ -138,7 +143,8 @@ namespace LightQueryProfiler.WinFormsApp.Views
             resumeBmp = DecodeFromBase64(Constants.RESUME_BMP_ENC);
             clearBmp = DecodeFromBase64(Constants.CLEAR_BMP_ENC);
             clearFiltersBmp = DecodeFromBase64(Constants.CLEAR_FILTERS_BMP_ENC);
-            searchBmp = DecodeFromBase64(Constants.SEARCH_BMP_ENC);
+            findNextBmp = DecodeFromBase64(Constants.FIND_NEXT_BMP_ENC);
+            clearSearchBmp = DecodeFromBase64(Constants.CLEAR_SEARCH_BMP_ENC);
         }
 
         private static Bitmap DecodeFromBase64(string data)
@@ -182,9 +188,9 @@ namespace LightQueryProfiler.WinFormsApp.Views
             OnResume?.Invoke(this, EventArgs.Empty);
         }
 
-        private void BtnSearch_Click(object? sender, EventArgs e)
+        private void BtnNextSearch_Click(object? sender, EventArgs e)
         {
-            OnSearch?.Invoke(sender, e);
+            OnFindNext?.Invoke(sender, e);
         }
 
         private void BtnStart_Click(object? sender, EventArgs e)
@@ -236,7 +242,13 @@ namespace LightQueryProfiler.WinFormsApp.Views
             tsbClearEvents.Click += BtnClearEvents_Click;
             tsbFilters.Click += BtnFilters_Click;
             tsbClearFilters.Click += BtnClearFilters_Click;
-            tsbSearch.Click += BtnSearch_Click;
+            tsbClearSearch.Click += BtnClearSearch_Click;
+            tsbFindNext.Click += BtnNextSearch_Click;
+        }
+
+        private void BtnClearSearch_Click(object? sender, EventArgs e)
+        {
+            OnClearSearch?.Invoke(sender, e);
         }
 
         private void CreateMainMenu()
@@ -356,13 +368,21 @@ namespace LightQueryProfiler.WinFormsApp.Views
             ToolStripSeparator toolStripSeparator7 = new ToolStripSeparator();
             toolStripMain.Items.Add(toolStripSeparator7);
 
+            toolStripMain.Items.Add(new ToolStripLabel("Search: "));
+
             tstSearch.Size = new Size(100, 27);
+            tstSearch.ToolTipText = "Search";
             toolStripMain.Items.Add(tstSearch);
 
-            tsbSearch.ToolTipText = "Search";
-            tsbSearch.Text = "Search";
-            tsbSearch.Image = searchBmp;
-            toolStripMain.Items.Add(tsbSearch);
+            tsbClearSearch.ToolTipText = "Clear Search";
+            tsbClearSearch.Text = string.Empty;
+            tsbClearSearch.Image = clearSearchBmp;
+            toolStripMain.Items.Add(tsbClearSearch);
+
+            tsbFindNext.ToolTipText = "Find Next";
+            tsbFindNext.Text = string.Empty;
+            tsbFindNext.Image = findNextBmp;
+            toolStripMain.Items.Add(tsbFindNext);
 
             pnlHeader.Controls.Add(toolStripMain);
         }
@@ -401,6 +421,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
         {
             OnRecentConnectionsClick?.Invoke(this, EventArgs.Empty);
         }
+
         private void SetupDgvEvents()
         {
             dgvEvents.ReadOnly = true;

@@ -1,7 +1,4 @@
-﻿
-using LightQueryProfiler.Shared.Models;
-
-namespace LightQueryProfiler.WinFormsApp.Views
+﻿namespace LightQueryProfiler.WinFormsApp.Views
 {
     public interface IRecentConnectionsView
     {

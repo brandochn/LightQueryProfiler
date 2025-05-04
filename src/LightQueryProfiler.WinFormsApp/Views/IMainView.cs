@@ -14,7 +14,9 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         event EventHandler OnResume;
 
-        event EventHandler OnSearch;
+        event EventHandler OnClearSearch;
+
+        event EventHandler OnFindNext;
 
         event EventHandler OnStart;
 
@@ -33,7 +35,8 @@ namespace LightQueryProfiler.WinFormsApp.Views
         ListView ProfilerDetails { get; }
         DataGridView ProfilerGridView { get; }
         ToolStripButton ResumeButton { get; }
-        ToolStripButton SearchButton { get; }
+        ToolStripButton ClearSearchButton { get; }
+        ToolStripButton FindNextButton { get; }
         string? SearchValue { get; set; }
         object? SelectedAuthenticationMode { get; set; }
         string? Server { get; set; }
@@ -45,6 +48,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
         ToolStripButton StopButton { get; }
         string? User { get; set; }
         ToolStripTextBox UserTextBox { get; }
+
         void Show();
     }
 }

@@ -3,7 +3,6 @@ using LightQueryProfiler.Highlight.Patterns;
 using SixLabors.Fonts;
 using System.Drawing;
 using System.Text.RegularExpressions;
-using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
 
@@ -38,7 +37,6 @@ namespace LightQueryProfiler.Highlight.Configuration
         {
             if (definitions == null)
             {
-
                 if (XmlDocument == null)
                 {
                     throw new ArgumentNullException(nameof(XmlDocument));

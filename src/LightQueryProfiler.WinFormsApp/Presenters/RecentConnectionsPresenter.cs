@@ -59,7 +59,6 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             }
         }
 
-
         private async void View_OnTextChangeAsync(object? sender, EventArgs e)
         {
             await SearchGridValueAsync(view.SearchValue?.Trim() ?? "");

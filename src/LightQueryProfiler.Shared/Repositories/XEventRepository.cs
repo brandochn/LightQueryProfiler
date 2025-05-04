@@ -1,8 +1,8 @@
 ﻿using LightQueryProfiler.Shared.Data;
 using LightQueryProfiler.Shared.Repositories.Interfaces;
+using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Data.Common;
-using Microsoft.Data.SqlClient;
 
 namespace LightQueryProfiler.Shared.Repositories
 {
