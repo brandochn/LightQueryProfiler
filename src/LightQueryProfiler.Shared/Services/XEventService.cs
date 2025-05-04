@@ -8,7 +8,6 @@ namespace LightQueryProfiler.Shared.Services
     {
         public XEventService()
         {
-
         }
 
         public List<ProfilerEvent> Parser(string xml)
@@ -22,10 +21,10 @@ namespace LightQueryProfiler.Shared.Services
             XmlReader reader = XmlReader.Create(new StringReader(xml), settings);
             XmlDocument xmlDocument = new XmlDocument();
 
-            //Read the XML File  
+            //Read the XML File
             xmlDocument.Load(reader);
 
-            //Create a XML Node List with XPath Expression  
+            //Create a XML Node List with XPath Expression
             XmlNodeList? eventNodeList = xmlDocument.SelectNodes("/RingBufferTarget/event");
 
             if (eventNodeList == null)

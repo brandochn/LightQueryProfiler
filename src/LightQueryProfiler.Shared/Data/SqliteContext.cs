@@ -6,7 +6,7 @@ namespace LightQueryProfiler.Shared.Data
 {
     public class SqliteContext : IDatabaseContext
     {
-        const string dataBaseName = "localStorage.db";
+        private const string dataBaseName = "localStorage.db";
 
         public IDbConnection GetConnection()
         {
@@ -14,8 +14,7 @@ namespace LightQueryProfiler.Shared.Data
             return new SqliteConnection($"Filename={dbPath}");
         }
 
-
-        public async static void InitializeDatabase()
+        public static async void InitializeDatabase()
         {
             string dbPath = Path.Combine(AppContext.BaseDirectory, dataBaseName);
             if (!File.Exists(dbPath))
@@ -28,9 +27,9 @@ namespace LightQueryProfiler.Shared.Data
 
             const string tableCommand = @"
                     CREATE TABLE IF NOT
-                    EXISTS Connections 
+                    EXISTS Connections
                     (
-                        Id INTEGER PRIMARY KEY, 
+                        Id INTEGER PRIMARY KEY,
                         DataSource NVARCHAR(1000) NULL,
                         InitialCatalog NVARCHAR(100) NULL,
                         UserId NVARCHAR(100) NULL,

@@ -8,6 +8,7 @@ namespace LightQueryProfiler.Shared.Models
         {
             Name = "Default";
         }
+
         public override string GetDefaultView() => "DefaultProfilerViewTemplate";
 
         public override string CreateSQLStatement(string sessionName)

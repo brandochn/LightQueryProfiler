@@ -57,7 +57,6 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         private ToolStripTextBox tstUser = new ToolStripTextBox();
 
-
         public MainView()
         {
             InitializeComponent();
@@ -78,14 +77,15 @@ namespace LightQueryProfiler.WinFormsApp.Views
         public event EventHandler? OnResume;
 
         public event EventHandler? OnClearSearch;
-        public event EventHandler? OnFindNext;
 
+        public event EventHandler? OnFindNext;
 
         public event EventHandler? OnStart;
 
         public event EventHandler? OnStop;
 
         public event EventHandler? RowEnter;
+
         ToolStripComboBox IMainView.AuthenticationComboBox => tscAuthentication;
 
         IList<AuthenticationMode> IMainView.AuthenticationModes
@@ -110,7 +110,6 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         ToolStripButton IMainView.ClearSearchButton => tsbClearSearch;
         ToolStripButton IMainView.FindNextButton => tsbFindNext;
-
 
         string? IMainView.SearchValue { get => tstSearch.Text; set => tstSearch.Text = value; }
 
@@ -422,6 +421,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
         {
             OnRecentConnectionsClick?.Invoke(this, EventArgs.Empty);
         }
+
         private void SetupDgvEvents()
         {
             dgvEvents.ReadOnly = true;

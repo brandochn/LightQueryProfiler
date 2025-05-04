@@ -7,6 +7,7 @@ namespace LightQueryProfiler.WinFormsApp.Data
     {
         private readonly IConfiguration _configuration;
         private readonly IEngine _engine;
+
         public SqlHighlightService(IEngine engine, IConfiguration configuration)
         {
             _engine = engine;

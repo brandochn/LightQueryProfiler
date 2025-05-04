@@ -13,7 +13,9 @@ namespace LightQueryProfiler.WinFormsApp.Views
         event EventHandler OnPause;
 
         event EventHandler OnResume;
+
         event EventHandler OnClearSearch;
+
         event EventHandler OnFindNext;
 
         event EventHandler OnStart;
@@ -46,6 +48,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
         ToolStripButton StopButton { get; }
         string? User { get; set; }
         ToolStripTextBox UserTextBox { get; }
+
         void Show();
     }
 }

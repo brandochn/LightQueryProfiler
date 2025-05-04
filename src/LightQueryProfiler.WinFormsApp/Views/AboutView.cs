@@ -32,6 +32,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
             lkbLicense.Click += LkbLicense_Click;
             btnOK.Click += BtnOK_Click;
         }
+
         private void LkbIcons_Click(object? sender, EventArgs e)
         {
             OnIconLicenseLinkClick?.Invoke(this, EventArgs.Empty);

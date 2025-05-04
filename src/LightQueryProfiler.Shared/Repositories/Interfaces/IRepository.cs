@@ -1,6 +1,4 @@
-﻿using System.Linq.Expressions;
-
-namespace LightQueryProfiler.Shared.Repositories.Interfaces
+﻿namespace LightQueryProfiler.Shared.Repositories.Interfaces
 {
     public interface IRepository<T>
     {

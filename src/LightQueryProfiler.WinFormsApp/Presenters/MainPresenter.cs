@@ -404,6 +404,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                 }
             }
         }
+
         private void OnResume(object? sender, EventArgs e)
         {
             _shouldStop = false;
@@ -454,7 +455,6 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                 MessageBox.Show(exc.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 ShowButtonsByAction("default");
             }
-
         }
 
         private void OnStart(object? sender, EventArgs e)
