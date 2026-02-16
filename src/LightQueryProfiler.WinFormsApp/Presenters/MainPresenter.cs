@@ -15,6 +15,8 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
 {
     public class MainPresenter
     {
+        private const int EventsPollingIntervalMs = 900;
+
         private const string htmlDocument = @" <!DOCTYPE html>
                                                 <html>
 
@@ -214,70 +216,115 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             }
         }
 
+        /// <summary>
+        /// Filters rows based on the active filters. All filters must match for a row to be included.
+        /// </summary>
         private List<Dictionary<string, Event>> FilterRows(List<Dictionary<string, Event>> rows)
         {
-            List<Dictionary<string, Event>> result = new List<Dictionary<string, Event>>();
-            string filterValue;
-            string? eventValue;
-
-            if (Filters?.Count > 0 && rows?.Count > 0)
-            {
-                foreach (Dictionary<string, Event> r in rows)
-                {
-                    foreach (KeyValuePair<string, object> f in Filters)
-                    {
-                        if (r.ContainsKey(f.Key))
-                        {
-                            filterValue = (f.Value?.ToString() ?? string.Empty).Trim();
-                            eventValue = r[f.Key].EventValue?.ToString();
-                            if (eventValue?.Contains(filterValue, StringComparison.OrdinalIgnoreCase) == true)
-                            {
-                                result.Add(r);
-                            }
-                        }
-                    }
-                }
-            }
-            else
+            // If no filters or no rows, return the original list
+            if (Filters?.Count == 0 || rows?.Count == 0)
             {
                 return rows ?? new List<Dictionary<string, Event>>();
+            }
+
+            List<Dictionary<string, Event>> result = new List<Dictionary<string, Event>>();
+
+            foreach (Dictionary<string, Event> row in rows)
+            {
+                bool matchesAllFilters = true;
+
+                // Check if ALL filters match (AND logic)
+                foreach (KeyValuePair<string, object> filter in Filters)
+                {
+                    if (!row.TryGetValue(filter.Key, out Event? eventData))
+                    {
+                        matchesAllFilters = false;
+                        break;
+                    }
+
+                    string filterValue = (filter.Value?.ToString() ?? string.Empty).Trim();
+                    string? eventValue = eventData.EventValue?.ToString();
+
+                    if (string.IsNullOrEmpty(eventValue) ||
+                        !eventValue.Contains(filterValue, StringComparison.OrdinalIgnoreCase))
+                    {
+                        matchesAllFilters = false;
+                        break;
+                    }
+                }
+
+                if (matchesAllFilters)
+                {
+                    result.Add(row);
+                }
             }
 
             return result;
         }
 
-        private async Task GetLastEventsInternalAsync()
+        /// <summary>
+        /// Retrieves and displays the latest profiler events
+        /// </summary>
+        private async Task GetLastEventsInternalAsync(CancellationToken cancellationToken = default)
         {
-            if (_profilerService != null)
+            if (_profilerService == null)
             {
-                await Task.Delay(900);
-                List<ProfilerEvent>? _events = await _profilerService.GetLastEventsAsync(view.SessionName);
-                if (_events?.Count > 0)
+                return;
+            }
+
+            try
+            {
+                await Task.Delay(EventsPollingIntervalMs, cancellationToken);
+
+                List<ProfilerEvent>? events = await _profilerService.GetLastEventsAsync(view.SessionName);
+                if (events?.Count == 0)
                 {
-                    List<Dictionary<string, Event>> newRows = GetNewRows(_events);
-                    if (newRows?.Count > 0)
-                    {
-                        List<Dictionary<string, Event>> _rows = FilterRows(newRows);
-                        view.ProfilerGridView.Invoke(() =>
-                        {
-                            int rowId = 0;
-                            foreach (Dictionary<string, Event> r in _rows)
-                            {
-                                rowId = view.ProfilerGridView.Rows.Add();
-                                DataGridViewRow row = view.ProfilerGridView.Rows[rowId];
-                                foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
-                                {
-                                    row.Cells[c.Name].Value = r[c.Name].EventValue;
-                                }
-                            }
-                            view.StatusBar.Invoke(() => view.StatusBar.Items[0].Text = $"Events: {view.ProfilerGridView.Rows.Count}");
-                            if (rowId > 0)
-                            {
-                                view.ProfilerGridView.FirstDisplayedScrollingRowIndex = rowId;
-                            }
-                        });
-                    }
+                    return;
                 }
+
+                List<Dictionary<string, Event>> newRows = GetNewRows(events);
+                if (newRows?.Count == 0)
+                {
+                    return;
+                }
+
+                List<Dictionary<string, Event>> filteredRows = FilterRows(newRows);
+
+                // Update UI in a single invoke
+                view.ProfilerGridView.Invoke(() =>
+                {
+                    int lastRowId = 0;
+
+                    foreach (Dictionary<string, Event> row in filteredRows)
+                    {
+                        lastRowId = view.ProfilerGridView.Rows.Add();
+                        DataGridViewRow gridRow = view.ProfilerGridView.Rows[lastRowId];
+
+                        foreach (BaseColumnViewTemplate column in ProfilerViewTemplate.Columns)
+                        {
+                            gridRow.Cells[column.Name].Value = row[column.Name].EventValue;
+                        }
+                    }
+
+                    // Update status bar
+                    view.StatusBar.Items[0].Text = $"Events: {view.ProfilerGridView.Rows.Count}";
+
+                    // Scroll to the last added row
+                    if (lastRowId > 0)
+                    {
+                        view.ProfilerGridView.FirstDisplayedScrollingRowIndex = lastRowId;
+                    }
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when cancellation is requested, don't propagate
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Log or handle unexpected errors
+                throw new InvalidOperationException("Error retrieving profiler events", ex);
             }
         }
 
@@ -615,8 +662,12 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             {
                 while (!_shouldStop && !token.IsCancellationRequested)
                 {
-                    await GetLastEventsInternalAsync();
+                    await GetLastEventsInternalAsync(token);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when cancellation is requested
             }
             catch (Exception e)
             {
