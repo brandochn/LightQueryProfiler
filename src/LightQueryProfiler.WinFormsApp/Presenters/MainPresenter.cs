@@ -41,7 +41,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         private CancellationTokenSource? _tokenSource;
         private IXEventRepository? _xEventRepository;
         private IXEventService? _xEventService;
-        private Dictionary<string, ProfilerEvent> CurrentRows = new();
+        private Dictionary<string, ProfilerEvent> CurrentRows = [];
         private Dictionary<string, object>? Filters;
         private int currentIndex = 0;
 
@@ -72,7 +72,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
 
         public void SetAuthenticationModes()
         {
-            IList<Models.AuthenticationMode> result = new List<Models.AuthenticationMode>();
+            IList<Models.AuthenticationMode> result = [];
             List<Shared.Enums.AuthenticationMode> authenticationModes = Enum.GetValues(typeof(Shared.Enums.AuthenticationMode)).Cast<Shared.Enums.AuthenticationMode>().ToList();
             foreach (var am in authenticationModes)
             {
@@ -84,7 +84,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
 
         public void SetProfilerColumns()
         {
-            List<DataGridViewColumn> columns = new List<DataGridViewColumn>();
+            List<DataGridViewColumn> columns = [];
             foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
             {
                 DataGridViewTextBoxColumn column = new DataGridViewTextBoxColumn
@@ -111,7 +111,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
 
             if (dialogResult == DialogResult.Yes)
             {
-                Filters = new Dictionary<string, object>();
+                Filters = [];
                 EventFilterModel = new Shared.Models.EventFilter();
             }
         }
@@ -122,12 +122,12 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             view.SqlTextArea = string.Empty;
             view.ProfilerDetails.Items.Clear();
             _shouldStop = false;
-            CurrentRows = new();
+            CurrentRows = [];
         }
 
         private void Configure()
         {
-            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
+            SqlConnectionStringBuilder builder = [];
             int selectedAuthenticationMode = Convert.ToInt32(view.SelectedAuthenticationMode);
             if ((Shared.Enums.AuthenticationMode)selectedAuthenticationMode == Shared.Enums.AuthenticationMode.WindowsAuth)
             {
@@ -166,7 +166,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
 
         private void CreateFilters(Shared.Models.EventFilter eventFilter)
         {
-            Filters = new Dictionary<string, object>();
+            Filters = [];
             if (!string.IsNullOrEmpty(eventFilter.EventClass))
             {
                 Filters.Add(nameof(eventFilter.EventClass), eventFilter.EventClass);
@@ -204,7 +204,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             {
                 view.ProfilerDetails.Items.Clear();
                 string[] row;
-                List<ListViewItem> items = new();
+                List<ListViewItem> items = [];
                 foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
                 {
                     row = new string[] { c.Name, dataGridViewRow.Cells[c.Name].Value?.ToString() ?? string.Empty };
@@ -221,13 +221,18 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         /// </summary>
         private List<Dictionary<string, Event>> FilterRows(List<Dictionary<string, Event>> rows)
         {
-            // If no filters or no rows, return the original list
-            if (Filters == null || Filters.Count == 0 || rows?.Count == 0)
+            if (rows == null)
             {
-                return rows ?? new List<Dictionary<string, Event>>();
+                return [];
             }
 
-            List<Dictionary<string, Event>> result = new List<Dictionary<string, Event>>();
+            // If no filters or no rows, return the original list
+            if (Filters == null || Filters.Count == 0 || rows.Count == 0)
+            {
+                return rows;
+            }
+
+            List<Dictionary<string, Event>> result = [];
 
             foreach (Dictionary<string, Event> row in rows)
             {
@@ -277,13 +282,13 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                 await Task.Delay(EventsPollingIntervalMs, cancellationToken);
 
                 List<ProfilerEvent>? events = await _profilerService.GetLastEventsAsync(view.SessionName);
-                if (events?.Count == 0)
+                if (events == null || events.Count == 0)
                 {
                     return;
                 }
 
                 List<Dictionary<string, Event>> newRows = GetNewRows(events);
-                if (newRows?.Count == 0)
+                if (newRows == null || newRows.Count == 0)
                 {
                     return;
                 }
@@ -345,13 +350,13 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
 
         private List<Dictionary<string, Event>> GetNewRows(List<ProfilerEvent> events)
         {
-            List<Dictionary<string, Event>> newEvents = new List<Dictionary<string, Event>>();
+            List<Dictionary<string, Event>> newEvents = [];
             Dictionary<string, Event> data;
             foreach (var e in events)
             {
                 if (!CurrentRows.ContainsKey(e.GetEventKey()))
                 {
-                    data = new Dictionary<string, Event>();
+                    data = [];
 
                     foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
                     {
