@@ -222,7 +222,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         private List<Dictionary<string, Event>> FilterRows(List<Dictionary<string, Event>> rows)
         {
             // If no filters or no rows, return the original list
-            if (Filters?.Count == 0 || rows?.Count == 0)
+            if (Filters == null || Filters.Count == 0 || rows?.Count == 0)
             {
                 return rows ?? new List<Dictionary<string, Event>>();
             }
@@ -294,6 +294,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                 view.ProfilerGridView.Invoke(() =>
                 {
                     int lastRowId = 0;
+                    bool wasEmpty = view.ProfilerGridView.Rows.Count == 0;
 
                     foreach (Dictionary<string, Event> row in filteredRows)
                     {
@@ -309,8 +310,22 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     // Update status bar
                     view.StatusBar.Items[0].Text = $"Events: {view.ProfilerGridView.Rows.Count}";
 
-                    // Scroll to the last added row
-                    if (lastRowId > 0)
+                    // If grid was empty, select first row and manually trigger row details display
+                    if (wasEmpty && view.ProfilerGridView.Rows.Count > 0)
+                    {
+                        view.ProfilerGridView.Rows[0].Selected = true;
+                        view.ProfilerGridView.CurrentCell = view.ProfilerGridView.Rows[0].Cells[0];
+
+                        // Manually display the first row's details
+                        DataGridViewTextBoxCell firstCell = (DataGridViewTextBoxCell)view.ProfilerGridView.Rows[0].Cells["TextData"];
+                        if (firstCell != null && _sqlHighlightService != null)
+                        {
+                            view.SqlTextArea = string.Format(htmlDocument, _sqlHighlightService.SyntaxHighlight(firstCell.Value?.ToString() ?? ""));
+                            CreateRowDetails(view.ProfilerGridView.Rows[0]);
+                        }
+                    }
+                    // Otherwise scroll to the last added row
+                    else if (lastRowId > 0)
                     {
                         view.ProfilerGridView.FirstDisplayedScrollingRowIndex = lastRowId;
                     }
@@ -597,6 +612,13 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
 
         private void ShowButtonsByAction(string action)
         {
+            // Ensure UI updates happen on the UI thread
+            if (view.ProfilerGridView.InvokeRequired)
+            {
+                view.ProfilerGridView.Invoke(() => ShowButtonsByAction(action));
+                return;
+            }
+
             switch (action.ToUpper())
             {
                 case "START":
