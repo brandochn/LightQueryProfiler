@@ -244,6 +244,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
             tsbClearFilters.Click += BtnClearFilters_Click;
             tsbClearSearch.Click += BtnClearSearch_Click;
             tsbFindNext.Click += BtnNextSearch_Click;
+            btnCopyToClipboard.Click += BtnCopyToClipboard_Click;
         }
 
         private void BtnClearSearch_Click(object? sender, EventArgs e)
@@ -432,6 +433,30 @@ namespace LightQueryProfiler.WinFormsApp.Views
             webBrowser.AllowWebBrowserDrop = false;
             webBrowser.Dock = DockStyle.Fill;
             tabPageText.Controls.Add(webBrowser);
+        }
+
+        /// <summary>
+        /// Copies the rendered text content (without HTML) from the web browser to clipboard
+        /// </summary>
+        private void BtnCopyToClipboard_Click(object? sender, EventArgs e)
+        {
+            // Extract the rendered text from the HTML document instead of the raw HTML
+            string? textContent = webBrowser.Document?.Body?.InnerText;
+
+            if (string.IsNullOrWhiteSpace(textContent))
+            {
+                return;
+            }
+
+            try
+            {
+                Clipboard.SetText(textContent);
+            }
+            catch (Exception)
+            {
+                // Clipboard operations can fail in certain scenarios (e.g., clipboard in use)
+                // Silently ignore to avoid disrupting user experience
+            }
         }
     }
 }

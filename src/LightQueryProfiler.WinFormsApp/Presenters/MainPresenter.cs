@@ -486,33 +486,75 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             view.SearchValue = string.Empty;
             currentIndex = 0;
             view.ProfilerGridView.ClearSelection();
+
+            // Optionally reset scroll position to top
+            if (view.ProfilerGridView.Rows.Count > 0)
+            {
+                view.ProfilerGridView.FirstDisplayedScrollingRowIndex = 0;
+            }
         }
 
         private void OnNextSearch(object? sender, EventArgs e)
         {
             try
             {
-                if (view.ProfilerGridView.Rows.Count > 0)
+                if (view.ProfilerGridView.Rows.Count == 0)
                 {
-                    if (string.IsNullOrEmpty(view.SearchValue))
-                    {
-                        MessageBox.Show("Please enter a search value.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
+                    MessageBox.Show("No data available to search.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
-                    currentIndex = FindGridValue(view.SearchValue, currentIndex);
-                    if (currentIndex != -1)
+                if (string.IsNullOrWhiteSpace(view.SearchValue))
+                {
+                    MessageBox.Show("Please enter a search value.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // Ensure currentIndex is within valid range
+                if (currentIndex < 0 || currentIndex >= view.ProfilerGridView.Rows.Count)
+                {
+                    currentIndex = 0;
+                }
+
+                int foundIndex = FindGridValue(view.SearchValue, currentIndex);
+
+                if (foundIndex != -1)
+                {
+                    view.ProfilerGridView.ClearSelection();
+
+                    // Safely set scroll position
+                    if (foundIndex < view.ProfilerGridView.Rows.Count)
                     {
-                        view.ProfilerGridView.ClearSelection();
-                        view.ProfilerGridView.FirstDisplayedScrollingRowIndex = currentIndex;
-                        view.ProfilerGridView.Rows[currentIndex].Selected = true;
-                        RowEnter(sender, new DataGridViewCellEventArgs(0, currentIndex));
-                        currentIndex++;
+                        view.ProfilerGridView.FirstDisplayedScrollingRowIndex = foundIndex;
+                        view.ProfilerGridView.Rows[foundIndex].Selected = true;
+                        RowEnter(sender, new DataGridViewCellEventArgs(0, foundIndex));
+                        currentIndex = foundIndex + 1;
+                    }
+                }
+                else
+                {
+                    // No more results found, offer to wrap around
+                    if (currentIndex > 0)
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "No more results found. Search from the beginning?",
+                            "Search",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question);
+
+                        if (result == DialogResult.Yes)
+                        {
+                            currentIndex = 0;
+                            OnNextSearch(sender, e); // Recursively search from start
+                        }
+                        else
+                        {
+                            currentIndex = 0;
+                        }
                     }
                     else
                     {
-                        MessageBox.Show("No more results found.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        currentIndex = 0;
+                        MessageBox.Show("No results found.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
             }
@@ -591,13 +633,23 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
 
         private int FindGridValue(string searchValue, int startIndex)
         {
+            if (string.IsNullOrWhiteSpace(searchValue))
+            {
+                return -1;
+            }
+
+            if (startIndex < 0 || startIndex >= view.ProfilerGridView.Rows.Count)
+            {
+                return -1;
+            }
+
             for (int index = startIndex; index < view.ProfilerGridView.Rows.Count; index++)
             {
                 DataGridViewRow row = view.ProfilerGridView.Rows[index];
                 for (int i = 0; i < row.Cells.Count; i++)
                 {
-                    string celValue = row.Cells[i]?.Value?.ToString() ?? "";
-                    if (celValue.Contains(searchValue, StringComparison.OrdinalIgnoreCase))
+                    string cellValue = row.Cells[i]?.Value?.ToString() ?? string.Empty;
+                    if (cellValue.Contains(searchValue, StringComparison.OrdinalIgnoreCase))
                     {
                         return row.Index;
                     }
