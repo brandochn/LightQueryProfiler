@@ -125,6 +125,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             table.Columns.Add(nameof(Connection.Password), typeof(string));
             table.Columns.Add(nameof(Connection.IntegratedSecurity), typeof(bool));
             table.Columns.Add("Creation Date", typeof(DateTime));
+            table.Columns.Add(nameof(Connection.EngineType), typeof(string));
 
             if (connections?.Count > 0)
             {
@@ -137,6 +138,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     row[nameof(Connection.Password)] = (object?)c.Password ?? DBNull.Value;
                     row[nameof(Connection.IntegratedSecurity)] = c.IntegratedSecurity;
                     row["Creation Date"] = c.CreationDate;
+                    row[nameof(Connection.EngineType)] = c.EngineType;
                     table.Rows.Add(row);
                 }
             }

@@ -51,6 +51,10 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         private ToolStripTextBox tstPassWord = new ToolStripTextBox();
 
+        private ToolStripLabel tslDatabase = new ToolStripLabel();
+
+        private ToolStripTextBox tstDatabase = new ToolStripTextBox();
+
         private ToolStripTextBox tstSearch = new ToolStripTextBox();
 
         private ToolStripTextBox tstServer = new ToolStripTextBox();
@@ -95,6 +99,10 @@ namespace LightQueryProfiler.WinFormsApp.Views
                 tscAuthentication.ComboBox.DataSource = value;
             }
         }
+
+        string? IMainView.Database { get => tstDatabase.Text; set => tstDatabase.Text = value; }
+
+        ToolStripTextBox IMainView.DatabaseTextBox => tstDatabase;
 
         string? IMainView.Password { get => tstPassWord.Text; set => tstPassWord.Text = value; }
 
@@ -218,6 +226,19 @@ namespace LightQueryProfiler.WinFormsApp.Views
                     tstPassWord.Visible = false;
                     toolStripSeparator3.Visible = false;
                     toolStripSeparator4.Visible = false;
+                    tslDatabase.Visible = false;
+                    tstDatabase.Visible = false;
+                }
+                else if ((Shared.Enums.AuthenticationMode)selectedAuthenticationMode == Shared.Enums.AuthenticationMode.AzureSQLDatabase)
+                {
+                    tstUser.Visible = true;
+                    tslUser.Visible = true;
+                    tslPassword.Visible = true;
+                    tstPassWord.Visible = true;
+                    toolStripSeparator3.Visible = true;
+                    toolStripSeparator4.Visible = true;
+                    tslDatabase.Visible = true;
+                    tstDatabase.Visible = true;
                 }
                 else
                 {
@@ -227,6 +248,8 @@ namespace LightQueryProfiler.WinFormsApp.Views
                     tstPassWord.Visible = true;
                     toolStripSeparator3.Visible = true;
                     toolStripSeparator4.Visible = true;
+                    tslDatabase.Visible = false;
+                    tstDatabase.Visible = false;
                 }
             }
         }
@@ -325,6 +348,17 @@ namespace LightQueryProfiler.WinFormsApp.Views
             toolStripMain.Items.Add(tstPassWord);
 
             toolStripMain.Items.Add(toolStripSeparator4);
+
+            tslDatabase.Text = "Database";
+            tslDatabase.Visible = false;
+            toolStripMain.Items.Add(tslDatabase);
+
+            tstDatabase.Size = new Size(150, 27);
+            tstDatabase.Visible = false;
+            toolStripMain.Items.Add(tstDatabase);
+
+            ToolStripSeparator toolStripSeparatorDatabase = new ToolStripSeparator();
+            toolStripMain.Items.Add(toolStripSeparatorDatabase);
 
             tsbStart.ToolTipText = "Start";
             tsbStart.Text = "Start";
