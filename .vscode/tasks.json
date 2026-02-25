@@ -7,7 +7,7 @@
       "type": "process",
       "args": [
         "build",
-        "${workspaceFolder}/src/LightQueryProfiler.WebApp/LightQueryProfiler.WebApp.csproj",
+        "${workspaceFolder}/LightQueryProfiler.sln",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary"
       ],
@@ -19,21 +19,19 @@
       "type": "process",
       "args": [
         "publish",
-        "${workspaceFolder}/src/LightQueryProfiler.WebApp/LightQueryProfiler.WebApp.csproj",
+        "${workspaceFolder}/src/LightQueryProfiler.WinFormsApp/LightQueryProfiler.WinFormsApp.csproj",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary"
       ],
       "problemMatcher": "$msCompile"
     },
     {
-      "label": "watch",
+      "label": "test",
       "command": "dotnet",
       "type": "process",
       "args": [
-        "watch",
-        "run",
-        "--project",
-        "${workspaceFolder}/src/LightQueryProfiler.WebApp/LightQueryProfiler.WebApp.csproj"
+        "test",
+        "${workspaceFolder}/tests/LightQueryProfiler.Shared.UnitTests/LightQueryProfiler.Shared.UnitTests.csproj"
       ],
       "problemMatcher": "$msCompile"
     },
