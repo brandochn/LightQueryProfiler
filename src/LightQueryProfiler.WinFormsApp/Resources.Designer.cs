@@ -89,5 +89,16 @@ namespace LightQueryProfiler.WinFormsApp
                 return ResourceManager.GetString("ErrorTitle", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Unable to connect to the database. If connecting to Azure SQL Database, please ensure the 'Database' field is filled with the correct database name. Azure SQL Database does not allow connection to 'master' with regular user credentials..
+        /// </summary>
+        internal static string AzureSqlDatabaseConnectionError
+        {
+            get
+            {
+                return ResourceManager.GetString("AzureSqlDatabaseConnectionError", resourceCulture);
+            }
+        }
     }
 }

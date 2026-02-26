@@ -129,7 +129,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
             }
             set
             {
-                tscAuthentication.ComboBox.SelectedValue = value;
+                tscAuthentication.ComboBox.SelectedValue = value!;
             }
         }
 
@@ -240,7 +240,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
                     tslDatabase.Visible = true;
                     tstDatabase.Visible = true;
                 }
-                else
+                else // SQL Server Auth
                 {
                     tstUser.Visible = true;
                     tslUser.Visible = true;
@@ -248,8 +248,9 @@ namespace LightQueryProfiler.WinFormsApp.Views
                     tstPassWord.Visible = true;
                     toolStripSeparator3.Visible = true;
                     toolStripSeparator4.Visible = true;
-                    tslDatabase.Visible = false;
-                    tstDatabase.Visible = false;
+                    // Show Database field for SQL Server Auth too, as it may be needed for Azure SQL Database
+                    tslDatabase.Visible = true;
+                    tstDatabase.Visible = true;
                 }
             }
         }
@@ -444,12 +445,33 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         private void MainWindow_Load(object? sender, EventArgs e)
         {
+            LoadApplicationIcon();
             CreateBitmaps();
             CreateMainMenu();
             CreateMainToolBar();
             InitializeComboAuthentication();
             SetupDgvEvents();
             SetupWebBrowser();
+        }
+
+        /// <summary>
+        /// Loads the application icon for the main form
+        /// </summary>
+        private void LoadApplicationIcon()
+        {
+            try
+            {
+                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Icons", "light-query-profiler.ico");
+                if (File.Exists(iconPath))
+                {
+                    this.Icon = new Icon(iconPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                // If icon loading fails, continue without it - don't break the application
+                System.Diagnostics.Debug.WriteLine($"Failed to load application icon: {ex.Message}");
+            }
         }
 
         private void SelectConnectionMenu_Click(object? sender, EventArgs e)

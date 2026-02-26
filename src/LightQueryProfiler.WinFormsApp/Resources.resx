@@ -125,4 +125,8 @@
     <value>Error</value>
     <comment>Title for error message boxes</comment>
   </data>
+  <data name="AzureSqlDatabaseConnectionError" xml:space="preserve">
+    <value>Unable to connect to the database. If connecting to Azure SQL Database, please ensure the 'Database' field is filled with the correct database name. Azure SQL Database does not allow connection to 'master' with regular user credentials.</value>
+    <comment>Error message when connection fails due to missing or incorrect database name for Azure SQL Database</comment>
+  </data>
 </root>

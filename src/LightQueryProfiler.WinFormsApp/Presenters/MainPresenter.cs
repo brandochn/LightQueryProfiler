@@ -140,9 +140,9 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                 view.User = string.Empty;
                 view.Password = string.Empty;
             }
-            else if (authMode == Shared.Enums.AuthenticationMode.AzureSQLDatabase)
+            // Validate database name for Azure SQL Database authentication mode
+            if (authMode == Shared.Enums.AuthenticationMode.AzureSQLDatabase)
             {
-                // Azure SQL Database requires explicit database name
                 if (string.IsNullOrWhiteSpace(view.Database))
                 {
                     throw new InvalidOperationException(Resources.DatabaseRequiredForAzureSql);
@@ -152,7 +152,9 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             builder.TrustServerCertificate = true;
             builder.DataSource = view.Server;
 
-            // Initialize Database with default value if not set (except for Azure SQL Database)
+            // Initialize Database with default value if not set
+            // Note: For Azure SQL Database with SQL Server Auth, user should specify the database
+            // If "master" is used and connection fails, we'll detect it and provide guidance
             if (string.IsNullOrWhiteSpace(view.Database))
             {
                 view.Database = "master";
@@ -168,7 +170,16 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             // Determine database engine type
             // For Azure SQL Database auth mode, we can directly infer the engine type without detection.
             // For other auth modes (Windows Auth, SQL Server Auth), we need to query the server.
-            _currentEngineType = await GetDatabaseEngineTypeAsync(authMode, _applicationDbContext);
+            try
+            {
+                _currentEngineType = await GetDatabaseEngineTypeAsync(authMode, _applicationDbContext);
+            }
+            catch (SqlException ex) when (ex.Number == 4060 || ex.Number == 40615)
+            {
+                // Error 4060: Cannot open database
+                // Error 40615: Cannot open server (Azure SQL Database specific)
+                throw new InvalidOperationException(Resources.AzureSqlDatabaseConnectionError, ex);
+            }
 
             _xEventRepository = new XEventRepository(_applicationDbContext);
             _xEventRepository.SetEngineType(_currentEngineType);

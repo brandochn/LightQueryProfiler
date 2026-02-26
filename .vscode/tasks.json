@@ -9,21 +9,9 @@
         "build",
         "${workspaceFolder}/LightQueryProfiler.sln",
         "/property:GenerateFullPaths=true",
-        "/consoleloggerparameters:NoSummary"
+        "/consoleloggerparameters:NoSummary",
       ],
-      "problemMatcher": "$msCompile"
-    },
-    {
-      "label": "publish",
-      "command": "dotnet",
-      "type": "process",
-      "args": [
-        "publish",
-        "${workspaceFolder}/src/LightQueryProfiler.WinFormsApp/LightQueryProfiler.WinFormsApp.csproj",
-        "/property:GenerateFullPaths=true",
-        "/consoleloggerparameters:NoSummary"
-      ],
-      "problemMatcher": "$msCompile"
+      "problemMatcher": "$msCompile",
     },
     {
       "label": "test",
@@ -31,9 +19,9 @@
       "type": "process",
       "args": [
         "test",
-        "${workspaceFolder}/tests/LightQueryProfiler.Shared.UnitTests/LightQueryProfiler.Shared.UnitTests.csproj"
+        "${workspaceFolder}/tests/LightQueryProfiler.Shared.UnitTests/LightQueryProfiler.Shared.UnitTests.csproj",
       ],
-      "problemMatcher": "$msCompile"
+      "problemMatcher": "$msCompile",
     },
     {
       "label": "clean-publish-winforms",
@@ -45,14 +33,14 @@
         "-Recurse",
         "-Force",
         "-ErrorAction",
-        "SilentlyContinue"
+        "SilentlyContinue",
       ],
       "presentation": {
         "echo": true,
         "reveal": "silent",
         "focus": false,
-        "panel": "shared"
-      }
+        "panel": "shared",
+      },
     },
     {
       "label": "publish-winforms",
@@ -68,10 +56,10 @@
         "--self-contained",
         "false",
         "-o",
-        "C:\\light-query-profiler-win-x64"
+        "C:\\light-query-profiler-win-x64",
       ],
       "problemMatcher": "$msCompile",
-      "dependsOn": ["clean-publish-winforms"]
-    }
-  ]
+      "dependsOn": ["clean-publish-winforms"],
+    },
+  ],
 }
