@@ -15,9 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Icons\light-query-profiler.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="Icons\light-query-profiler.ico" />
   </ItemGroup>
 
   <ItemGroup>

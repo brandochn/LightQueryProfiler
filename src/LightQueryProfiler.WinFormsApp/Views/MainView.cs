@@ -66,6 +66,14 @@ namespace LightQueryProfiler.WinFormsApp.Views
             InitializeComponent();
             CreateEventHandlers();
             SqliteContext.InitializeDatabase();
+            // Hook Shown event to load icon when form is fully displayed
+            this.Shown += MainView_Shown;
+        }
+
+        private void MainView_Shown(object? sender, EventArgs e)
+        {
+            // Load icon when form is fully shown - this seems to work better for taskbar icon in .NET 10
+            LoadApplicationIcon();
         }
 
         public event EventHandler? OnClearEvents;
@@ -445,7 +453,6 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         private void MainWindow_Load(object? sender, EventArgs e)
         {
-            LoadApplicationIcon();
             CreateBitmaps();
             CreateMainMenu();
             CreateMainToolBar();
@@ -455,16 +462,27 @@ namespace LightQueryProfiler.WinFormsApp.Views
         }
 
         /// <summary>
-        /// Loads the application icon for the main form
+        /// Loads the application icon from embedded resources.
+        /// IMPORTANT: In .NET 10, this must be called in the Shown event (not constructor or Load)
+        /// for the icon to appear correctly in the Windows taskbar.
         /// </summary>
         private void LoadApplicationIcon()
         {
             try
             {
-                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Icons", "light-query-profiler.ico");
-                if (File.Exists(iconPath))
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+
+                // Load icon from embedded resource
+                // Resource name format: <RootNamespace>.<FolderPath>.<FileName>
+                var iconStream = assembly.GetManifestResourceStream("LightQueryProfiler.WinFormsApp.Icons.light-query-profiler.ico");
+
+                if (iconStream != null)
                 {
-                    this.Icon = new Icon(iconPath);
+                    using (iconStream)
+                    {
+                        this.Icon = new Icon(iconStream);
+                        this.ShowInTaskbar = true;
+                    }
                 }
             }
             catch (Exception ex)

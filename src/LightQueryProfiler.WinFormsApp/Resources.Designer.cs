@@ -100,5 +100,17 @@ namespace LightQueryProfiler.WinFormsApp
                 return ResourceManager.GetString("AzureSqlDatabaseConnectionError", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Icon similar to the application icon.
+        /// </summary>
+        internal static System.Drawing.Icon ApplicationIcon
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("ApplicationIcon", resourceCulture);
+                return ((System.Drawing.Icon)(obj));
+            }
+        }
     }
 }
