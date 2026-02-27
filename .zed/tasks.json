@@ -1,0 +1,73 @@
+[
+  {
+    "label": "build",
+    "command": "dotnet",
+    "args": [
+      "build",
+      "$ZED_WORKTREE_ROOT/LightQueryProfiler.sln",
+      "/property:GenerateFullPaths=true",
+      "/consoleloggerparameters:NoSummary",
+    ],
+    "reveal": "always",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "test",
+    "command": "dotnet",
+    "args": [
+      "test",
+      "$ZED_WORKTREE_ROOT/tests/LightQueryProfiler.Shared.UnitTests/LightQueryProfiler.Shared.UnitTests.csproj",
+    ],
+    "reveal": "always",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "clean-publish-winforms",
+    "command": "Remove-Item",
+    "args": [
+      "-Path",
+      "C:\\light-query-profiler-win-x64",
+      "-Recurse",
+      "-Force",
+      "-ErrorAction",
+      "SilentlyContinue",
+    ],
+    "shell": {
+      "program": "powershell.exe",
+    },
+    "reveal": "no_focus",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "publish-winforms",
+    "command": "dotnet",
+    "args": [
+      "publish",
+      "$ZED_WORKTREE_ROOT/src/LightQueryProfiler.WinFormsApp/LightQueryProfiler.WinFormsApp.csproj",
+      "-c",
+      "Release",
+      "-r",
+      "win-x64",
+      "--self-contained",
+      "false",
+      "-o",
+      "C:\\light-query-profiler-win-x64",
+    ],
+    "reveal": "always",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "publish-winforms-full",
+    "command": "Remove-Item -Path C:\\light-query-profiler-win-x64 -Recurse -Force -ErrorAction SilentlyContinue; dotnet publish $ZED_WORKTREE_ROOT/src/LightQueryProfiler.WinFormsApp/LightQueryProfiler.WinFormsApp.csproj -c Release -r win-x64 --self-contained false -o C:\\light-query-profiler-win-x64",
+    "shell": {
+      "program": "powershell.exe",
+    },
+    "reveal": "always",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+  },
+]
