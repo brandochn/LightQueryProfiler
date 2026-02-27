@@ -2,10 +2,9 @@ using LightQueryProfiler.Shared.Models;
 
 namespace LightQueryProfiler.Shared.UnitTests.Models
 {
-    [TestFixture]
     public class ProfilerEventTests
     {
-        [Test]
+        [Fact]
         public void GetEventKey_WhenEventSequenceExists_ReturnsSequenceBasedKey()
         {
             // Arrange
@@ -24,10 +23,10 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
             var key = profilerEvent.GetEventKey();
 
             // Assert
-            Assert.That(key, Is.EqualTo("seq:6"));
+            Assert.Equal("seq:6", key);
         }
 
-        [Test]
+        [Fact]
         public void GetEventKey_WhenOnlyActivityIdExists_ReturnsActivityBasedKey()
         {
             // Arrange
@@ -46,10 +45,10 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
             var key = profilerEvent.GetEventKey();
 
             // Assert
-            Assert.That(key, Is.EqualTo("activity:4E3CD74C-9F1E-4C82-8CBD-EFA7E66E4607-6"));
+            Assert.Equal("activity:4E3CD74C-9F1E-4C82-8CBD-EFA7E66E4607-6", key);
         }
 
-        [Test]
+        [Fact]
         public void GetEventKey_WhenNoUniqueIdentifiers_ReturnsFallbackKey()
         {
             // Arrange
@@ -67,10 +66,10 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
             var key = profilerEvent.GetEventKey();
 
             // Assert
-            Assert.That(key, Is.EqualTo("2022-05-20T14:33:57.766Z|existing_connection|51"));
+            Assert.Equal("2022-05-20T14:33:57.766Z|existing_connection|51", key);
         }
 
-        [Test]
+        [Fact]
         public void GetEventKey_WhenActionsIsNull_ReturnsFallbackKeyWithEmptySessionId()
         {
             // Arrange
@@ -85,10 +84,10 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
             var key = profilerEvent.GetEventKey();
 
             // Assert
-            Assert.That(key, Is.EqualTo("2022-05-20T14:33:57.766Z|test_event|"));
+            Assert.Equal("2022-05-20T14:33:57.766Z|test_event|", key);
         }
 
-        [Test]
+        [Fact]
         public void GetEventKey_DifferentEventSequences_ProduceDifferentKeys()
         {
             // Arrange
@@ -117,12 +116,12 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
             var key2 = event2.GetEventKey();
 
             // Assert
-            Assert.That(key1, Is.Not.EqualTo(key2));
-            Assert.That(key1, Is.EqualTo("seq:1"));
-            Assert.That(key2, Is.EqualTo("seq:2"));
+            Assert.NotEqual(key1, key2);
+            Assert.Equal("seq:1", key1);
+            Assert.Equal("seq:2", key2);
         }
 
-        [Test]
+        [Fact]
         public void GetEventKey_SameEventSequence_ProducesSameKey()
         {
             // Arrange
@@ -161,11 +160,11 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
             var key2 = event2.GetEventKey();
 
             // Assert
-            Assert.That(key1, Is.EqualTo(key2));
-            Assert.That(key1, Is.EqualTo("seq:5"));
+            Assert.Equal(key1, key2);
+            Assert.Equal("seq:5", key1);
         }
 
-        [Test]
+        [Fact]
         public void GetEventKey_PrioritizesEventSequenceOverActivityId()
         {
             // Arrange
@@ -184,7 +183,7 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
             var key = profilerEvent.GetEventKey();
 
             // Assert
-            Assert.That(key, Is.EqualTo("seq:10"));
+            Assert.Equal("seq:10", key);
         }
     }
 }

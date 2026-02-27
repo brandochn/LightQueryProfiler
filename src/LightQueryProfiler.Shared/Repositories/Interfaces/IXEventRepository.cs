@@ -1,4 +1,6 @@
-﻿namespace LightQueryProfiler.Shared.Repositories.Interfaces
+﻿using LightQueryProfiler.Shared.Enums;
+
+namespace LightQueryProfiler.Shared.Repositories.Interfaces
 {
     public interface IXEventRepository
     {
@@ -15,5 +17,7 @@
         public void DisconnectSession(string sessionName);
 
         public Task<string> GetXEventsDataAsync(string sessionName, string targetName);
+
+        public void SetEngineType(DatabaseEngineType engineType);
     }
 }

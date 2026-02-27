@@ -51,6 +51,10 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         private ToolStripTextBox tstPassWord = new ToolStripTextBox();
 
+        private ToolStripLabel tslDatabase = new ToolStripLabel();
+
+        private ToolStripTextBox tstDatabase = new ToolStripTextBox();
+
         private ToolStripTextBox tstSearch = new ToolStripTextBox();
 
         private ToolStripTextBox tstServer = new ToolStripTextBox();
@@ -62,6 +66,14 @@ namespace LightQueryProfiler.WinFormsApp.Views
             InitializeComponent();
             CreateEventHandlers();
             SqliteContext.InitializeDatabase();
+            // Hook Shown event to load icon when form is fully displayed
+            this.Shown += MainView_Shown;
+        }
+
+        private void MainView_Shown(object? sender, EventArgs e)
+        {
+            // Load icon when form is fully shown - this seems to work better for taskbar icon in .NET 10
+            LoadApplicationIcon();
         }
 
         public event EventHandler? OnClearEvents;
@@ -96,6 +108,10 @@ namespace LightQueryProfiler.WinFormsApp.Views
             }
         }
 
+        string? IMainView.Database { get => tstDatabase.Text; set => tstDatabase.Text = value; }
+
+        ToolStripTextBox IMainView.DatabaseTextBox => tstDatabase;
+
         string? IMainView.Password { get => tstPassWord.Text; set => tstPassWord.Text = value; }
 
         ToolStripTextBox IMainView.PasswordTextBox => tstPassWord;
@@ -121,7 +137,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
             }
             set
             {
-                tscAuthentication.ComboBox.SelectedValue = value;
+                tscAuthentication.ComboBox.SelectedValue = value!;
             }
         }
 
@@ -218,8 +234,10 @@ namespace LightQueryProfiler.WinFormsApp.Views
                     tstPassWord.Visible = false;
                     toolStripSeparator3.Visible = false;
                     toolStripSeparator4.Visible = false;
+                    tslDatabase.Visible = false;
+                    tstDatabase.Visible = false;
                 }
-                else
+                else if ((Shared.Enums.AuthenticationMode)selectedAuthenticationMode == Shared.Enums.AuthenticationMode.AzureSQLDatabase)
                 {
                     tstUser.Visible = true;
                     tslUser.Visible = true;
@@ -227,6 +245,20 @@ namespace LightQueryProfiler.WinFormsApp.Views
                     tstPassWord.Visible = true;
                     toolStripSeparator3.Visible = true;
                     toolStripSeparator4.Visible = true;
+                    tslDatabase.Visible = true;
+                    tstDatabase.Visible = true;
+                }
+                else // SQL Server Auth
+                {
+                    tstUser.Visible = true;
+                    tslUser.Visible = true;
+                    tslPassword.Visible = true;
+                    tstPassWord.Visible = true;
+                    toolStripSeparator3.Visible = true;
+                    toolStripSeparator4.Visible = true;
+                    // Show Database field for SQL Server Auth too, as it may be needed for Azure SQL Database
+                    tslDatabase.Visible = true;
+                    tstDatabase.Visible = true;
                 }
             }
         }
@@ -244,6 +276,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
             tsbClearFilters.Click += BtnClearFilters_Click;
             tsbClearSearch.Click += BtnClearSearch_Click;
             tsbFindNext.Click += BtnNextSearch_Click;
+            btnCopyToClipboard.Click += BtnCopyToClipboard_Click;
         }
 
         private void BtnClearSearch_Click(object? sender, EventArgs e)
@@ -324,6 +357,17 @@ namespace LightQueryProfiler.WinFormsApp.Views
             toolStripMain.Items.Add(tstPassWord);
 
             toolStripMain.Items.Add(toolStripSeparator4);
+
+            tslDatabase.Text = "Database";
+            tslDatabase.Visible = false;
+            toolStripMain.Items.Add(tslDatabase);
+
+            tstDatabase.Size = new Size(150, 27);
+            tstDatabase.Visible = false;
+            toolStripMain.Items.Add(tstDatabase);
+
+            ToolStripSeparator toolStripSeparatorDatabase = new ToolStripSeparator();
+            toolStripMain.Items.Add(toolStripSeparatorDatabase);
 
             tsbStart.ToolTipText = "Start";
             tsbStart.Text = "Start";
@@ -417,6 +461,37 @@ namespace LightQueryProfiler.WinFormsApp.Views
             SetupWebBrowser();
         }
 
+        /// <summary>
+        /// Loads the application icon from embedded resources.
+        /// IMPORTANT: In .NET 10, this must be called in the Shown event (not constructor or Load)
+        /// for the icon to appear correctly in the Windows taskbar.
+        /// </summary>
+        private void LoadApplicationIcon()
+        {
+            try
+            {
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+
+                // Load icon from embedded resource
+                // Resource name format: <RootNamespace>.<FolderPath>.<FileName>
+                var iconStream = assembly.GetManifestResourceStream("LightQueryProfiler.WinFormsApp.Icons.light-query-profiler.ico");
+
+                if (iconStream != null)
+                {
+                    using (iconStream)
+                    {
+                        this.Icon = new Icon(iconStream);
+                        this.ShowInTaskbar = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // If icon loading fails, continue without it - don't break the application
+                System.Diagnostics.Debug.WriteLine($"Failed to load application icon: {ex.Message}");
+            }
+        }
+
         private void SelectConnectionMenu_Click(object? sender, EventArgs e)
         {
             OnRecentConnectionsClick?.Invoke(this, EventArgs.Empty);
@@ -432,6 +507,30 @@ namespace LightQueryProfiler.WinFormsApp.Views
             webBrowser.AllowWebBrowserDrop = false;
             webBrowser.Dock = DockStyle.Fill;
             tabPageText.Controls.Add(webBrowser);
+        }
+
+        /// <summary>
+        /// Copies the rendered text content (without HTML) from the web browser to clipboard
+        /// </summary>
+        private void BtnCopyToClipboard_Click(object? sender, EventArgs e)
+        {
+            // Extract the rendered text from the HTML document instead of the raw HTML
+            string? textContent = webBrowser.Document?.Body?.InnerText;
+
+            if (string.IsNullOrWhiteSpace(textContent))
+            {
+                return;
+            }
+
+            try
+            {
+                Clipboard.SetText(textContent);
+            }
+            catch (Exception)
+            {
+                // Clipboard operations can fail in certain scenarios (e.g., clipboard in use)
+                // Silently ignore to avoid disrupting user experience
+            }
         }
     }
 }

@@ -14,6 +14,9 @@ namespace LightQueryProfiler.Shared.Extensions
                 case AuthenticationMode.SQLServerAuth:
                     return "SQL Server Authentication";
 
+                case AuthenticationMode.AzureSQLDatabase:
+                    return "Azure SQL Database";
+
                 default:
                     return string.Empty;
             }

@@ -28,6 +28,11 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         ToolStripComboBox AuthenticationComboBox { get; }
         IList<AuthenticationMode> AuthenticationModes { set; }
+        string? Database { get; set; }
+        /// <summary>
+        /// Gets the TextBox control for database name input
+        /// </summary>
+        ToolStripTextBox DatabaseTextBox { get; }
         string? Password { get; set; }
         ToolStripTextBox PasswordTextBox { get; }
         ToolStripButton PauseButton { get; }

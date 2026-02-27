@@ -3,18 +3,16 @@ using LightQueryProfiler.Shared.Services.Interfaces;
 
 namespace LightQueryProfiler.Shared.UnitTests.Services
 {
-    [TestFixture]
     public class ProfilerEventUniqueKeyIntegrationTests
     {
-        private IXEventService _eventService;
+        private readonly IXEventService _eventService;
 
-        [SetUp]
-        public void SetUp()
+        public ProfilerEventUniqueKeyIntegrationTests()
         {
             _eventService = new XEventService();
         }
 
-        [Test]
+        [Fact]
         public void ParseRealXml_AllEventsHaveUniqueKeys()
         {
             // Arrange
@@ -32,12 +30,11 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
             var uniqueKeys = new HashSet<string>(eventKeys);
 
             // Assert
-            Assert.That(events.Count, Is.GreaterThan(0), "Should have parsed events from XML");
-            Assert.That(uniqueKeys.Count, Is.EqualTo(events.Count),
-                $"All events should have unique keys. Total events: {events.Count}, Unique keys: {uniqueKeys.Count}");
+            Assert.True(events.Count > 0);
+            Assert.Equal(events.Count, uniqueKeys.Count);
         }
 
-        [Test]
+        [Fact]
         public void ParseRealXml_AllEventsHaveEventSequence()
         {
             // Arrange
@@ -55,12 +52,11 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
                 e.Actions?.ContainsKey("event_sequence") == true);
 
             // Assert
-            Assert.That(events.Count, Is.GreaterThan(0), "Should have parsed events from XML");
-            Assert.That(eventsWithSequence, Is.EqualTo(events.Count),
-                "All events should have event_sequence action");
+            Assert.True(events.Count > 0);
+            Assert.Equal(events.Count, eventsWithSequence);
         }
 
-        [Test]
+        [Fact]
         public void ParseRealXml_EventKeysAreSequenceBased()
         {
             // Arrange
@@ -77,12 +73,11 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
             var sequenceBasedKeys = events.Count(e => e.GetEventKey().StartsWith("seq:"));
 
             // Assert
-            Assert.That(events.Count, Is.GreaterThan(0), "Should have parsed events from XML");
-            Assert.That(sequenceBasedKeys, Is.EqualTo(events.Count),
-                "All events should use sequence-based keys");
+            Assert.True(events.Count > 0);
+            Assert.Equal(events.Count, sequenceBasedKeys);
         }
 
-        [Test]
+        [Fact]
         public void ParseRealXml_DifferentEventTypesWithSameSequenceDoNotCollide()
         {
             // Arrange
@@ -106,13 +101,12 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
             var duplicates = allKeys.GroupBy(k => k).Where(g => g.Count() > 1).ToList();
 
             // Assert
-            Assert.That(sqlBatchEvents.Count, Is.GreaterThan(0), "Should have sql_batch_completed events");
-            Assert.That(rpcEvents.Count, Is.GreaterThan(0), "Should have rpc_completed events");
-            Assert.That(duplicates.Count, Is.EqualTo(0),
-                $"No duplicate keys should exist. Found {duplicates.Count} duplicates");
+            Assert.True(sqlBatchEvents.Count > 0);
+            Assert.True(rpcEvents.Count > 0);
+            Assert.Empty(duplicates);
         }
 
-        [Test]
+        [Fact]
         public void ParseRealXml_EventSequenceValuesAreMonotonicallyIncreasing()
         {
             // Arrange
@@ -132,15 +126,14 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
                 .ToList();
 
             // Assert
-            Assert.That(sequences.Count, Is.GreaterThan(1), "Should have multiple events with sequences");
+            Assert.True(sequences.Count > 1);
 
             // Verify sequences are unique
             var uniqueSequences = new HashSet<ulong>(sequences);
-            Assert.That(uniqueSequences.Count, Is.EqualTo(sequences.Count),
-                "All event_sequence values should be unique");
+            Assert.Equal(sequences.Count, uniqueSequences.Count);
         }
 
-        [Test]
+        [Fact]
         public void ParseRealXml_EventKeysMatchExpectedFormat()
         {
             // Arrange
@@ -165,8 +158,7 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
                               key.StartsWith("activity:") ||
                               key.Contains("|");
 
-                Assert.That(isValid, Is.True,
-                    $"Event key '{key}' for event '{evt.Name}' does not match expected format");
+                Assert.True(isValid);
             }
         }
     }

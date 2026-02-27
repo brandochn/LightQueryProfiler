@@ -35,12 +35,45 @@ namespace LightQueryProfiler.Shared.Data
                         UserId NVARCHAR(100) NULL,
                         Password NVARCHAR(100) NULL,
                         IntegratedSecurity INTEGER NULL,
-                        CreationDate Date
+                        CreationDate Date,
+                        EngineType INTEGER NULL,
+                        AuthenticationMode INTEGER NULL
                     )";
 
             SqliteCommand createTable = new(tableCommand, db);
-
             await createTable.ExecuteReaderAsync();
+
+            // Migration: Add EngineType column if it doesn't exist (for existing databases)
+            const string addColumnCommand = @"
+                    SELECT COUNT(*) as ColumnExists
+                    FROM pragma_table_info('Connections')
+                    WHERE name='EngineType'";
+
+            SqliteCommand checkColumn = new(addColumnCommand, db);
+            var result = await checkColumn.ExecuteScalarAsync();
+
+            if (result != null && Convert.ToInt32(result) == 0)
+            {
+                const string alterTableCommand = "ALTER TABLE Connections ADD COLUMN EngineType INTEGER NULL";
+                SqliteCommand alterTable = new(alterTableCommand, db);
+                await alterTable.ExecuteNonQueryAsync();
+            }
+
+            // Migration: Add AuthenticationMode column if it doesn't exist (for existing databases)
+            const string addAuthModeColumnCommand = @"
+                    SELECT COUNT(*) as ColumnExists
+                    FROM pragma_table_info('Connections')
+                    WHERE name='AuthenticationMode'";
+
+            SqliteCommand checkAuthModeColumn = new(addAuthModeColumnCommand, db);
+            var authModeResult = await checkAuthModeColumn.ExecuteScalarAsync();
+
+            if (authModeResult != null && Convert.ToInt32(authModeResult) == 0)
+            {
+                const string alterTableAuthModeCommand = "ALTER TABLE Connections ADD COLUMN AuthenticationMode INTEGER NULL";
+                SqliteCommand alterTableAuthMode = new(alterTableAuthModeCommand, db);
+                await alterTableAuthMode.ExecuteNonQueryAsync();
+            }
         }
     }
 }

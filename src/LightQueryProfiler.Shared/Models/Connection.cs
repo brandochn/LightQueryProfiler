@@ -1,8 +1,10 @@
-﻿namespace LightQueryProfiler.Shared.Models
+﻿using LightQueryProfiler.Shared.Enums;
+
+namespace LightQueryProfiler.Shared.Models
 {
     public class Connection
     {
-        public Connection(int id, string initialCatalog, DateTime creationDate, string dataSource, bool integratedSecurity, string? password, string? userId)
+        public Connection(int id, string initialCatalog, DateTime creationDate, string dataSource, bool integratedSecurity, string? password, string? userId, DatabaseEngineType? engineType = null, AuthenticationMode authenticationMode = AuthenticationMode.WindowsAuth)
         {
             Id = id;
             InitialCatalog = initialCatalog;
@@ -11,6 +13,8 @@
             IntegratedSecurity = integratedSecurity;
             Password = password;
             UserId = userId;
+            EngineType = engineType;
+            AuthenticationMode = authenticationMode;
         }
 
         public int Id { get; }
@@ -26,5 +30,12 @@
         public string? Password { get; }
 
         public string? UserId { get; }
+
+        public DatabaseEngineType? EngineType { get; }
+
+        /// <summary>
+        /// Gets the authentication mode used for this connection
+        /// </summary>
+        public AuthenticationMode AuthenticationMode { get; }
     }
 }

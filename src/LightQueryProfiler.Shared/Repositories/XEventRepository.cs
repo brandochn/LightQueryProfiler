@@ -1,4 +1,5 @@
 ﻿using LightQueryProfiler.Shared.Data;
+using LightQueryProfiler.Shared.Enums;
 using LightQueryProfiler.Shared.Repositories.Interfaces;
 using Microsoft.Data.SqlClient;
 using System.Data;
@@ -9,10 +10,12 @@ namespace LightQueryProfiler.Shared.Repositories
     public class XEventRepository : IXEventRepository
     {
         private IApplicationDbContext _applicationDbContext;
+        private DatabaseEngineType _engineType;
 
         public XEventRepository(IApplicationDbContext applicationDbContext)
         {
             _applicationDbContext = applicationDbContext;
+            _engineType = DatabaseEngineType.SqlServer;
         }
 
         public IApplicationDbContext ApplicationDbContext
@@ -21,6 +24,15 @@ namespace LightQueryProfiler.Shared.Repositories
             {
                 _applicationDbContext = value;
             }
+        }
+
+        /// <summary>
+        /// Sets the database engine type to use appropriate queries
+        /// </summary>
+        /// <param name="engineType">The database engine type</param>
+        public void SetEngineType(DatabaseEngineType engineType)
+        {
+            _engineType = engineType;
         }
 
         public void CreateXEventSession(string sessionName, BaseProfilerSessionTemplate template)
@@ -67,12 +79,7 @@ namespace LightQueryProfiler.Shared.Repositories
                 DbCommand cmd = new SqlCommand();
                 cmd.Connection = connection;
                 cmd.CommandType = CommandType.Text;
-                cmd.CommandText = @$"IF EXISTS (SELECT TOP 1 1
-						                FROM sys.server_event_sessions
-						                WHERE name = @sessionName)
-					                BEGIN
-						                DROP EVENT SESSION [{sessionName}] ON SERVER
-					                END";
+                cmd.CommandText = GetDeleteSessionQuery(sessionName);
 
                 cmd.Parameters.Add(new SqlParameter()
                 {
@@ -102,9 +109,7 @@ namespace LightQueryProfiler.Shared.Repositories
             {
                 DbCommand cmd = new SqlCommand();
                 cmd.Connection = connection;
-                cmd.CommandText = @"SELECT target_data FROM sys.dm_xe_session_targets AS t
-                                    JOIN sys.dm_xe_sessions AS s ON t.event_session_address=s.address
-                                    WHERE s.name = @sessionName AND t.target_name = @targetName";
+                cmd.CommandText = GetXEventsDataQuery();
                 cmd.CommandType = CommandType.Text;
 
                 cmd.Parameters.Add(new SqlParameter()
@@ -153,12 +158,7 @@ namespace LightQueryProfiler.Shared.Repositories
                 DbCommand cmd = new SqlCommand();
                 cmd.Connection = connection;
                 cmd.CommandType = CommandType.Text;
-                cmd.CommandText = @$"IF EXISTS (SELECT TOP 1 1
-						                FROM sys.server_event_sessions
-						                WHERE name = @sessionName)
-					                BEGIN
-						                ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = STOP
-					                END";
+                cmd.CommandText = GetStopSessionQuery(sessionName);
 
                 cmd.Parameters.Add(new SqlParameter()
                 {
@@ -185,12 +185,7 @@ namespace LightQueryProfiler.Shared.Repositories
                 DbCommand cmd = new SqlCommand();
                 cmd.Connection = connection;
                 cmd.CommandType = CommandType.Text;
-                cmd.CommandText = @$"IF EXISTS (SELECT TOP 1 1
-						                FROM sys.server_event_sessions
-						                WHERE name = @sessionName)
-					                BEGIN
-						                ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = START
-					                END";
+                cmd.CommandText = GetStartSessionQuery(sessionName);
 
                 cmd.Parameters.Add(new SqlParameter()
                 {
@@ -217,12 +212,7 @@ namespace LightQueryProfiler.Shared.Repositories
                 DbCommand cmd = new SqlCommand();
                 cmd.Connection = connection;
                 cmd.CommandType = CommandType.Text;
-                cmd.CommandText = @$"IF EXISTS (SELECT TOP 1 1
-						                FROM sys.server_event_sessions
-						                WHERE name = @sessionName)
-					                BEGIN
-						                ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = STOP
-					                END";
+                cmd.CommandText = GetStopSessionQuery(sessionName);
 
                 cmd.Parameters.Add(new SqlParameter()
                 {
@@ -234,6 +224,92 @@ namespace LightQueryProfiler.Shared.Repositories
 
                 connection.Open();
                 cmd.ExecuteNonQuery();
+            }
+        }
+
+        private string GetDeleteSessionQuery(string sessionName)
+        {
+            if (_engineType == DatabaseEngineType.AzureSqlDatabase)
+            {
+                return @$"IF EXISTS (SELECT TOP 1 1
+                            FROM sys.database_event_sessions
+                            WHERE name = @sessionName)
+                        BEGIN
+                            DROP EVENT SESSION [{sessionName}] ON DATABASE
+                        END";
+            }
+            else
+            {
+                return @$"IF EXISTS (SELECT TOP 1 1
+                            FROM sys.server_event_sessions
+                            WHERE name = @sessionName)
+                        BEGIN
+                            DROP EVENT SESSION [{sessionName}] ON SERVER
+                        END";
+            }
+        }
+
+        private string GetXEventsDataQuery()
+        {
+            if (_engineType == DatabaseEngineType.AzureSqlDatabase)
+            {
+                return @"SELECT target_data
+                         FROM sys.dm_xe_database_session_targets AS t
+                         JOIN sys.dm_xe_database_sessions AS s
+                         ON t.event_session_address = s.address
+                         WHERE s.name = @sessionName AND t.target_name = @targetName";
+            }
+            else
+            {
+                return @"SELECT target_data
+                         FROM sys.dm_xe_session_targets AS t
+                         JOIN sys.dm_xe_sessions AS s
+                         ON t.event_session_address = s.address
+                         WHERE s.name = @sessionName AND t.target_name = @targetName";
+            }
+        }
+
+        private string GetStartSessionQuery(string sessionName)
+        {
+            if (_engineType == DatabaseEngineType.AzureSqlDatabase)
+            {
+                return @$"IF EXISTS (SELECT TOP 1 1
+                            FROM sys.database_event_sessions
+                            WHERE name = @sessionName)
+                        BEGIN
+                            ALTER EVENT SESSION [{sessionName}] ON DATABASE STATE = START
+                        END";
+            }
+            else
+            {
+                return @$"IF EXISTS (SELECT TOP 1 1
+                            FROM sys.server_event_sessions
+                            WHERE name = @sessionName)
+                        BEGIN
+                            ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = START
+                        END";
+            }
+        }
+
+        private string GetStopSessionQuery(string sessionName)
+        {
+            if (_engineType == DatabaseEngineType.AzureSqlDatabase)
+            {
+                return @$"IF EXISTS (SELECT TOP 1 1
+                            FROM sys.database_event_sessions
+                            WHERE name = @sessionName)
+                        BEGIN
+                            ALTER EVENT SESSION [{sessionName}] ON DATABASE STATE = STOP
+                        END";
+            }
+            else
+            {
+                return @$"IF EXISTS (SELECT TOP 1 1
+                            FROM sys.server_event_sessions
+                            WHERE name = @sessionName)
+                        BEGIN
+                            ALTER EVENT SESSION [{sessionName}] ON SERVER STATE = STOP
+                        END";
             }
         }
     }

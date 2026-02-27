@@ -7,35 +7,21 @@
       "type": "process",
       "args": [
         "build",
-        "${workspaceFolder}/src/LightQueryProfiler.WebApp/LightQueryProfiler.WebApp.csproj",
+        "${workspaceFolder}/LightQueryProfiler.sln",
         "/property:GenerateFullPaths=true",
-        "/consoleloggerparameters:NoSummary"
+        "/consoleloggerparameters:NoSummary",
       ],
-      "problemMatcher": "$msCompile"
+      "problemMatcher": "$msCompile",
     },
     {
-      "label": "publish",
+      "label": "test",
       "command": "dotnet",
       "type": "process",
       "args": [
-        "publish",
-        "${workspaceFolder}/src/LightQueryProfiler.WebApp/LightQueryProfiler.WebApp.csproj",
-        "/property:GenerateFullPaths=true",
-        "/consoleloggerparameters:NoSummary"
+        "test",
+        "${workspaceFolder}/tests/LightQueryProfiler.Shared.UnitTests/LightQueryProfiler.Shared.UnitTests.csproj",
       ],
-      "problemMatcher": "$msCompile"
-    },
-    {
-      "label": "watch",
-      "command": "dotnet",
-      "type": "process",
-      "args": [
-        "watch",
-        "run",
-        "--project",
-        "${workspaceFolder}/src/LightQueryProfiler.WebApp/LightQueryProfiler.WebApp.csproj"
-      ],
-      "problemMatcher": "$msCompile"
+      "problemMatcher": "$msCompile",
     },
     {
       "label": "clean-publish-winforms",
@@ -47,14 +33,14 @@
         "-Recurse",
         "-Force",
         "-ErrorAction",
-        "SilentlyContinue"
+        "SilentlyContinue",
       ],
       "presentation": {
         "echo": true,
         "reveal": "silent",
         "focus": false,
-        "panel": "shared"
-      }
+        "panel": "shared",
+      },
     },
     {
       "label": "publish-winforms",
@@ -70,10 +56,10 @@
         "--self-contained",
         "false",
         "-o",
-        "C:\\light-query-profiler-win-x64"
+        "C:\\light-query-profiler-win-x64",
       ],
       "problemMatcher": "$msCompile",
-      "dependsOn": ["clean-publish-winforms"]
-    }
-  ]
+      "dependsOn": ["clean-publish-winforms"],
+    },
+  ],
 }

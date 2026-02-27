@@ -1,7 +1,9 @@
 ﻿using LightQueryProfiler.Highlight.Configuration;
 using LightQueryProfiler.Highlight.Engines;
 using LightQueryProfiler.Shared.Data;
+using LightQueryProfiler.Shared.Enums;
 using LightQueryProfiler.Shared.Extensions;
+using LightQueryProfiler.Shared.Factories;
 using LightQueryProfiler.Shared.Models;
 using LightQueryProfiler.Shared.Repositories;
 using LightQueryProfiler.Shared.Repositories.Interfaces;
@@ -32,6 +34,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
 
         private readonly IMainView view;
         private IApplicationDbContext? _applicationDbContext;
+        private DatabaseEngineType _currentEngineType = DatabaseEngineType.SqlServer;
 
         private IRepository<Connection>? _connectionRepository;
         private IProfilerService? _profilerService;
@@ -125,26 +128,62 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             CurrentRows = [];
         }
 
-        private void Configure()
+        private async Task ConfigureAsync()
         {
             SqlConnectionStringBuilder builder = [];
             int selectedAuthenticationMode = Convert.ToInt32(view.SelectedAuthenticationMode);
-            if ((Shared.Enums.AuthenticationMode)selectedAuthenticationMode == Shared.Enums.AuthenticationMode.WindowsAuth)
+            var authMode = (Shared.Enums.AuthenticationMode)selectedAuthenticationMode;
+
+            if (authMode == Shared.Enums.AuthenticationMode.WindowsAuth)
             {
                 builder.IntegratedSecurity = true;
                 view.User = string.Empty;
                 view.Password = string.Empty;
             }
+            // Validate database name for Azure SQL Database authentication mode
+            if (authMode == Shared.Enums.AuthenticationMode.AzureSQLDatabase)
+            {
+                if (string.IsNullOrWhiteSpace(view.Database))
+                {
+                    throw new InvalidOperationException(Resources.DatabaseRequiredForAzureSql);
+                }
+            }
 
             builder.TrustServerCertificate = true;
             builder.DataSource = view.Server;
-            builder.InitialCatalog = "master";
+
+            // Initialize Database with default value if not set
+            // Note: For Azure SQL Database with SQL Server Auth, user should specify the database
+            // If "master" is used and connection fails, we'll detect it and provide guidance
+            if (string.IsNullOrWhiteSpace(view.Database))
+            {
+                view.Database = "master";
+            }
+
+            builder.InitialCatalog = view.Database;
             builder.UserID = view.User;
             builder.Password = view.Password;
             builder.ApplicationName = "LightQueryProfiler";
 
             _applicationDbContext = new ApplicationDbContext(builder.ConnectionString);
+
+            // Determine database engine type
+            // For Azure SQL Database auth mode, we can directly infer the engine type without detection.
+            // For other auth modes (Windows Auth, SQL Server Auth), we need to query the server.
+            try
+            {
+                _currentEngineType = await GetDatabaseEngineTypeAsync(authMode, _applicationDbContext);
+            }
+            catch (SqlException ex) when (ex.Number == 4060 || ex.Number == 40615)
+            {
+                // Error 4060: Cannot open database
+                // Error 40615: Cannot open server (Azure SQL Database specific)
+                throw new InvalidOperationException(Resources.AzureSqlDatabaseConnectionError, ex);
+            }
+
             _xEventRepository = new XEventRepository(_applicationDbContext);
+            _xEventRepository.SetEngineType(_currentEngineType);
+
             _xEventService = new XEventService();
             _profilerService = new ProfilerService(_xEventRepository, _xEventService);
             // Linux OS or Mac OSX don't have the Arial Font so here we use a specific font for each OS
@@ -453,19 +492,30 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     if (connection != null)
                     {
                         view.Server = connection.DataSource;
-                        if (connection.IntegratedSecurity)
+                        view.Database = connection.InitialCatalog;
+
+                        // Use stored engine type if available, otherwise infer from authentication mode
+                        _currentEngineType = connection.EngineType ?? InferEngineTypeFromAuthenticationMode(connection.AuthenticationMode);
+
+                        // Use stored AuthenticationMode from connection
+                        view.SelectedAuthenticationMode = connection.AuthenticationMode;
+                        view.AuthenticationComboBox.SelectedIndex = (int)connection.AuthenticationMode;
+
+                        if (connection.AuthenticationMode == Shared.Enums.AuthenticationMode.WindowsAuth)
                         {
                             view.User = string.Empty;
                             view.Password = string.Empty;
-                            view.SelectedAuthenticationMode = Shared.Enums.AuthenticationMode.WindowsAuth;
-                            view.AuthenticationComboBox.SelectedIndex = 0;
+                        }
+                        else if (connection.AuthenticationMode == Shared.Enums.AuthenticationMode.AzureSQLDatabase)
+                        {
+                            view.User = connection.UserId;
+                            view.Password = connection.Password;
+                            view.Database = connection.InitialCatalog;
                         }
                         else
                         {
                             view.User = connection.UserId;
                             view.Password = connection.Password;
-                            view.SelectedAuthenticationMode = Shared.Enums.AuthenticationMode.SQLServerAuth;
-                            view.AuthenticationComboBox.SelectedIndex = 1;
                         }
                     }
                 }
@@ -486,33 +536,75 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             view.SearchValue = string.Empty;
             currentIndex = 0;
             view.ProfilerGridView.ClearSelection();
+
+            // Optionally reset scroll position to top
+            if (view.ProfilerGridView.Rows.Count > 0)
+            {
+                view.ProfilerGridView.FirstDisplayedScrollingRowIndex = 0;
+            }
         }
 
         private void OnNextSearch(object? sender, EventArgs e)
         {
             try
             {
-                if (view.ProfilerGridView.Rows.Count > 0)
+                if (view.ProfilerGridView.Rows.Count == 0)
                 {
-                    if (string.IsNullOrEmpty(view.SearchValue))
-                    {
-                        MessageBox.Show("Please enter a search value.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
+                    MessageBox.Show("No data available to search.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
-                    currentIndex = FindGridValue(view.SearchValue, currentIndex);
-                    if (currentIndex != -1)
+                if (string.IsNullOrWhiteSpace(view.SearchValue))
+                {
+                    MessageBox.Show("Please enter a search value.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // Ensure currentIndex is within valid range
+                if (currentIndex < 0 || currentIndex >= view.ProfilerGridView.Rows.Count)
+                {
+                    currentIndex = 0;
+                }
+
+                int foundIndex = FindGridValue(view.SearchValue, currentIndex);
+
+                if (foundIndex != -1)
+                {
+                    view.ProfilerGridView.ClearSelection();
+
+                    // Safely set scroll position
+                    if (foundIndex < view.ProfilerGridView.Rows.Count)
                     {
-                        view.ProfilerGridView.ClearSelection();
-                        view.ProfilerGridView.FirstDisplayedScrollingRowIndex = currentIndex;
-                        view.ProfilerGridView.Rows[currentIndex].Selected = true;
-                        RowEnter(sender, new DataGridViewCellEventArgs(0, currentIndex));
-                        currentIndex++;
+                        view.ProfilerGridView.FirstDisplayedScrollingRowIndex = foundIndex;
+                        view.ProfilerGridView.Rows[foundIndex].Selected = true;
+                        RowEnter(sender, new DataGridViewCellEventArgs(0, foundIndex));
+                        currentIndex = foundIndex + 1;
+                    }
+                }
+                else
+                {
+                    // No more results found, offer to wrap around
+                    if (currentIndex > 0)
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "No more results found. Search from the beginning?",
+                            "Search",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question);
+
+                        if (result == DialogResult.Yes)
+                        {
+                            currentIndex = 0;
+                            OnNextSearch(sender, e); // Recursively search from start
+                        }
+                        else
+                        {
+                            currentIndex = 0;
+                        }
                     }
                     else
                     {
-                        MessageBox.Show("No more results found.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        currentIndex = 0;
+                        MessageBox.Show("No results found.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
             }
@@ -524,12 +616,12 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             }
         }
 
-        private void OnStart(object? sender, EventArgs e)
+        private async void OnStart(object? sender, EventArgs e)
         {
             try
             {
                 ClearResults();
-                Configure();
+                await ConfigureAsync();
                 StartProfiling();
                 ShowButtonsByAction("start");
                 _tokenSource = new CancellationTokenSource();
@@ -538,7 +630,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message, Resources.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 ShowButtonsByAction("default");
             }
         }
@@ -579,7 +671,9 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         {
             if (_connectionRepository != null && view.Server != null)
             {
-                var newConnection = new Connection(0, "master", DateTime.UtcNow, view.Server, view.User?.Length == 0, view.Password, view.User);
+                int selectedAuthenticationMode = Convert.ToInt32(view.SelectedAuthenticationMode);
+                var authMode = (Shared.Enums.AuthenticationMode)selectedAuthenticationMode;
+                var newConnection = new Connection(0, view.Database ?? "master", DateTime.UtcNow, view.Server, view.User?.Length == 0, view.Password, view.User, _currentEngineType, authMode);
                 var existingConnection = await _connectionRepository.Find(f => string.Equals(f.DataSource, newConnection.DataSource, StringComparison.InvariantCultureIgnoreCase)
                                                                 && string.Equals(f.UserId, newConnection.UserId, StringComparison.InvariantCultureIgnoreCase));
                 if (existingConnection == null)
@@ -591,13 +685,23 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
 
         private int FindGridValue(string searchValue, int startIndex)
         {
+            if (string.IsNullOrWhiteSpace(searchValue))
+            {
+                return -1;
+            }
+
+            if (startIndex < 0 || startIndex >= view.ProfilerGridView.Rows.Count)
+            {
+                return -1;
+            }
+
             for (int index = startIndex; index < view.ProfilerGridView.Rows.Count; index++)
             {
                 DataGridViewRow row = view.ProfilerGridView.Rows[index];
                 for (int i = 0; i < row.Cells.Count; i++)
                 {
-                    string celValue = row.Cells[i]?.Value?.ToString() ?? "";
-                    if (celValue.Contains(searchValue, StringComparison.OrdinalIgnoreCase))
+                    string cellValue = row.Cells[i]?.Value?.ToString() ?? string.Empty;
+                    if (cellValue.Contains(searchValue, StringComparison.OrdinalIgnoreCase))
                     {
                         return row.Index;
                     }
@@ -707,7 +811,8 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
         {
             if (_profilerService != null)
             {
-                _profilerService.StartProfiling(view.SessionName, new DefaultProfilerSessionTemplate());
+                var template = ProfilerSessionTemplateFactory.CreateTemplate(_currentEngineType);
+                _profilerService.StartProfiling(view.SessionName, template);
             }
         }
 
@@ -717,6 +822,42 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             {
                 _profilerService.StopProfiling(view.SessionName);
             }
+        }
+
+        /// <summary>
+        /// Infers the database engine type from the authentication mode.
+        /// Azure SQL Database authentication mode directly implies Azure SQL Database engine type.
+        /// Other modes default to SQL Server.
+        /// </summary>
+        /// <param name="authenticationMode">The authentication mode</param>
+        /// <returns>The inferred database engine type</returns>
+        private static DatabaseEngineType InferEngineTypeFromAuthenticationMode(Shared.Enums.AuthenticationMode authenticationMode)
+        {
+            return authenticationMode == Shared.Enums.AuthenticationMode.AzureSQLDatabase
+                ? DatabaseEngineType.AzureSqlDatabase
+                : DatabaseEngineType.SqlServer;
+        }
+
+        /// <summary>
+        /// Gets the database engine type by inferring from authentication mode when possible,
+        /// or detecting it by querying the server for other authentication modes.
+        /// </summary>
+        /// <param name="authenticationMode">The authentication mode</param>
+        /// <param name="dbContext">The database context to use for detection</param>
+        /// <returns>The database engine type</returns>
+        private static async Task<DatabaseEngineType> GetDatabaseEngineTypeAsync(
+            Shared.Enums.AuthenticationMode authenticationMode,
+            IApplicationDbContext dbContext)
+        {
+            if (authenticationMode == Shared.Enums.AuthenticationMode.AzureSQLDatabase)
+            {
+                // Azure SQL Database authentication mode directly implies the engine type
+                return DatabaseEngineType.AzureSqlDatabase;
+            }
+
+            // For other authentication modes, detect the engine type by querying the server
+            var engineDetector = new DatabaseEngineDetector();
+            return await engineDetector.DetectEngineTypeAsync(dbContext);
         }
     }
 }

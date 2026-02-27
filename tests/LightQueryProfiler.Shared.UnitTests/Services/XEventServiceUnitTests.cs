@@ -1,21 +1,18 @@
 ﻿using LightQueryProfiler.Shared.Services;
 using LightQueryProfiler.Shared.Services.Interfaces;
-using NUnit.Framework.Internal;
 
 namespace LightQueryProfiler.Shared.UnitTests.Services
 {
-    [TestFixture]
     public class XEventServiceUnitTests
     {
-        private IXEventService _eventService;
+        private readonly IXEventService _eventService;
 
-        [SetUp]
-        public void SetUp()
+        public XEventServiceUnitTests()
         {
             _eventService = new XEventService();
         }
 
-        [Test]
+        [Fact]
         public void Parse()
         {
             string sourceFile = "..\\..\\..\\TestFiles\\RingBufferTarget.xml";
