@@ -3,10 +3,9 @@ using LightQueryProfiler.Shared.Models;
 
 namespace LightQueryProfiler.Shared.UnitTests.Models
 {
-    [TestFixture]
     public class ConnectionTests
     {
-        [Test]
+        [Fact]
         public void Constructor_WhenCalledWithAllParameters_SetsPropertiesCorrectly()
         {
             // Arrange
@@ -33,18 +32,18 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
                 authMode);
 
             // Assert
-            Assert.That(connection.Id, Is.EqualTo(id));
-            Assert.That(connection.InitialCatalog, Is.EqualTo(initialCatalog));
-            Assert.That(connection.CreationDate, Is.EqualTo(creationDate));
-            Assert.That(connection.DataSource, Is.EqualTo(dataSource));
-            Assert.That(connection.IntegratedSecurity, Is.EqualTo(integratedSecurity));
-            Assert.That(connection.Password, Is.EqualTo(password));
-            Assert.That(connection.UserId, Is.EqualTo(userId));
-            Assert.That(connection.EngineType, Is.EqualTo(engineType));
-            Assert.That(connection.AuthenticationMode, Is.EqualTo(authMode));
+            Assert.Equal(id, connection.Id);
+            Assert.Equal(initialCatalog, connection.InitialCatalog);
+            Assert.Equal(creationDate, connection.CreationDate);
+            Assert.Equal(dataSource, connection.DataSource);
+            Assert.Equal(integratedSecurity, connection.IntegratedSecurity);
+            Assert.Equal(password, connection.Password);
+            Assert.Equal(userId, connection.UserId);
+            Assert.Equal(engineType, connection.EngineType);
+            Assert.Equal(authMode, connection.AuthenticationMode);
         }
 
-        [Test]
+        [Fact]
         public void Constructor_WhenAuthenticationModeNotProvided_DefaultsToWindowsAuth()
         {
             // Arrange
@@ -69,10 +68,10 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
                 engineType);
 
             // Assert
-            Assert.That(connection.AuthenticationMode, Is.EqualTo(AuthenticationMode.WindowsAuth));
+            Assert.Equal(AuthenticationMode.WindowsAuth, connection.AuthenticationMode);
         }
 
-        [Test]
+        [Fact]
         public void Constructor_WhenCreatingAzureSqlDatabaseConnection_StoresAuthenticationModeCorrectly()
         {
             // Arrange
@@ -99,12 +98,12 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
                 authMode);
 
             // Assert
-            Assert.That(connection.AuthenticationMode, Is.EqualTo(AuthenticationMode.AzureSQLDatabase));
-            Assert.That(connection.InitialCatalog, Is.EqualTo(initialCatalog));
-            Assert.That(connection.DataSource, Is.EqualTo(dataSource));
+            Assert.Equal(AuthenticationMode.AzureSQLDatabase, connection.AuthenticationMode);
+            Assert.Equal(initialCatalog, connection.InitialCatalog);
+            Assert.Equal(dataSource, connection.DataSource);
         }
 
-        [Test]
+        [Fact]
         public void Constructor_WhenCreatingSqlServerAuthConnection_StoresAuthenticationModeCorrectly()
         {
             // Arrange
@@ -131,11 +130,11 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
                 authMode);
 
             // Assert
-            Assert.That(connection.AuthenticationMode, Is.EqualTo(AuthenticationMode.SQLServerAuth));
-            Assert.That(connection.IntegratedSecurity, Is.EqualTo(integratedSecurity));
+            Assert.Equal(AuthenticationMode.SQLServerAuth, connection.AuthenticationMode);
+            Assert.Equal(integratedSecurity, connection.IntegratedSecurity);
         }
 
-        [Test]
+        [Fact]
         public void Constructor_WhenEngineTypeIsNull_AcceptsNullValue()
         {
             // Arrange
@@ -162,10 +161,10 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
                 authMode);
 
             // Assert
-            Assert.That(connection.EngineType, Is.Null);
+            Assert.Null(connection.EngineType);
         }
 
-        [Test]
+        [Fact]
         public void Constructor_WhenPasswordIsNull_AcceptsNullValue()
         {
             // Arrange
@@ -192,13 +191,14 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
                 authMode);
 
             // Assert
-            Assert.That(connection.Password, Is.Null);
-            Assert.That(connection.UserId, Is.Null);
+            Assert.Null(connection.Password);
+            Assert.Null(connection.UserId);
         }
 
-        [TestCase(AuthenticationMode.WindowsAuth)]
-        [TestCase(AuthenticationMode.SQLServerAuth)]
-        [TestCase(AuthenticationMode.AzureSQLDatabase)]
+        [Theory]
+        [InlineData(AuthenticationMode.WindowsAuth)]
+        [InlineData(AuthenticationMode.SQLServerAuth)]
+        [InlineData(AuthenticationMode.AzureSQLDatabase)]
         public void Constructor_WithDifferentAuthenticationModes_StoresCorrectMode(AuthenticationMode authMode)
         {
             // Arrange
@@ -224,7 +224,7 @@ namespace LightQueryProfiler.Shared.UnitTests.Models
                 authMode);
 
             // Assert
-            Assert.That(connection.AuthenticationMode, Is.EqualTo(authMode));
+            Assert.Equal(authMode, connection.AuthenticationMode);
         }
     }
 }

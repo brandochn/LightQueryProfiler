@@ -3,40 +3,39 @@ using LightQueryProfiler.Shared.Extensions;
 
 namespace LightQueryProfiler.Shared.UnitTests.Enums
 {
-    [TestFixture]
     public class AuthenticationModeTests
     {
-        [Test]
+        [Fact]
         public void AuthenticationMode_WindowsAuth_HasCorrectValue()
         {
             // Arrange & Act
             var mode = AuthenticationMode.WindowsAuth;
 
             // Assert
-            Assert.That((int)mode, Is.EqualTo(0));
+            Assert.Equal(0, (int)mode);
         }
 
-        [Test]
+        [Fact]
         public void AuthenticationMode_SQLServerAuth_HasCorrectValue()
         {
             // Arrange & Act
             var mode = AuthenticationMode.SQLServerAuth;
 
             // Assert
-            Assert.That((int)mode, Is.EqualTo(1));
+            Assert.Equal(1, (int)mode);
         }
 
-        [Test]
+        [Fact]
         public void AuthenticationMode_AzureSQLDatabase_HasCorrectValue()
         {
             // Arrange & Act
             var mode = AuthenticationMode.AzureSQLDatabase;
 
             // Assert
-            Assert.That((int)mode, Is.EqualTo(2));
+            Assert.Equal(2, (int)mode);
         }
 
-        [Test]
+        [Fact]
         public void GetString_WhenWindowsAuth_ReturnsCorrectString()
         {
             // Arrange
@@ -46,10 +45,10 @@ namespace LightQueryProfiler.Shared.UnitTests.Enums
             var result = mode.GetString();
 
             // Assert
-            Assert.That(result, Is.EqualTo("Windows Authentication"));
+            Assert.Equal("Windows Authentication", result);
         }
 
-        [Test]
+        [Fact]
         public void GetString_WhenSQLServerAuth_ReturnsCorrectString()
         {
             // Arrange
@@ -59,10 +58,10 @@ namespace LightQueryProfiler.Shared.UnitTests.Enums
             var result = mode.GetString();
 
             // Assert
-            Assert.That(result, Is.EqualTo("SQL Server Authentication"));
+            Assert.Equal("SQL Server Authentication", result);
         }
 
-        [Test]
+        [Fact]
         public void GetString_WhenAzureSQLDatabase_ReturnsCorrectString()
         {
             // Arrange
@@ -72,10 +71,10 @@ namespace LightQueryProfiler.Shared.UnitTests.Enums
             var result = mode.GetString();
 
             // Assert
-            Assert.That(result, Is.EqualTo("Azure SQL Database"));
+            Assert.Equal("Azure SQL Database", result);
         }
 
-        [Test]
+        [Fact]
         public void GetString_WhenInvalidValue_ReturnsEmptyString()
         {
             // Arrange
@@ -85,10 +84,10 @@ namespace LightQueryProfiler.Shared.UnitTests.Enums
             var result = mode.GetString();
 
             // Assert
-            Assert.That(result, Is.EqualTo(string.Empty));
+            Assert.Equal(string.Empty, result);
         }
 
-        [Test]
+        [Fact]
         public void AuthenticationMode_AllEnumValues_HaveUniqueIntegerValues()
         {
             // Arrange
@@ -96,11 +95,10 @@ namespace LightQueryProfiler.Shared.UnitTests.Enums
             var intValues = allModes.Select(m => (int)m).ToList();
 
             // Act & Assert
-            Assert.That(intValues.Distinct().Count(), Is.EqualTo(allModes.Count),
-                "All authentication modes should have unique integer values");
+            Assert.Equal(allModes.Count, intValues.Distinct().Count());
         }
 
-        [Test]
+        [Fact]
         public void AuthenticationMode_AllEnumValues_HaveNonEmptyStringRepresentation()
         {
             // Arrange
@@ -110,8 +108,7 @@ namespace LightQueryProfiler.Shared.UnitTests.Enums
             foreach (var mode in allModes)
             {
                 var stringValue = mode.GetString();
-                Assert.That(string.IsNullOrWhiteSpace(stringValue), Is.False,
-                    $"Authentication mode {mode} should have a non-empty string representation");
+                Assert.False(string.IsNullOrWhiteSpace(stringValue));
             }
         }
     }

@@ -6,22 +6,20 @@ using Moq;
 
 namespace LightQueryProfiler.Shared.UnitTests.Services
 {
-    [TestFixture]
     public class ProfilerServiceFilterTests
     {
-        private Mock<IXEventRepository> _mockRepository;
-        private Mock<IXEventService> _mockXEventService;
-        private ProfilerService _profilerService;
+        private readonly Mock<IXEventRepository> _mockRepository;
+        private readonly Mock<IXEventService> _mockXEventService;
+        private readonly ProfilerService _profilerService;
 
-        [SetUp]
-        public void SetUp()
+        public ProfilerServiceFilterTests()
         {
             _mockRepository = new Mock<IXEventRepository>();
             _mockXEventService = new Mock<IXEventService>();
             _profilerService = new ProfilerService(_mockRepository.Object, _mockXEventService.Object);
         }
 
-        [Test]
+        [Fact]
         public async Task GetLastEventsAsync_FiltersEventsWithLightQueryProfilerInClientAppName()
         {
             // Arrange
@@ -56,11 +54,11 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
             var result = await _profilerService.GetLastEventsAsync("TestSession");
 
             // Assert
-            Assert.That(result.Count, Is.EqualTo(1));
-            Assert.That(result[0].Actions?["client_app_name"], Is.EqualTo("SSMS"));
+            Assert.Single(result);
+            Assert.Equal("SSMS", result[0].Actions?["client_app_name"]);
         }
 
-        [Test]
+        [Fact]
         public async Task GetLastEventsAsync_FiltersEventsWithLightQueryProfilerInBatchText()
         {
             // Arrange
@@ -95,11 +93,11 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
             var result = await _profilerService.GetLastEventsAsync("TestSession");
 
             // Assert
-            Assert.That(result.Count, Is.EqualTo(1));
-            Assert.That(result[0].Fields?["batch_text"], Is.EqualTo("SELECT * FROM Users"));
+            Assert.Single(result);
+            Assert.Equal("SELECT * FROM Users", result[0].Fields?["batch_text"]);
         }
 
-        [Test]
+        [Fact]
         public async Task GetLastEventsAsync_FiltersEventsWithLightQueryProfilerInStatement()
         {
             // Arrange
@@ -134,11 +132,11 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
             var result = await _profilerService.GetLastEventsAsync("TestSession");
 
             // Assert
-            Assert.That(result.Count, Is.EqualTo(1));
-            Assert.That(result[0].Fields?["statement"], Is.EqualTo("EXEC sp_GetUsers"));
+            Assert.Single(result);
+            Assert.Equal("EXEC sp_GetUsers", result[0].Fields?["statement"]);
         }
 
-        [Test]
+        [Fact]
         public async Task GetLastEventsAsync_IsCaseInsensitive()
         {
             // Arrange
@@ -173,11 +171,11 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
             var result = await _profilerService.GetLastEventsAsync("TestSession");
 
             // Assert
-            Assert.That(result.Count, Is.EqualTo(1));
-            Assert.That(result[0].Actions?["client_app_name"], Is.EqualTo("SSMS"));
+            Assert.Single(result);
+            Assert.Equal("SSMS", result[0].Actions?["client_app_name"]);
         }
 
-        [Test]
+        [Fact]
         public async Task GetLastEventsAsync_DoesNotFilterEventsWithoutLightQueryProfiler()
         {
             // Arrange
@@ -214,10 +212,10 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
             var result = await _profilerService.GetLastEventsAsync("TestSession");
 
             // Assert
-            Assert.That(result.Count, Is.EqualTo(2));
+            Assert.Equal(2, result.Count);
         }
 
-        [Test]
+        [Fact]
         public async Task GetLastEventsAsync_HandlesNullFieldsAndActions()
         {
             // Arrange
@@ -240,7 +238,7 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
             var result = await _profilerService.GetLastEventsAsync("TestSession");
 
             // Assert
-            Assert.That(result.Count, Is.EqualTo(1));
+            Assert.Single(result);
         }
     }
 }

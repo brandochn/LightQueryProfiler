@@ -8,17 +8,16 @@ namespace LightQueryProfiler.Shared.UnitTests.Services;
 /// Note: DatabaseEngineDetector is now only used when AuthenticationMode is NOT AzureSQLDatabase.
 /// For AzureSQLDatabase auth mode, the engine type is directly inferred without detection.
 /// </summary>
-[TestFixture]
 public class DatabaseEngineDetectorTests
 {
-    [Test]
-    public void DetectEngineTypeAsync_WhenDbContextIsNull_ThrowsArgumentNullException()
+    [Fact]
+    public async Task DetectEngineTypeAsync_WhenDbContextIsNull_ThrowsArgumentNullException()
     {
         // Arrange
         var detector = new DatabaseEngineDetector();
 
         // Act & Assert
-        Assert.ThrowsAsync<ArgumentNullException>(async () =>
+        await Assert.ThrowsAsync<ArgumentNullException>(async () =>
             await detector.DetectEngineTypeAsync(null!));
     }
 
@@ -26,8 +25,9 @@ public class DatabaseEngineDetectorTests
     /// Tests the IsAzureSqlDatabase helper method.
     /// This is used to determine if special Azure SQL Database queries should be used.
     /// </summary>
-    [TestCase(DatabaseEngineType.AzureSqlDatabase, true)]
-    [TestCase(DatabaseEngineType.SqlServer, false)]
+    [Theory]
+    [InlineData(DatabaseEngineType.AzureSqlDatabase, true)]
+    [InlineData(DatabaseEngineType.SqlServer, false)]
     public void IsAzureSqlDatabase_WhenEngineTypeProvided_ReturnsExpectedResult(
         DatabaseEngineType engineType,
         bool expectedResult)
@@ -39,6 +39,6 @@ public class DatabaseEngineDetectorTests
         var result = detector.IsAzureSqlDatabase(engineType);
 
         // Assert
-        Assert.That(result, Is.EqualTo(expectedResult));
+        Assert.Equal(expectedResult, result);
     }
 }

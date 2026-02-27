@@ -4,10 +4,9 @@ using LightQueryProfiler.Shared.Models;
 
 namespace LightQueryProfiler.Shared.UnitTests.Factories;
 
-[TestFixture]
 public class ProfilerSessionTemplateFactoryTests
 {
-    [Test]
+    [Fact]
     public void CreateTemplate_WhenEngineTypeIsSqlServer_ReturnsDefaultProfilerSessionTemplate()
     {
         // Arrange
@@ -17,12 +16,12 @@ public class ProfilerSessionTemplateFactoryTests
         var result = ProfilerSessionTemplateFactory.CreateTemplate(engineType);
 
         // Assert
-        Assert.That(result, Is.Not.Null);
-        Assert.That(result, Is.TypeOf<DefaultProfilerSessionTemplate>());
-        Assert.That(result.Name, Is.EqualTo("Default"));
+        Assert.NotNull(result);
+        Assert.IsType<DefaultProfilerSessionTemplate>(result);
+        Assert.Equal("Default", result.Name);
     }
 
-    [Test]
+    [Fact]
     public void CreateTemplate_WhenEngineTypeIsAzureSqlDatabase_ReturnsAzureSqlProfilerSessionTemplate()
     {
         // Arrange
@@ -32,12 +31,12 @@ public class ProfilerSessionTemplateFactoryTests
         var result = ProfilerSessionTemplateFactory.CreateTemplate(engineType);
 
         // Assert
-        Assert.That(result, Is.Not.Null);
-        Assert.That(result, Is.TypeOf<AzureSqlProfilerSessionTemplate>());
-        Assert.That(result.Name, Is.EqualTo("Azure SQL Database Default"));
+        Assert.NotNull(result);
+        Assert.IsType<AzureSqlProfilerSessionTemplate>(result);
+        Assert.Equal("Azure SQL Database Default", result.Name);
     }
 
-    [Test]
+    [Fact]
     public void CreateTemplate_WhenSqlServerTemplate_CreatesSQLStatementWithOnServer()
     {
         // Arrange
@@ -49,13 +48,13 @@ public class ProfilerSessionTemplateFactoryTests
         var sqlStatement = template.CreateSQLStatement(sessionName);
 
         // Assert
-        Assert.That(sqlStatement, Does.Contain("ON SERVER"));
-        Assert.That(sqlStatement, Does.Contain("sys.server_event_sessions"));
-        Assert.That(sqlStatement, Does.Not.Contain("ON DATABASE"));
-        Assert.That(sqlStatement, Does.Not.Contain("sys.database_event_sessions"));
+        Assert.Contains("ON SERVER", sqlStatement);
+        Assert.Contains("sys.server_event_sessions", sqlStatement);
+        Assert.DoesNotContain("ON DATABASE", sqlStatement);
+        Assert.DoesNotContain("sys.database_event_sessions", sqlStatement);
     }
 
-    [Test]
+    [Fact]
     public void CreateTemplate_WhenAzureSqlDatabaseTemplate_CreatesSQLStatementWithOnDatabase()
     {
         // Arrange
@@ -67,13 +66,13 @@ public class ProfilerSessionTemplateFactoryTests
         var sqlStatement = template.CreateSQLStatement(sessionName);
 
         // Assert
-        Assert.That(sqlStatement, Does.Contain("ON DATABASE"));
-        Assert.That(sqlStatement, Does.Contain("sys.database_event_sessions"));
-        Assert.That(sqlStatement, Does.Not.Contain("ON SERVER"));
-        Assert.That(sqlStatement, Does.Not.Contain("sys.server_event_sessions"));
+        Assert.Contains("ON DATABASE", sqlStatement);
+        Assert.Contains("sys.database_event_sessions", sqlStatement);
+        Assert.DoesNotContain("ON SERVER", sqlStatement);
+        Assert.DoesNotContain("sys.server_event_sessions", sqlStatement);
     }
 
-    [Test]
+    [Fact]
     public void CreateTemplate_BothTemplates_ReturnSameDefaultView()
     {
         // Arrange
@@ -85,7 +84,7 @@ public class ProfilerSessionTemplateFactoryTests
         var azureView = azureTemplate.GetDefaultView();
 
         // Assert
-        Assert.That(sqlServerView, Is.EqualTo("DefaultProfilerViewTemplate"));
-        Assert.That(azureView, Is.EqualTo("DefaultProfilerViewTemplate"));
+        Assert.Equal("DefaultProfilerViewTemplate", sqlServerView);
+        Assert.Equal("DefaultProfilerViewTemplate", azureView);
     }
 }
