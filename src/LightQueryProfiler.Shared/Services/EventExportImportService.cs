@@ -44,10 +44,11 @@ public class EventExportImportService
 
         for (int rowIndex = 0; rowIndex < events.Count; rowIndex++)
         {
-            var eventData = new Dictionary<string, object?>(events[rowIndex]);
-
-            // Add row index for preserving order
-            eventData[RowIndexField] = rowIndex;
+            var eventData = new Dictionary<string, object?>(events[rowIndex])
+            {
+                // Add row index for preserving order
+                [RowIndexField] = rowIndex
+            };
 
             // If timestamp exists, also store it as metadata for alternative sorting
             if (eventData.TryGetValue("Timestamp", out var timestamp) && timestamp != null)
@@ -92,7 +93,7 @@ public class EventExportImportService
                 throw new JsonException("JSON file must contain an array of events");
             }
 
-            events = new List<Dictionary<string, object?>>();
+            events = [];
 
             foreach (var element in jsonDocument.RootElement.EnumerateArray())
             {
