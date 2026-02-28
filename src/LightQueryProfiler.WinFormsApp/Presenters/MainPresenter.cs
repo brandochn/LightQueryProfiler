@@ -10,6 +10,7 @@ using LightQueryProfiler.Shared.Repositories.Interfaces;
 using LightQueryProfiler.Shared.Services;
 using LightQueryProfiler.Shared.Services.Interfaces;
 using LightQueryProfiler.WinFormsApp.Data;
+using LightQueryProfiler.WinFormsApp.Helpers;
 using LightQueryProfiler.WinFormsApp.Views;
 using Microsoft.Data.SqlClient;
 
@@ -65,6 +66,8 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             view.OnClearSearch += OnClearSearch;
             view.OnFindNext += OnNextSearch;
             view.OnRecentConnectionsClick += OnRecentConnectionsClick;
+            view.OnExportEvents += OnExportEvents;
+            view.OnImportEvents += OnImportEvents;
             _connectionRepository = new ConnectionRepository(new SqliteContext());
             view.Show();
         }
@@ -821,6 +824,152 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             if (_profilerService != null)
             {
                 _profilerService.StopProfiling(view.SessionName);
+            }
+        }
+
+        private async void OnExportEvents(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (view.ProfilerGridView.Rows.Count == 0)
+                {
+                    MessageBox.Show("No events to export.", "Export Events", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                using var saveFileDialog = new SaveFileDialog
+                {
+                    Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                    Title = "Export Events to JSON",
+                    DefaultExt = "json",
+                    FileName = $"ProfilerEvents_{DateTime.Now:yyyyMMdd_HHmmss}.json"
+                };
+
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    var exportService = new EventExportImportService();
+                    var eventData = DataGridViewHelper.CreateEventDataFromGrid(
+                        view.ProfilerGridView.Rows,
+                        view.ProfilerGridView.Columns);
+
+                    await EventExportImportService.ExportEventsAsync(
+                        eventData,
+                        saveFileDialog.FileName);
+
+                    MessageBox.Show($"Events exported successfully to:\n{saveFileDialog.FileName}",
+                        "Export Completed",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                MessageBox.Show($"Export failed: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                MessageBox.Show($"Access denied: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (IOException ex)
+            {
+                MessageBox.Show($"File error: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Unexpected error during export: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void OnImportEvents(object? sender, EventArgs e)
+        {
+            try
+            {
+                using var openFileDialog = new OpenFileDialog
+                {
+                    Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                    Title = "Import Events from JSON",
+                    DefaultExt = "json"
+                };
+
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    // Confirm if there are existing events
+                    if (view.ProfilerGridView.Rows.Count > 0)
+                    {
+                        var result = MessageBox.Show(
+                            "This will clear existing events. Do you want to continue?",
+                            "Import Events",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question);
+
+                        if (result != DialogResult.Yes)
+                        {
+                            return;
+                        }
+                    }
+
+                    var importService = new EventExportImportService();
+                    var importResult = await EventExportImportService.ImportEventsAsync(openFileDialog.FileName);
+
+                    // Clear existing data
+                    ClearEvents();
+                    view.ProfilerGridView.Columns.Clear();
+                    CurrentRows.Clear();
+
+                    // Create columns dynamically based on imported data
+                    foreach (var columnName in importResult.ColumnNames)
+                    {
+                        var column = new DataGridViewTextBoxColumn
+                        {
+                            HeaderText = columnName,
+                            Name = columnName,
+                            DataPropertyName = columnName,
+                            ReadOnly = true
+                        };
+                        view.ProfilerGridView.Columns.Add(column);
+                    }
+
+                    // Add rows in the correct order
+                    foreach (var eventData in importResult.Events)
+                    {
+                        var rowValues = new List<object?>();
+                        foreach (var columnName in importResult.ColumnNames)
+                        {
+                            eventData.TryGetValue(columnName, out var value);
+                            rowValues.Add(value ?? string.Empty);
+                        }
+
+                        if (rowValues.Count > 0)
+                        {
+                            view.ProfilerGridView.Rows.Add(rowValues.ToArray());
+                        }
+                    }
+
+                    MessageBox.Show($"Successfully imported {importResult.Events.Count} events.",
+                        "Import Completed",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
+            }
+            catch (FileNotFoundException ex)
+            {
+                MessageBox.Show($"File not found: {ex.Message}", "Import Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (InvalidOperationException ex)
+            {
+                MessageBox.Show($"Import failed: {ex.Message}", "Import Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                MessageBox.Show($"Access denied: {ex.Message}", "Import Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (IOException ex)
+            {
+                MessageBox.Show($"File error: {ex.Message}", "Import Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Unexpected error during import: {ex.Message}", "Import Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

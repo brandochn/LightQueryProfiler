@@ -22,6 +22,10 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         event EventHandler OnStop;
 
+        event EventHandler OnExportEvents;
+
+        event EventHandler OnImportEvents;
+
         event EventHandler RowEnter;
 
         event EventHandler OnRecentConnectionsClick;

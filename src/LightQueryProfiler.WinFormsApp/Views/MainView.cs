@@ -96,6 +96,10 @@ namespace LightQueryProfiler.WinFormsApp.Views
 
         public event EventHandler? OnStop;
 
+        public event EventHandler? OnExportEvents;
+
+        public event EventHandler? OnImportEvents;
+
         public event EventHandler? RowEnter;
 
         ToolStripComboBox IMainView.AuthenticationComboBox => tscAuthentication;
@@ -295,11 +299,19 @@ namespace LightQueryProfiler.WinFormsApp.Views
             ToolStripMenuItem fileMenu = new ToolStripMenuItem("File");
             ToolStripMenuItem recentMenu = new ToolStripMenuItem("Recent");
             ToolStripMenuItem selectConnectionMenu = new ToolStripMenuItem("Select Connection");
+            ToolStripMenuItem exportMenu = new ToolStripMenuItem("Export Events...");
+            ToolStripMenuItem importMenu = new ToolStripMenuItem("Import Events...");
             ToolStripMenuItem exitMenu = new ToolStripMenuItem("Exit");
             ToolStripMenuItem helpMenu = new ToolStripMenuItem("Help");
             ToolStripMenuItem aboutMenu = new ToolStripMenuItem("About");
 
+            exportMenu.Click += ExportMenu_Click;
+            importMenu.Click += ImportMenu_Click;
             exitMenu.Click += ExitMenu_Click;
+
+            fileMenu.DropDownItems.Add(exportMenu);
+            fileMenu.DropDownItems.Add(importMenu);
+            fileMenu.DropDownItems.Add(new ToolStripSeparator());
             fileMenu.DropDownItems.Add(exitMenu);
 
             aboutMenu.Click += AboutMenu_Click;
@@ -439,6 +451,16 @@ namespace LightQueryProfiler.WinFormsApp.Views
         private void ExitMenu_Click(object? sender, EventArgs e)
         {
             Application.Exit();
+        }
+
+        private void ExportMenu_Click(object? sender, EventArgs e)
+        {
+            OnExportEvents?.Invoke(sender, e);
+        }
+
+        private void ImportMenu_Click(object? sender, EventArgs e)
+        {
+            OnImportEvents?.Invoke(sender, e);
         }
 
         private void InitializeComboAuthentication()
