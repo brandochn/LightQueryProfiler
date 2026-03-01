@@ -1,4 +1,9 @@
 # Light Query Profiler
+
+[![.NET](https://github.com/brandochn/LightQueryProfiler/actions/workflows/build-ci.yml/badge.svg)](https://github.com/brandochn/LightQueryProfiler/actions/workflows/build-ci.yml)
+[![License](https://img.shields.io/github/license/brandochn/LightQueryProfiler)](https://github.com/brandochn/LightQueryProfiler/blob/main/LICENSE.md)
+[![.NET Version](https://img.shields.io/badge/.NET-10.0-blue)](https://dotnet.microsoft.com/)
+
 > Light Query Profiler is a simple query profiler for SQL Server and Azure SQL Databases.
 
 ## Table of contents
