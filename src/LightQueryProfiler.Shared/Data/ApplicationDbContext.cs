@@ -9,6 +9,7 @@ namespace LightQueryProfiler.Shared.Data
 
         public ApplicationDbContext(string connectionString)
         {
+            ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
             _connectionString = connectionString;
         }
 
