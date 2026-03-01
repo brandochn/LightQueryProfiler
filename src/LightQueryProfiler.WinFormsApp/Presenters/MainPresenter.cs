@@ -247,11 +247,41 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                 view.ProfilerDetails.Items.Clear();
                 string[] row;
                 List<ListViewItem> items = [];
-                foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
+
+                // Use ProfilerViewTemplate if available, otherwise use actual grid columns
+                if (ProfilerViewTemplate != null && ProfilerViewTemplate.Columns.Count > 0)
                 {
-                    row = new string[] { c.Name, dataGridViewRow.Cells[c.Name].Value?.ToString() ?? string.Empty };
-                    ListViewItem listViewItem = new ListViewItem(row);
-                    items.Add(listViewItem);
+                    foreach (BaseColumnViewTemplate c in ProfilerViewTemplate.Columns)
+                    {
+                        // Check if column exists in the grid
+                        var columnIndex = -1;
+                        for (int i = 0; i < dataGridViewRow.Cells.Count; i++)
+                        {
+                            if (dataGridViewRow.Cells[i].OwningColumn?.Name == c.Name)
+                            {
+                                columnIndex = i;
+                                break;
+                            }
+                        }
+
+                        if (columnIndex >= 0)
+                        {
+                            row = new string[] { c.Name, dataGridViewRow.Cells[columnIndex].Value?.ToString() ?? string.Empty };
+                            ListViewItem listViewItem = new ListViewItem(row);
+                            items.Add(listViewItem);
+                        }
+                    }
+                }
+                else
+                {
+                    // Fallback: Use actual columns from the grid (for imported data)
+                    foreach (DataGridViewCell cell in dataGridViewRow.Cells)
+                    {
+                        var columnName = cell.OwningColumn?.Name ?? string.Empty;
+                        row = new string[] { columnName, cell.Value?.ToString() ?? string.Empty };
+                        ListViewItem listViewItem = new ListViewItem(row);
+                        items.Add(listViewItem);
+                    }
                 }
 
                 view.ProfilerDetails.Items.AddRange(items.ToArray());
@@ -661,12 +691,54 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             DataGridViewCellEventArgs? dataGridViewCellEventArgs = e as DataGridViewCellEventArgs;
             if (dataGridViewCellEventArgs != null)
             {
-                DataGridViewTextBoxCell cell = (DataGridViewTextBoxCell)view.ProfilerGridView.Rows[dataGridViewCellEventArgs.RowIndex].Cells["TextData"];
-                if (cell != null && _sqlHighlightService != null)
+                var row = view.ProfilerGridView.Rows[dataGridViewCellEventArgs.RowIndex];
+
+                // Initialize _sqlHighlightService if null (for imported events without profiling)
+                if (_sqlHighlightService == null)
                 {
-                    view.SqlTextArea = string.Format(htmlDocument, _sqlHighlightService.SyntaxHighlight(cell.Value?.ToString() ?? ""));
-                    CreateRowDetails(view.ProfilerGridView.Rows[dataGridViewCellEventArgs.RowIndex]);
+                    switch (Environment.OSVersion.Platform)
+                    {
+                        case PlatformID.Unix:
+                            _sqlHighlightService = new SqlHighlightService(new HtmlEngine(), new LinuxConfiguration());
+                            break;
+
+                        case PlatformID.MacOSX:
+                            _sqlHighlightService = new SqlHighlightService(new HtmlEngine(), new LinuxConfiguration());
+                            break;
+
+                        default:
+                            _sqlHighlightService = new SqlHighlightService(new HtmlEngine(), new DefaultConfiguration());
+                            break;
+                    }
                 }
+
+                // Check if TextData column exists before accessing it
+                var textDataColumnIndex = -1;
+                for (int i = 0; i < row.Cells.Count; i++)
+                {
+                    if (row.Cells[i].OwningColumn?.Name == "TextData")
+                    {
+                        textDataColumnIndex = i;
+                        break;
+                    }
+                }
+
+                if (textDataColumnIndex >= 0)
+                {
+                    DataGridViewTextBoxCell cell = (DataGridViewTextBoxCell)row.Cells[textDataColumnIndex];
+                    if (cell != null)
+                    {
+                        view.SqlTextArea = string.Format(htmlDocument, _sqlHighlightService.SyntaxHighlight(cell.Value?.ToString() ?? ""));
+                    }
+                }
+                else
+                {
+                    // No TextData column, clear SQL text area
+                    view.SqlTextArea = string.Empty;
+                }
+
+                // Always create row details regardless of TextData column existence
+                CreateRowDetails(row);
             }
         }
 
