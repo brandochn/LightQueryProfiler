@@ -7,6 +7,10 @@ using LightQueryProfiler.Shared.Services.Interfaces;
 
 namespace LightQueryProfiler.Shared.UnitTests.Services
 {
+    /// <summary>
+    /// Integration tests that require a local SQL Server instance.
+    /// These tests are skipped in CI environments.
+    /// </summary>
     public class ProfilerServiceUnitTests
     {
         private readonly IApplicationDbContext _applicationDbContext;
@@ -27,12 +31,14 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public void StartProfiling()
         {
             _profilerService.StartProfiling(sessionName, _baseProfilerSessionTemplate);
         }
 
         [Fact]
+        [Trait("Category", "Integration")]
         public async Task GetLastEventsAsync()
         {
             List<ProfilerEvent>? events;
@@ -47,6 +53,7 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
 
 
         [Fact]
+        [Trait("Category", "Integration")]
         public void StopProfiling()
         {
             _profilerService.StopProfiling(sessionName);

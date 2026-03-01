@@ -16,7 +16,7 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
         public void ParseRealXml_AllEventsHaveUniqueKeys()
         {
             // Arrange
-            string sourceFile = "..\\..\\..\\TestFiles\\RingBufferTarget.xml";
+            string sourceFile = Path.Combine("TestFiles", "RingBufferTarget.xml");
             if (!File.Exists(sourceFile))
             {
                 Assert.Fail("Test file not found: " + sourceFile);
@@ -38,7 +38,7 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
         public void ParseRealXml_AllEventsHaveEventSequence()
         {
             // Arrange
-            string sourceFile = "..\\..\\..\\TestFiles\\RingBufferTarget.xml";
+            string sourceFile = Path.Combine("TestFiles", "RingBufferTarget.xml");
             if (!File.Exists(sourceFile))
             {
                 Assert.Fail("Test file not found: " + sourceFile);
@@ -60,7 +60,7 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
         public void ParseRealXml_EventKeysAreSequenceBased()
         {
             // Arrange
-            string sourceFile = "..\\..\\..\\TestFiles\\RingBufferTarget.xml";
+            string sourceFile = Path.Combine("TestFiles", "RingBufferTarget.xml");
             if (!File.Exists(sourceFile))
             {
                 Assert.Fail("Test file not found: " + sourceFile);
@@ -81,7 +81,7 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
         public void ParseRealXml_DifferentEventTypesWithSameSequenceDoNotCollide()
         {
             // Arrange
-            string sourceFile = "..\\..\\..\\TestFiles\\RingBufferTarget.xml";
+            string sourceFile = Path.Combine("TestFiles", "RingBufferTarget.xml");
             if (!File.Exists(sourceFile))
             {
                 Assert.Fail("Test file not found: " + sourceFile);
@@ -110,7 +110,7 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
         public void ParseRealXml_EventSequenceValuesAreMonotonicallyIncreasing()
         {
             // Arrange
-            string sourceFile = "..\\..\\..\\TestFiles\\RingBufferTarget.xml";
+            string sourceFile = Path.Combine("TestFiles", "RingBufferTarget.xml");
             if (!File.Exists(sourceFile))
             {
                 Assert.Fail("Test file not found: " + sourceFile);
@@ -137,7 +137,7 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
         public void ParseRealXml_EventKeysMatchExpectedFormat()
         {
             // Arrange
-            string sourceFile = "..\\..\\..\\TestFiles\\RingBufferTarget.xml";
+            string sourceFile = Path.Combine("TestFiles", "RingBufferTarget.xml");
             if (!File.Exists(sourceFile))
             {
                 Assert.Fail("Test file not found: " + sourceFile);

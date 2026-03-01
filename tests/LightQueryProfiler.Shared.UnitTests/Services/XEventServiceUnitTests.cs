@@ -15,7 +15,7 @@ namespace LightQueryProfiler.Shared.UnitTests.Services
         [Fact]
         public void Parse()
         {
-            string sourceFile = "..\\..\\..\\TestFiles\\RingBufferTarget.xml";
+            string sourceFile = Path.Combine("TestFiles", "RingBufferTarget.xml");
             if (File.Exists(sourceFile) == false)
             {
                 throw new Exception("File not found");
