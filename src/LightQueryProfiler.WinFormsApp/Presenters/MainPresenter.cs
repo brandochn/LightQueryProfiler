@@ -750,7 +750,8 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                 var authMode = (Shared.Enums.AuthenticationMode)selectedAuthenticationMode;
                 var newConnection = new Connection(0, view.Database ?? "master", DateTime.UtcNow, view.Server, view.User?.Length == 0, view.Password, view.User, _currentEngineType, authMode);
                 var existingConnection = await _connectionRepository.Find(f => string.Equals(f.DataSource, newConnection.DataSource, StringComparison.InvariantCultureIgnoreCase)
-                                                                && string.Equals(f.UserId, newConnection.UserId, StringComparison.InvariantCultureIgnoreCase));
+                                                                && string.Equals(f.UserId, newConnection.UserId, StringComparison.InvariantCultureIgnoreCase)
+                                                                && string.Equals(f.InitialCatalog, newConnection.InitialCatalog, StringComparison.InvariantCultureIgnoreCase));
                 if (existingConnection == null)
                 {
                     await _connectionRepository.AddAsync(newConnection);
