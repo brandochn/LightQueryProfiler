@@ -87,4 +87,52 @@ public class ProfilerSessionTemplateFactoryTests
         Assert.Equal("DefaultProfilerViewTemplate", sqlServerView);
         Assert.Equal("DefaultProfilerViewTemplate", azureView);
     }
+
+    [Fact]
+    public void CreateTemplate_WhenAzureSqlDatabaseTemplate_UsesUsernameNotNtUsername()
+    {
+        // Arrange
+        var engineType = DatabaseEngineType.AzureSqlDatabase;
+        var sessionName = "TestSession";
+
+        // Act
+        var template = ProfilerSessionTemplateFactory.CreateTemplate(engineType);
+        var sqlStatement = template.CreateSQLStatement(sessionName);
+
+        // Assert
+        Assert.Contains("sqlserver.username", sqlStatement);
+        Assert.DoesNotContain("sqlserver.nt_username", sqlStatement);
+    }
+
+    [Fact]
+    public void CreateTemplate_WhenAzureSqlDatabaseTemplate_DoesNotUseServerPrincipalName()
+    {
+        // Arrange
+        var engineType = DatabaseEngineType.AzureSqlDatabase;
+        var sessionName = "TestSession";
+
+        // Act
+        var template = ProfilerSessionTemplateFactory.CreateTemplate(engineType);
+        var sqlStatement = template.CreateSQLStatement(sessionName);
+
+        // Assert
+        Assert.DoesNotContain("sqlserver.server_principal_name", sqlStatement);
+    }
+
+    [Fact]
+    public void CreateTemplate_WhenSqlServerTemplate_UsesNtUsernameAndServerPrincipalName()
+    {
+        // Arrange
+        var engineType = DatabaseEngineType.SqlServer;
+        var sessionName = "TestSession";
+
+        // Act
+        var template = ProfilerSessionTemplateFactory.CreateTemplate(engineType);
+        var sqlStatement = template.CreateSQLStatement(sessionName);
+
+        // Assert
+        Assert.Contains("sqlserver.nt_username", sqlStatement);
+        Assert.Contains("sqlserver.server_principal_name", sqlStatement);
+        Assert.DoesNotContain("sqlserver.username", sqlStatement);
+    }
 }

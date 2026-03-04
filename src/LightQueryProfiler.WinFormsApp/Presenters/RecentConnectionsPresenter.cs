@@ -1,4 +1,5 @@
-﻿using LightQueryProfiler.Shared.Models;
+﻿using LightQueryProfiler.Shared.Enums;
+using LightQueryProfiler.Shared.Models;
 using LightQueryProfiler.Shared.Repositories.Interfaces;
 using LightQueryProfiler.WinFormsApp.Views;
 using System.Data;
@@ -31,13 +32,32 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                 var row = view.RecentConnectionsGridView.Rows[dataGridViewCellEventArgs.RowIndex];
                 if (row != null)
                 {
+                    // Read EngineType and AuthenticationMode from grid cells
+                    DatabaseEngineType? engineType = null;
+                    var engineTypeValue = row.Cells[nameof(Connection.EngineType)].Value;
+                    if (engineTypeValue != null &&
+                        engineTypeValue != DBNull.Value &&
+                        !string.IsNullOrWhiteSpace(engineTypeValue.ToString()))
+                    {
+                        engineType = (DatabaseEngineType)Enum.Parse(typeof(DatabaseEngineType), engineTypeValue.ToString()!);
+                    }
+
+                    AuthenticationMode authenticationMode = AuthenticationMode.WindowsAuth;
+                    if (row.Cells[nameof(Connection.AuthenticationMode)].Value != null &&
+                        row.Cells[nameof(Connection.AuthenticationMode)].Value != DBNull.Value)
+                    {
+                        authenticationMode = (AuthenticationMode)Convert.ToInt32(row.Cells[nameof(Connection.AuthenticationMode)].Value);
+                    }
+
                     Connection connection = new(Convert.ToInt32(row.Cells[nameof(Connection.Id)].Value),
                                                 string.Empty,
                                                 Convert.ToDateTime(row.Cells["Creation Date"].Value),
                                                 row.Cells[nameof(Connection.DataSource)].Value?.ToString() ?? string.Empty,
                                                 Convert.ToBoolean(row.Cells[nameof(Connection.IntegratedSecurity)].Value),
                                                 row.Cells[nameof(Connection.Password)].Value?.ToString() ?? string.Empty,
-                                                row.Cells[nameof(Connection.UserId)].Value?.ToString() ?? string.Empty
+                                                row.Cells[nameof(Connection.UserId)].Value?.ToString() ?? string.Empty,
+                                                engineType,
+                                                authenticationMode
                                                 );
                     SetConnection(connection);
                     view.Form.DialogResult = DialogResult.OK;
@@ -126,6 +146,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             table.Columns.Add(nameof(Connection.IntegratedSecurity), typeof(bool));
             table.Columns.Add("Creation Date", typeof(DateTime));
             table.Columns.Add(nameof(Connection.EngineType), typeof(string));
+            table.Columns.Add(nameof(Connection.AuthenticationMode), typeof(int));
 
             if (connections?.Count > 0)
             {
@@ -139,6 +160,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     row[nameof(Connection.IntegratedSecurity)] = c.IntegratedSecurity;
                     row["Creation Date"] = c.CreationDate;
                     row[nameof(Connection.EngineType)] = c.EngineType;
+                    row[nameof(Connection.AuthenticationMode)] = (int)c.AuthenticationMode;
                     table.Rows.Add(row);
                 }
             }
