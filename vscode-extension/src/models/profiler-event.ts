@@ -68,6 +68,11 @@ export interface ProfilerEventRow {
   applicationName?: string;
 
   /**
+   * Client host name
+   */
+  hostname?: string;
+
+  /**
    * Database name
    */
   databaseName?: string;
@@ -148,6 +153,11 @@ export function toEventRow(event: ProfilerEvent): ProfilerEventRow {
       ? actions['client_app_name']
       : undefined;
 
+  const hostname =
+    typeof actions['client_hostname'] === 'string'
+      ? actions['client_hostname']
+      : undefined;
+
   const databaseName =
     typeof actions['database_name'] === 'string'
       ? actions['database_name']
@@ -170,6 +180,7 @@ export function toEventRow(event: ProfilerEvent): ProfilerEventRow {
     reads,
     writes,
     applicationName,
+    hostname,
     databaseName,
     loginName,
     sessionId,

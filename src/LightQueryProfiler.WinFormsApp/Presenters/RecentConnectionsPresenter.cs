@@ -1,4 +1,5 @@
 ﻿using LightQueryProfiler.Shared.Enums;
+using LightQueryProfiler.Shared.Extensions;
 using LightQueryProfiler.Shared.Models;
 using LightQueryProfiler.Shared.Repositories.Interfaces;
 using LightQueryProfiler.WinFormsApp.Views;
@@ -50,7 +51,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     }
 
                     Connection connection = new(Convert.ToInt32(row.Cells[nameof(Connection.Id)].Value),
-                                                string.Empty,
+                                                row.Cells[nameof(Connection.InitialCatalog)].Value?.ToString() ?? string.Empty,
                                                 Convert.ToDateTime(row.Cells["Creation Date"].Value),
                                                 row.Cells[nameof(Connection.DataSource)].Value?.ToString() ?? string.Empty,
                                                 Convert.ToBoolean(row.Cells[nameof(Connection.IntegratedSecurity)].Value),
@@ -133,6 +134,14 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     _event.Value = new string('*', _event.Value.ToString()?.Length ?? 0);
                     _event.FormattingApplied = true;
                 }
+                else if (view.RecentConnectionsGridView.Columns[_event.ColumnIndex].Name == nameof(Connection.AuthenticationMode) && _event.Value != null)
+                {
+                    if (int.TryParse(_event.Value.ToString(), out int modeValue))
+                    {
+                        _event.Value = ((AuthenticationMode)modeValue).GetString();
+                        _event.FormattingApplied = true;
+                    }
+                }
             }
         }
 
@@ -141,6 +150,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             DataTable table = new DataTable();
             table.Columns.Add(nameof(Connection.Id), typeof(int));
             table.Columns.Add(nameof(Connection.DataSource), typeof(string));
+            table.Columns.Add(nameof(Connection.InitialCatalog), typeof(string));
             table.Columns.Add(nameof(Connection.UserId), typeof(string));
             table.Columns.Add(nameof(Connection.Password), typeof(string));
             table.Columns.Add(nameof(Connection.IntegratedSecurity), typeof(bool));
@@ -155,6 +165,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     DataRow row = table.NewRow();
                     row[nameof(Connection.Id)] = c.Id;
                     row[nameof(Connection.DataSource)] = c.DataSource;
+                    row[nameof(Connection.InitialCatalog)] = (object?)c.InitialCatalog ?? DBNull.Value;
                     row[nameof(Connection.UserId)] = (object?)c.UserId ?? DBNull.Value;
                     row[nameof(Connection.Password)] = (object?)c.Password ?? DBNull.Value;
                     row[nameof(Connection.IntegratedSecurity)] = c.IntegratedSecurity;

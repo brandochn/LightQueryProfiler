@@ -1005,7 +1005,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
                     // Add rows in the correct order
                     foreach (var eventData in importResult.Events)
                     {
-                        var rowValues = new List<object?>();
+                        var rowValues = new List<object>();
                         foreach (var columnName in importResult.ColumnNames)
                         {
                             eventData.TryGetValue(columnName, out var value);

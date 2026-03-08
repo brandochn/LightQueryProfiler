@@ -336,6 +336,7 @@ export class ProfilerPanelProvider {
         reads: number;
         databaseName?: string;
         applicationName?: string;
+        hostname?: string;
         queryText?: string;
       }> = [];
 
@@ -349,6 +350,7 @@ export class ProfilerPanelProvider {
           reads: (event.fields?.logical_reads as number) || 0,
           databaseName: event.actions?.database_name as string | undefined,
           applicationName: event.actions?.client_app_name as string | undefined,
+          hostname: event.actions?.client_hostname as string | undefined,
           queryText: event.fields?.statement as string | undefined,
         };
 
@@ -769,11 +771,12 @@ export class ProfilerPanelProvider {
             <th>Reads</th>
             <th>Database</th>
             <th>Application</th>
+            <th>Host</th>
           </tr>
         </thead>
         <tbody id="eventsTableBody">
           <tr>
-            <td colspan="7" class="no-events">No events captured yet. Click Start to begin profiling.</td>
+            <td colspan="8" class="no-events">No events captured yet. Click Start to begin profiling.</td>
           </tr>
         </tbody>
       </table>
@@ -810,7 +813,7 @@ export class ProfilerPanelProvider {
       // Update auth mode visibility
       authMode.addEventListener('change', () => {
         const mode = parseInt(authMode.value);
-        const requiresCredentials = mode === 1 || mode === 3;
+        const requiresCredentials = mode === 1 || mode === 2;
 
         if (requiresCredentials) {
           usernameGroup.classList.remove('hidden');
@@ -824,6 +827,18 @@ export class ProfilerPanelProvider {
       // Trigger initial visibility update
       authMode.dispatchEvent(new Event('change'));
 
+      // Restore previously saved connection settings
+      const savedState = vscode.getState();
+      if (savedState) {
+        if (savedState.server) { serverInput.value = savedState.server; }
+        if (savedState.database) { databaseInput.value = savedState.database; }
+        if (typeof savedState.authenticationMode === 'number') {
+          authMode.value = String(savedState.authenticationMode);
+          authMode.dispatchEvent(new Event('change'));
+        }
+        if (savedState.username) { usernameInput.value = savedState.username; }
+      }
+
       // Button event handlers
       startBtn.addEventListener('click', () => {
         const settings = {
@@ -833,6 +848,14 @@ export class ProfilerPanelProvider {
           username: usernameInput.value.trim() || undefined,
           password: passwordInput.value || undefined
         };
+
+        // Persist connection settings (excluding password for security)
+        vscode.setState({
+          server: settings.server,
+          database: settings.database,
+          authenticationMode: settings.authenticationMode,
+          username: settings.username,
+        });
 
         vscode.postMessage({ command: 'start', data: settings });
       });
@@ -911,7 +934,7 @@ export class ProfilerPanelProvider {
         // Remove "no events" message if present
         if (eventsTableBody.children.length === 1 &&
             eventsTableBody.children[0].children.length === 1 &&
-            eventsTableBody.children[0].children[0].colSpan === 7) {
+            eventsTableBody.children[0].children[0].colSpan === 8) {
           eventsTableBody.innerHTML = '';
         }
 
@@ -923,7 +946,8 @@ export class ProfilerPanelProvider {
             '<td>' + formatNumber(event.cpuTime) + '</td>' +
             '<td>' + formatNumber(event.reads) + '</td>' +
             '<td>' + escapeHtml(event.databaseName || '-') + '</td>' +
-            '<td>' + escapeHtml(event.applicationName || '-') + '</td>';
+            '<td>' + escapeHtml(event.applicationName || '-') + '</td>' +
+            '<td>' + escapeHtml(event.hostname || '-') + '</td>';
 
           row.addEventListener('click', () => {
             selectRow(row, event);

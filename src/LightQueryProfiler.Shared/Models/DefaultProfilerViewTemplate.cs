@@ -28,6 +28,12 @@
 
             Columns.Add(new ColumnViewTemplate()
             {
+                Name = "HostName",
+                EventsMapped = new List<string>() { "client_hostname" }
+            });
+
+            Columns.Add(new ColumnViewTemplate()
+            {
                 Name = "NTUserName",
                 EventsMapped = new List<string>() { "nt_username" }
             });
