@@ -55,21 +55,9 @@ export async function activate(
     // Get server DLL path
     const serverDllPath = getServerDllPath(context, log);
     if (!serverDllPath) {
-      const message =
-        "Light Query Profiler server not found. Please run the setup script or check TROUBLESHOOTING.md";
+      const message = "Light Query Profiler server not found.";
       log.error(message);
-      await vscode.window
-        .showErrorMessage(message, "Open Troubleshooting")
-        .then((selection) => {
-          if (selection === "Open Troubleshooting") {
-            void vscode.commands.executeCommand(
-              "markdown.showPreview",
-              vscode.Uri.file(
-                path.join(context.extensionPath, "TROUBLESHOOTING.md"),
-              ),
-            );
-          }
-        });
+      await vscode.window.showErrorMessage(message, "Error");
       return;
     }
 
