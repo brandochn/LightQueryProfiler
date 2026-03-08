@@ -771,11 +771,12 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
             <th>Reads</th>
             <th>Database</th>
             <th>Application</th>
+            <th>Host</th>
           </tr>
         </thead>
         <tbody id="eventsTableBody">
           <tr>
-            <td colspan="7" style="text-align: center; color: var(--vscode-descriptionForeground);">
+            <td colspan="8" style="text-align: center; color: var(--vscode-descriptionForeground);">
               No events captured yet. Click Start to begin profiling.
             </td>
           </tr>
@@ -832,6 +833,14 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
           username: username.value.trim(),
           password: password.value,
         };
+
+        // Persist connection settings (excluding password for security)
+        vscode.setState({
+          server: settings.server,
+          database: settings.database,
+          authenticationMode: settings.authenticationMode,
+          username: settings.username,
+        });
 
         vscode.postMessage({
           command: 'start',
@@ -913,7 +922,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
         // Remove "no events" message if present
         if (eventsTableBody.children.length === 1 &&
             eventsTableBody.children[0].children.length === 1 &&
-            eventsTableBody.children[0].children[0].colSpan === 7) {
+            eventsTableBody.children[0].children[0].colSpan === 8) {
           eventsTableBody.innerHTML = '';
         }
 
@@ -925,7 +934,8 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
             '<td>' + formatNumber(event.cpuTime) + '</td>' +
             '<td>' + formatNumber(event.reads) + '</td>' +
             '<td>' + escapeHtml(event.databaseName || '-') + '</td>' +
-            '<td>' + escapeHtml(event.applicationName || '-') + '</td>';
+            '<td>' + escapeHtml(event.applicationName || '-') + '</td>' +
+            '<td>' + escapeHtml(event.hostname || '-') + '</td>';
 
           row.addEventListener('click', () => {
             selectRow(row, event);
@@ -953,7 +963,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
 
       function clearEvents() {
         eventsTableBody.innerHTML = '<tr>' +
-          '<td colspan="7" style="text-align: center; color: var(--vscode-descriptionForeground);">' +
+          '<td colspan="8" style="text-align: center; color: var(--vscode-descriptionForeground);">' +
           'No events captured yet. Click Start to begin profiling.' +
           '</td>' +
           '</tr>';
@@ -997,6 +1007,19 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
 
       // Initialize
       authMode.dispatchEvent(new Event('change'));
+
+      // Restore previously saved connection settings
+      const savedState = vscode.getState();
+      if (savedState) {
+        if (savedState.server) { server.value = savedState.server; }
+        if (savedState.database) { database.value = savedState.database; }
+        if (typeof savedState.authenticationMode === 'number') {
+          authMode.value = String(savedState.authenticationMode);
+          authMode.dispatchEvent(new Event('change'));
+        }
+        if (savedState.username) { username.value = savedState.username; }
+      }
+
       vscode.postMessage({ command: 'ready' });
     })();
   </script>
