@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="45" fill="#007ACC" stroke="#003F7F" stroke-width="2"/>
+
+  <!-- Database cylinder -->
+  <ellipse cx="50" cy="35" rx="20" ry="8" fill="#FFFFFF" opacity="0.9"/>
+  <rect x="30" y="35" width="40" height="25" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="50" cy="60" rx="20" ry="8" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="50" cy="35" rx="20" ry="8" fill="none" stroke="#003F7F" stroke-width="2"/>
+  <line x1="30" y1="35" x2="30" y2="60" stroke="#003F7F" stroke-width="2"/>
+  <line x1="70" y1="35" x2="70" y2="60" stroke="#003F7F" stroke-width="2"/>
+  <ellipse cx="50" cy="60" rx="20" ry="8" fill="none" stroke="#003F7F" stroke-width="2"/>
+
+  <!-- Profiler icon (chart/graph) -->
+  <g transform="translate(55, 45)">
+    <!-- Bar chart -->
+    <rect x="0" y="10" width="6" height="15" fill="#FFD700" stroke="#CC9900" stroke-width="1"/>
+    <rect x="8" y="5" width="6" height="20" fill="#FFD700" stroke="#CC9900" stroke-width="1"/>
+    <rect x="16" y="12" width="6" height="13" fill="#FFD700" stroke="#CC9900" stroke-width="1"/>
+    <rect x="24" y="8" width="6" height="17" fill="#FFD700" stroke="#CC9900" stroke-width="1"/>
+  </g>
+
+  <!-- Light rays effect -->
+  <path d="M 25 15 L 20 5 L 28 8 Z" fill="#FFD700" opacity="0.7"/>
+  <path d="M 75 15 L 80 5 L 72 8 Z" fill="#FFD700" opacity="0.7"/>
+</svg>
