@@ -1,0 +1,69 @@
+{
+  "name": "light-query-profiler",
+  "displayName": "Light Query Profiler",
+  "description": "SQL Server and Azure SQL Database query profiler for VS Code",
+  "version": "1.0.0",
+  "publisher": "light-query-profiler",
+  "icon": "media/icon.svg",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Debuggers"
+  ],
+  "keywords": [
+    "sql",
+    "sqlserver",
+    "azure",
+    "profiler",
+    "query",
+    "performance",
+    "database"
+  ],
+  "activationEvents": [
+    "onCommand:lightQueryProfiler.showProfiler"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "lightQueryProfiler.showProfiler",
+        "title": "Show SQL Profiler",
+        "category": "Light Query Profiler",
+        "icon": "$(database)"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./dist/test/runTest.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vscode/test-electron": "^2.3.8",
+    "eslint": "^8.56.0",
+    "glob": "^13.0.6",
+    "mocha": "^11.7.5",
+    "typescript": "^5.3.3",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "vscode-jsonrpc": "^8.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-repo/light-query-profiler"
+  },
+  "license": "MIT"
+}
