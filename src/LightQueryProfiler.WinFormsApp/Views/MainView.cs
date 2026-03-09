@@ -240,6 +240,7 @@ namespace LightQueryProfiler.WinFormsApp.Views
                     toolStripSeparator4.Visible = false;
                     tslDatabase.Visible = false;
                     tstDatabase.Visible = false;
+                    tstDatabase.Text = string.Empty;
                 }
                 else if ((Shared.Enums.AuthenticationMode)selectedAuthenticationMode == Shared.Enums.AuthenticationMode.AzureSQLDatabase)
                 {

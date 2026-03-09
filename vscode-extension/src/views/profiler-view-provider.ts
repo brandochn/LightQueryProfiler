@@ -734,7 +734,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
       <input type="text" id="server" placeholder="localhost" />
     </div>
 
-    <div class="form-group">
+    <div class="form-group" id="databaseGroup">
       <label for="database">Database</label>
       <input type="text" id="database" placeholder="master" />
     </div>
@@ -803,6 +803,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
       const password = document.getElementById('password');
       const usernameGroup = document.getElementById('usernameGroup');
       const passwordGroup = document.getElementById('passwordGroup');
+      const databaseGroup = document.getElementById('databaseGroup');
       const startBtn = document.getElementById('startBtn');
       const pauseBtn = document.getElementById('pauseBtn');
       const resumeBtn = document.getElementById('resumeBtn');
@@ -818,7 +819,16 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
       // Update credential fields visibility based on auth mode
       authMode.addEventListener('change', () => {
         const mode = parseInt(authMode.value);
-        const showCredentials = mode !== 0; // 0 = Windows Auth
+        const isWindowsAuth = mode === 0;
+        const showCredentials = !isWindowsAuth;
+
+        if (isWindowsAuth) {
+          databaseGroup.style.display = 'none';
+          (database as HTMLInputElement).value = '';
+        } else {
+          databaseGroup.style.display = 'block';
+        }
+
         usernameGroup.style.display = showCredentials ? 'block' : 'none';
         passwordGroup.style.display = showCredentials ? 'block' : 'none';
       });
