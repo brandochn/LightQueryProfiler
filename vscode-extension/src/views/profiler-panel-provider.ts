@@ -734,7 +734,7 @@ export class ProfilerPanelProvider {
       <input type="text" id="server" placeholder="localhost" value="localhost" />
     </div>
 
-    <div class="form-group">
+    <div class="form-group" id="databaseGroup">
       <label for="database">Database</label>
       <input type="text" id="database" placeholder="master" value="master" />
     </div>
@@ -795,6 +795,7 @@ export class ProfilerPanelProvider {
       const passwordInput = document.getElementById('password');
       const usernameGroup = document.getElementById('usernameGroup');
       const passwordGroup = document.getElementById('passwordGroup');
+      const databaseGroup = document.getElementById('databaseGroup');
       const startBtn = document.getElementById('startBtn');
       const pauseBtn = document.getElementById('pauseBtn');
       const resumeBtn = document.getElementById('resumeBtn');
@@ -813,7 +814,15 @@ export class ProfilerPanelProvider {
       // Update auth mode visibility
       authMode.addEventListener('change', () => {
         const mode = parseInt(authMode.value);
+        const isWindowsAuth = mode === 0;
         const requiresCredentials = mode === 1 || mode === 2;
+
+        if (isWindowsAuth) {
+          databaseGroup.classList.add('hidden');
+          databaseInput.value = '';
+        } else {
+          databaseGroup.classList.remove('hidden');
+        }
 
         if (requiresCredentials) {
           usernameGroup.classList.remove('hidden');
