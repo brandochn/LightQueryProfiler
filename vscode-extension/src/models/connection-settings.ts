@@ -87,6 +87,10 @@ export function toConnectionString(settings: ConnectionSettings): string {
     }
   }
 
+  // Tag the connection so the profiler backend can exclude its own queries
+  // (mirrors MainPresenter.ConfigureAsync: builder.ApplicationName = "LightQueryProfiler")
+  parts.push('Application Name=LightQueryProfiler');
+
   // Add timeout settings
   parts.push('Connect Timeout=30');
   parts.push('TrustServerCertificate=true');

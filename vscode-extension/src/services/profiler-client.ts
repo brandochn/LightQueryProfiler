@@ -142,7 +142,10 @@ export class ProfilerClient {
         void this.handleServerFailure(error);
       });
 
-      // Log server stderr output
+      // Log server stderr output and detect the READY signal
+      // NOTE: waitForServerReady() registers its own one-time listener that
+      // resolves on "READY" and then removes itself.  This persistent handler
+      // runs in parallel and logs every stderr line for diagnostics.
       this.serverProcess.stderr?.on('data', (data: Buffer) => {
         const message = data.toString().trim();
         if (message) {
@@ -161,6 +164,13 @@ export class ProfilerClient {
           void this.handleServerExit(code, signal);
         },
       );
+
+      // Wait for the server to emit the READY signal on stderr before
+      // attempting any JSON-RPC communication.  This prevents the
+      // "Pending response rejected since connection got disposed" error
+      // caused by calling startProfiling() before the .NET runtime has
+      // finished JIT-compiling and reached jsonRpc.StartListening().
+      await this.waitForServerReady(8000);
 
       // Create JSON-RPC connection
       this.connection = createMessageConnection(
@@ -327,6 +337,57 @@ export class ProfilerClient {
     this.log('Disposing profiler client...');
     this.state = ClientState.Disposed;
     void this.cleanup();
+  }
+
+  /**
+   * Waits until the server process emits the "READY" signal on stderr
+   * @param timeoutMs - Maximum milliseconds to wait before giving up (default: 8000)
+   * @returns Promise that resolves when READY is received or rejects on timeout/crash
+   * @remarks The .NET server writes "READY" to stderr immediately after
+   *   jsonRpc.StartListening() succeeds.  Waiting for this signal prevents
+   *   "Pending response rejected since connection got disposed" errors that
+   *   occur when JSON-RPC calls are sent before the server is ready to handle them.
+   */
+  private waitForServerReady(timeoutMs: number): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        cleanup();
+        reject(
+          new Error(
+            `Server did not become ready within ${timeoutMs}ms. ` +
+            'Check the Output panel for server startup errors.',
+          ),
+        );
+      }, timeoutMs);
+
+      const cleanup = (): void => {
+        clearTimeout(timer);
+        this.serverProcess?.stderr?.off('data', onData);
+        this.serverProcess?.off('exit', onExit);
+      };
+
+      const onData = (data: Buffer): void => {
+        if (data.toString().includes('READY')) {
+          this.log('Server ready signal received');
+          cleanup();
+          resolve();
+        }
+      };
+
+      const onExit = (code: number | null): void => {
+        cleanup();
+        reject(
+          new Error(
+            `Server process exited (code ${code ?? 'null'}) before becoming ready. ` +
+            'Check the Output panel for server startup errors.',
+          ),
+        );
+      };
+
+      this.serverProcess?.stderr?.on('data', onData);
+      this.serverProcess?.once('exit', onExit);
+    });
   }
 
   /**

@@ -48,22 +48,56 @@ export async function activate(
 
   log.info("Activating Light Query Profiler extension...");
 
-  try {
-    // Verify prerequisites
-    await verifyPrerequisites(log);
+  // IMPORTANT: Register the command IMMEDIATELY — before any awaits.
+  // VS Code may dispatch the command while activate() is still running its
+  // async initialization (getDotnetPath does execAsync ~200ms).  If the
+  // command handler is not yet registered at that point the invocation is
+  // silently swallowed, which is why the panel sometimes does not open.
+  // The handler checks whether the provider is ready and either shows the
+  // panel or queues a retry once initialization completes.
+  let activationReady = false;
+  const showProfilerCommand = vscode.commands.registerCommand(
+    "lightQueryProfiler.showProfiler",
+    () => {
+      log.info("Show SQL Profiler command executed");
+      if (state.profilerPanelProvider) {
+        state.profilerPanelProvider.showPanel();
+      } else if (!activationReady) {
+        // Extension is still initializing — wait for it then open the panel
+        log.info("Provider not ready yet, deferring panel open...");
+        const interval = setInterval(() => {
+          if (state.profilerPanelProvider) {
+            clearInterval(interval);
+            log.info("Provider ready, opening deferred panel");
+            state.profilerPanelProvider.showPanel();
+          }
+        }, 50);
+        // Safety: stop polling after 10 s regardless
+        setTimeout(() => clearInterval(interval), 10_000);
+      } else {
+        log.error("Profiler panel provider not initialized");
+        void vscode.window.showErrorMessage(
+          "Failed to open SQL Profiler. Please reload the window.",
+        );
+      }
+    },
+  );
+  context.subscriptions.push(showProfilerCommand);
 
-    // Get server DLL path
+  try {
+    // Get server DLL path and dotnet path in parallel (no duplicate dotnet check)
     const serverDllPath = getServerDllPath(context, log);
     if (!serverDllPath) {
       const message = "Light Query Profiler server not found.";
       log.error(message);
+      activationReady = true;
       await vscode.window.showErrorMessage(message, "Error");
       return;
     }
 
     log.info(`Server DLL path: ${serverDllPath}`);
 
-    // Get dotnet path
+    // Get dotnet path (single check — no duplicate exec)
     const dotnetPath = await getDotnetPath(log);
     log.info(`dotnet path: ${dotnetPath}`);
 
@@ -81,25 +115,8 @@ export async function activate(
       state.outputChannel,
     );
 
-    // Register commands
-    const showProfilerCommand = vscode.commands.registerCommand(
-      "lightQueryProfiler.showProfiler",
-      () => {
-        log.info("Show SQL Profiler command executed");
-        if (state.profilerPanelProvider) {
-          state.profilerPanelProvider.showPanel();
-        } else {
-          log.error("Profiler panel provider not initialized");
-          void vscode.window.showErrorMessage(
-            "Failed to open SQL Profiler. Please reload the window.",
-          );
-        }
-      },
-    );
-
-    // Register disposables
+    // Register remaining disposables
     context.subscriptions.push(
-      showProfilerCommand,
       state.outputChannel,
       {
         dispose: async () => {
@@ -119,13 +136,15 @@ export async function activate(
       },
     );
 
+    activationReady = true;
     log.info("Light Query Profiler extension activated successfully");
 
-    // Show welcome message
-    await vscode.window.showInformationMessage(
+    // Show welcome message (fire-and-forget — do not await so activate() returns immediately)
+    void vscode.window.showInformationMessage(
       "Light Query Profiler is ready! Run 'Show SQL Profiler' command to open the profiler.",
     );
   } catch (error) {
+    activationReady = true; // Stop the deferred-panel polling
     const errorMessage = error instanceof Error ? error.message : String(error);
     const stackTrace = error instanceof Error ? error.stack : undefined;
 
@@ -190,26 +209,6 @@ export async function deactivate(): Promise<void> {
     log.info("Light Query Profiler extension deactivated");
     state.outputChannel.dispose();
     state.outputChannel = undefined;
-  }
-}
-
-/**
- * Verifies that prerequisites are installed
- * @param log - Logger instance for diagnostic output
- * @throws Error if prerequisites are not met
- * @remarks Currently only checks for .NET runtime availability
- */
-async function verifyPrerequisites(log: Logger): Promise<void> {
-  // Check if .NET is available
-  try {
-    const dotnetPath = await getDotnetPath(log);
-    if (!dotnetPath) {
-      throw new Error(".NET runtime not found in PATH");
-    }
-  } catch (error) {
-    throw new Error(
-      ".NET 10 SDK or runtime is required. Please install from https://dotnet.microsoft.com/download",
-    );
   }
 }
 
