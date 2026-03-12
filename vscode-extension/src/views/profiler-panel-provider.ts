@@ -27,11 +27,24 @@ enum ProfilerState {
 }
 
 /**
+ * Filter criteria for profiler events — mirrors WinForms EventFilter model.
+ * All fields are optional substrings (case-insensitive contains match, AND logic).
+ */
+interface EventFilter {
+  eventClass: string;
+  textData: string;
+  applicationName: string;
+  ntUserName: string;
+  loginName: string;
+  databaseName: string;
+}
+
+/**
  * Message types sent from webview to extension
  */
 interface WebviewIncomingMessage {
-  command: "start" | "stop" | "pause" | "resume" | "clear";
-  data?: ConnectionSettings;
+  command: "start" | "stop" | "pause" | "resume" | "clear" | "applyFilters" | "clearFilters";
+  data?: ConnectionSettings | EventFilter;
 }
 
 /**
@@ -43,6 +56,7 @@ interface WebviewOutgoingMessage {
     | "updateEventCount"
     | "addEvents"
     | "clearEvents"
+    | "updateFilter"
     | "error";
   data?: unknown;
 }
@@ -66,7 +80,15 @@ export class ProfilerPanelProvider {
   private pollingInterval: NodeJS.Timeout | null = null;
   private readonly pollingIntervalMs = 900; // Match WinForms implementation
   private eventCount = 0;
-  private readonly seenEventKeys = new Set<string>();
+  private readonly sessionEventKeys = new Set<string>();
+  private eventFilter: EventFilter = {
+    eventClass: "",
+    textData: "",
+    applicationName: "",
+    ntUserName: "",
+    loginName: "",
+    databaseName: "",
+  };
 
   constructor(
     extensionUri: vscode.Uri,
@@ -159,6 +181,14 @@ export class ProfilerPanelProvider {
         case "clear":
           await this.handleClear();
           break;
+        case "applyFilters":
+          if (message.data && this.isEventFilter(message.data)) {
+            await this.handleApplyFilters(message.data);
+          }
+          break;
+        case "clearFilters":
+          await this.handleClearFilters();
+          break;
         default:
           this.logError(`Unknown command: ${String(message.command)}`);
       }
@@ -190,10 +220,13 @@ export class ProfilerPanelProvider {
       // Start profiling
       await this.profilerClient.startProfiling(this.sessionName, settings);
 
+      // Clear previous events before showing new session results
+      this.eventCount = 0;
+      this.sessionEventKeys.clear();
+      await this.postMessage({ command: "clearEvents" });
+
       // Update state
       this.state = ProfilerState.Running;
-      this.eventCount = 0;
-      this.seenEventKeys.clear();
       await this.updateState();
 
       // Start polling for events
@@ -205,8 +238,9 @@ export class ProfilerPanelProvider {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logError(`Failed to start profiling: ${errorMessage}`);
+      this.state = ProfilerState.Stopped;
+      await this.updateState();
       await this.showError(`Failed to start profiling: ${errorMessage}`);
-      throw error;
     }
   }
 
@@ -256,8 +290,6 @@ export class ProfilerPanelProvider {
     }
 
     this.state = ProfilerState.Stopped;
-    this.eventCount = 0;
-    this.seenEventKeys.clear();
     await this.updateState();
 
     this.log("Profiling stopped");
@@ -291,10 +323,57 @@ export class ProfilerPanelProvider {
   private async handleClear(): Promise<void> {
     this.log("Clearing events");
     this.eventCount = 0;
-    this.seenEventKeys.clear();
+    // sessionEventKeys intentionally NOT cleared — session cache must survive Clear
+    // so that already-seen ring_buffer events cannot re-appear after a clear.
     await this.postMessage({
       command: "clearEvents",
     });
+  }
+
+  /**
+   * Applies event filters — takes effect on the next poll cycle.
+   * Works regardless of profiling state (before start, while running, while paused, after stop).
+   * @param filter - Filter criteria to apply
+   */
+  private async handleApplyFilters(filter: EventFilter): Promise<void> {
+    this.eventFilter = filter;
+    this.log(
+      `Filters applied: ${JSON.stringify(filter)}`,
+    );
+    await this.postMessage({ command: "updateFilter", data: filter });
+  }
+
+  /**
+   * Clears all active filters. Future events are captured without any filter.
+   * Already-displayed events in the table are NOT removed.
+   */
+  private async handleClearFilters(): Promise<void> {
+    this.eventFilter = {
+      eventClass: "",
+      textData: "",
+      applicationName: "",
+      ntUserName: "",
+      loginName: "",
+      databaseName: "",
+    };
+    this.log("Filters cleared");
+    await this.postMessage({ command: "updateFilter", data: this.eventFilter });
+  }
+
+  /**
+   * Type guard — checks that a message data object is a valid EventFilter
+   */
+  private isEventFilter(data: unknown): data is EventFilter {
+    return (
+      typeof data === "object" &&
+      data !== null &&
+      "eventClass" in data &&
+      "textData" in data &&
+      "applicationName" in data &&
+      "ntUserName" in data &&
+      "loginName" in data &&
+      "databaseName" in data
+    );
   }
 
   /**
@@ -398,12 +477,31 @@ export class ProfilerPanelProvider {
           ? `seq:${seqKey}`
           : activityKey
             ? `activity:${activityKey}`
-            : `${displayEvent.startTime}|${displayEvent.eventClass}|${sessionId}`;
+            : `${event.timestamp ?? ""}|${event.name ?? ""}|${sessionId}`;
 
-        if (!this.seenEventKeys.has(eventKey)) {
-          this.seenEventKeys.add(eventKey);
-          newEvents.push(displayEvent);
+        if (this.sessionEventKeys.has(eventKey)) {
+          continue;
         }
+        this.sessionEventKeys.add(eventKey);
+
+        // Apply active filters (case-insensitive contains, AND logic).
+        // Filtered-out events are still added to sessionEventKeys so they won't
+        // re-surface if the filter is relaxed later in the same session.
+        const fil = this.eventFilter;
+        const contains = (value: string, term: string): boolean =>
+          !term || value.toLowerCase().includes(term.toLowerCase());
+        if (
+          !contains(displayEvent.eventClass,      fil.eventClass)      ||
+          !contains(displayEvent.textData,        fil.textData)        ||
+          !contains(displayEvent.applicationName, fil.applicationName) ||
+          !contains(displayEvent.ntUserName,      fil.ntUserName)      ||
+          !contains(displayEvent.loginName,       fil.loginName)       ||
+          !contains(displayEvent.databaseName,    fil.databaseName)
+        ) {
+          continue;
+        }
+
+        newEvents.push(displayEvent);
       }
 
       if (newEvents.length > 0) {
@@ -508,6 +606,16 @@ export class ProfilerPanelProvider {
   private getHtmlContent(webview: vscode.Webview): string {
     const authModes = getAllAuthenticationModes();
 
+    const hlJsUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, "media", "highlight.min.js"),
+    ).toString();
+    const hlSqlUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, "media", "highlight-sql.min.js"),
+    ).toString();
+    const hlCssUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, "media", "highlight-vs2015.min.css"),
+    ).toString();
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -515,6 +623,9 @@ export class ProfilerPanelProvider {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'unsafe-inline';">
   <title>Light Query Profiler</title>
+  <link rel="stylesheet" href="${hlCssUri}">
+  <script src="${hlJsUri}"></script>
+  <script src="${hlSqlUri}"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
 
@@ -929,6 +1040,7 @@ export class ProfilerPanelProvider {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      position: relative;
     }
 
     .events-table th.sortable {
@@ -938,6 +1050,26 @@ export class ProfilerPanelProvider {
     .events-table th.sortable:hover {
       color: var(--vscode-foreground);
       background-color: var(--vscode-list-hoverBackground);
+    }
+    .events-table th.sort-active {
+      color: var(--vscode-foreground);
+    }
+
+    /* Column resize handle */
+    .col-resizer {
+      position: absolute;
+      right: 0;
+      top: 0;
+      height: 100%;
+      width: 5px;
+      cursor: col-resize;
+      user-select: none;
+      z-index: 1;
+    }
+    .col-resizer:hover,
+    .col-resizer.resizing {
+      background-color: var(--vscode-focusBorder, #007acc);
+      opacity: 0.6;
     }
 
     .events-table td {
@@ -1005,12 +1137,16 @@ export class ProfilerPanelProvider {
       overflow: hidden;
       background-color: var(--vscode-editor-background);
       margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      height: clamp(160px, 28vh, 320px);
     }
 
     /* Tab bar */
     .details-tab-bar {
       display: flex;
       align-items: stretch;
+      flex-shrink: 0;
       background-color: var(--vscode-sideBarSectionHeader-background, rgba(128,128,128,0.08));
       border-bottom: 1px solid var(--vscode-panel-border);
     }
@@ -1056,7 +1192,13 @@ export class ProfilerPanelProvider {
 
     /* Tab content panes */
     .details-tab-content { display: none; }
-    .details-tab-content.active { display: block; }
+    .details-tab-content.active {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
 
     /* Text tab */
     .query-code {
@@ -1066,24 +1208,19 @@ export class ProfilerPanelProvider {
       line-height: 1.6;
       white-space: pre-wrap;
       word-break: break-word;
-      max-height: 200px;
+      flex: 1;
+      min-height: 0;
       overflow-y: auto;
       color: var(--vscode-editor-foreground, var(--vscode-foreground));
     }
-
-    /* Basic SQL keyword highlighting */
-    .sql-keyword { color: var(--vscode-symbolIcon-keywordForeground, #569cd6); font-weight: 600; }
-    .sql-string  { color: var(--vscode-symbolIcon-stringForeground, #ce9178); }
-    .sql-number  { color: var(--vscode-symbolIcon-numberForeground, #b5cea8); }
-    .sql-comment { color: var(--vscode-symbolIcon-operatorForeground, #6a9955); font-style: italic; }
 
     /* Details tab — key/value table */
     .details-kv-table {
       width: 100%;
       border-collapse: collapse;
       font-size: 12px;
-      max-height: 200px;
       display: block;
+      height: 100%;
       overflow-y: auto;
     }
     .details-kv-table td {
@@ -1141,6 +1278,151 @@ export class ProfilerPanelProvider {
     .error-banner-close:hover { opacity: 1; }
 
     .hidden { display: none !important; }
+
+    /* ── Search bar ─────────────────────────────────────────────────── */
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      background-color: var(--vscode-sideBarSectionHeader-background, rgba(128,128,128,0.05));
+      border-bottom: 1px solid var(--vscode-panel-border);
+      flex-shrink: 0;
+    }
+
+    .search-input {
+      flex: 1;
+      max-width: 280px;
+    }
+
+    .search-counter {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      white-space: nowrap;
+      min-width: 52px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .search-wrap-msg {
+      font-size: 11px;
+      color: var(--vscode-notificationsWarningIcon-foreground, #cca700);
+      white-space: nowrap;
+    }
+
+    /* Row match highlighting */
+    .search-match {
+      outline: 1px solid rgba(255, 200, 0, 0.35);
+      background-color: rgba(255, 200, 0, 0.10) !important;
+    }
+
+    .search-current {
+      outline: 2px solid rgba(255, 200, 0, 0.85) !important;
+      background-color: rgba(255, 200, 0, 0.28) !important;
+    }
+
+    /* ── Filter modal ────────────────────────────────────────────────── */
+    .filter-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .filter-modal-overlay.open {
+      display: flex;
+    }
+    .filter-modal {
+      background: var(--vscode-editor-background);
+      border: 1px solid var(--vscode-panel-border, #454545);
+      border-radius: 6px;
+      width: 360px;
+      max-width: 92vw;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+    }
+    .filter-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--vscode-panel-border, #454545);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .filter-modal-close {
+      background: none;
+      border: none;
+      color: var(--vscode-foreground);
+      cursor: pointer;
+      font-size: 13px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      line-height: 1;
+    }
+    .filter-modal-close:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(90,93,94,0.31));
+    }
+    .filter-modal-body {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .filter-field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .filter-field label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+      opacity: 0.85;
+    }
+    .filter-field input {
+      background: var(--vscode-input-background);
+      border: 1px solid var(--vscode-input-border, #3c3c3c);
+      color: var(--vscode-input-foreground);
+      padding: 5px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-family: inherit;
+      width: 100%;
+    }
+    .filter-field input::placeholder {
+      color: var(--vscode-input-placeholderForeground, #888);
+      font-style: italic;
+    }
+    .filter-field input:focus {
+      outline: 1px solid var(--vscode-focusBorder, #007fd4);
+      border-color: var(--vscode-focusBorder, #007fd4);
+    }
+    .filter-modal-footer {
+      display: flex;
+      gap: 8px;
+      padding: 11px 16px;
+      border-top: 1px solid var(--vscode-panel-border, #454545);
+    }
+
+    /* ── Filter active badge on Filters button ───────────────────────── */
+    #filterBtn {
+      position: relative;
+    }
+    #filterBtn.filter-active::after {
+      content: '';
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--vscode-notificationsWarningIcon-foreground, #f5a623);
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -1240,6 +1522,13 @@ export class ProfilerPanelProvider {
         <button class="btn btn-danger" id="clearBtn">
           <span class="btn-icon">🗑</span> Clear
         </button>
+        <div class="toolbar-divider"></div>
+        <button class="btn btn-secondary" id="filterBtn" title="Configure filters">
+          <span class="btn-icon">⧩</span> Filters
+        </button>
+        <button class="btn btn-secondary" id="clearFilterBtn" title="Clear all filters" disabled>
+          <span class="btn-icon">✕</span> Clear Filters
+        </button>
       </div>
     </div>
 
@@ -1269,6 +1558,16 @@ export class ProfilerPanelProvider {
         </div>
       </div>
 
+      <!-- Search bar -->
+      <div class="search-bar" id="searchBar">
+        <input class="search-input" id="searchInput" type="text" placeholder="Find in results…" autocomplete="off" spellcheck="false"/>
+        <span class="search-counter" id="searchCounter"></span>
+        <span class="search-wrap-msg" id="searchWrapMsg"></span>
+        <button class="btn btn-secondary" id="searchPrevBtn" title="Previous match (Shift+Enter)" style="font-size:11px;padding:3px 8px;">⬆ Prev</button>
+        <button class="btn btn-secondary" id="searchNextBtn" title="Next match (Enter)" style="font-size:11px;padding:3px 8px;">⬇ Next</button>
+        <button class="btn btn-secondary" id="searchClearBtn" title="Clear search" style="font-size:11px;padding:3px 8px;">✕</button>
+      </div>
+
       <div class="events-container" id="eventsContainer">
         <table class="events-table">
           <colgroup>
@@ -1276,21 +1575,21 @@ export class ProfilerPanelProvider {
           </colgroup>
           <thead>
             <tr>
-              <th>EventClass</th>
-              <th>TextData</th>
-              <th>ApplicationName</th>
-              <th>HostName</th>
-              <th>NTUserName</th>
-              <th>LoginName</th>
-              <th>ClientProcessID</th>
-              <th>SPID</th>
-              <th>StartTime</th>
-              <th>CPU</th>
-              <th>Reads</th>
-              <th>Writes</th>
-              <th class="sortable" id="thDuration" title="Sort by Duration">Duration (ms) ↕</th>
-              <th>DatabaseID</th>
-              <th>DatabaseName</th>
+              <th class="sortable" data-col="eventClass"      data-type="string">EventClass ↕</th>
+              <th class="sortable" data-col="textData"        data-type="string">TextData ↕</th>
+              <th class="sortable" data-col="applicationName" data-type="string">ApplicationName ↕</th>
+              <th class="sortable" data-col="hostName"        data-type="string">HostName ↕</th>
+              <th class="sortable" data-col="ntUserName"      data-type="string">NTUserName ↕</th>
+              <th class="sortable" data-col="loginName"       data-type="string">LoginName ↕</th>
+              <th class="sortable" data-col="clientProcessId" data-type="number">ClientProcessID ↕</th>
+              <th class="sortable" data-col="spid"            data-type="number">SPID ↕</th>
+              <th class="sortable" data-col="startTime"       data-type="string">StartTime ↕</th>
+              <th class="sortable" data-col="cpu"             data-type="number">CPU ↕</th>
+              <th class="sortable" data-col="reads"           data-type="number">Reads ↕</th>
+              <th class="sortable" data-col="writes"          data-type="number">Writes ↕</th>
+              <th class="sortable" data-col="duration"        data-type="number">Duration (ms) ↕</th>
+              <th class="sortable" data-col="databaseId"      data-type="number">DatabaseID ↕</th>
+              <th class="sortable" data-col="databaseName"    data-type="string">DatabaseName ↕</th>
             </tr>
           </thead>
           <tbody id="eventsTableBody">
@@ -1312,6 +1611,7 @@ export class ProfilerPanelProvider {
         <button class="details-tab active" id="tabText" data-tab="tabContentText">Text</button>
         <button class="details-tab" id="tabDetails" data-tab="tabContentDetails">Details</button>
         <div class="details-tab-spacer"></div>
+        <button class="btn btn-secondary" id="btnCopyText" title="Copy query text to clipboard" disabled style="font-size:11px;padding:3px 8px;margin:3px 4px;align-self:center;">&#128203; Copy</button>
         <button class="details-panel-close" id="queryPanelClose" title="Close">✕</button>
       </div>
       <!-- Text tab content -->
@@ -1327,6 +1627,46 @@ export class ProfilerPanelProvider {
     </div>
 
   </div><!-- /main-content -->
+
+  <!-- ── Filter Modal ─────────────────────────────────────────────────── -->
+  <div class="filter-modal-overlay" id="filterModalOverlay" role="dialog" aria-modal="true" aria-labelledby="filterModalTitle">
+    <div class="filter-modal">
+      <div class="filter-modal-header">
+        <span id="filterModalTitle">Filters</span>
+        <button class="filter-modal-close" id="filterCloseBtn" title="Close">✕</button>
+      </div>
+      <div class="filter-modal-body">
+        <div class="filter-field">
+          <label for="fEventClass">EventClass</label>
+          <input type="text" id="fEventClass" placeholder="Contains" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="filter-field">
+          <label for="fTextData">TextData</label>
+          <input type="text" id="fTextData" placeholder="Contains" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="filter-field">
+          <label for="fApplicationName">ApplicationName</label>
+          <input type="text" id="fApplicationName" placeholder="Contains" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="filter-field">
+          <label for="fNTUserName">NTUserName</label>
+          <input type="text" id="fNTUserName" placeholder="Contains" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="filter-field">
+          <label for="fLoginName">LoginName</label>
+          <input type="text" id="fLoginName" placeholder="Contains" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="filter-field">
+          <label for="fDatabaseName">DatabaseName</label>
+          <input type="text" id="fDatabaseName" placeholder="Contains" autocomplete="off" spellcheck="false" />
+        </div>
+      </div>
+      <div class="filter-modal-footer">
+        <button class="btn btn-primary"   id="filterApplyBtn"  disabled>Apply</button>
+        <button class="btn btn-secondary" id="filterCancelBtn">Close</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     (function() {
@@ -1374,14 +1714,50 @@ export class ProfilerPanelProvider {
       const statAvg          = document.getElementById('statAvg');
       const statMax          = document.getElementById('statMax');
       const statReads        = document.getElementById('statReads');
-      const thDuration       = document.getElementById('thDuration');
+      const eventsTableHead  = document.querySelector('.events-table thead');
+      const btnCopyText      = document.getElementById('btnCopyText');
+
+      const searchInput      = document.getElementById('searchInput');
+      const searchPrevBtn    = document.getElementById('searchPrevBtn');
+      const searchNextBtn    = document.getElementById('searchNextBtn');
+      const searchClearBtn   = document.getElementById('searchClearBtn');
+      const searchCounter    = document.getElementById('searchCounter');
+      const searchWrapMsg    = document.getElementById('searchWrapMsg');
+
+      // Filter controls
+      const filterBtn            = document.getElementById('filterBtn');
+      const clearFilterBtn       = document.getElementById('clearFilterBtn');
+      const filterModalOverlay   = document.getElementById('filterModalOverlay');
+      const filterCloseBtn       = document.getElementById('filterCloseBtn');
+      const filterApplyBtn       = document.getElementById('filterApplyBtn');
+      const filterCancelBtn      = document.getElementById('filterCancelBtn');
+      const fEventClass          = document.getElementById('fEventClass');
+      const fTextData            = document.getElementById('fTextData');
+      const fApplicationName     = document.getElementById('fApplicationName');
+      const fNTUserName          = document.getElementById('fNTUserName');
+      const fLoginName           = document.getElementById('fLoginName');
+      const fDatabaseName        = document.getElementById('fDatabaseName');
 
       // ── State ───────────────────────────────────────────────────────
       let currentState        = 'stopped';
       let selectedEventRow    = null;
       let allEvents           = [];        // flat array of event objects for stats
-      let sortDurDesc         = true;      // sort direction for duration column
+      let sortCol             = 'duration'; // active sort column key
+      let sortDesc            = true;       // sort direction
+      let currentTextData     = '';         // raw text for copy button
       let isStarting          = false;
+
+      // Filter state — mirrors EventFilter on the TypeScript side
+      let activeFilter = {
+        eventClass: '', textData: '', applicationName: '',
+        ntUserName: '', loginName: '', databaseName: '',
+      };
+
+      // Search state
+      let searchMatches       = [];   // array of <tr> elements matching the current query
+      let searchIndex         = -1;   // index into searchMatches of the currently highlighted row
+      let searchAtWrapEnd     = false; // true when user just hit next at last match (pending wrap forward)
+      let searchAtWrapStart   = false; // true when user just hit prev at first match (pending wrap back)
 
       // ── Auth mode visibility ────────────────────────────────────────
       function updateAuthVisibility() {
@@ -1449,6 +1825,12 @@ export class ProfilerPanelProvider {
         }
       });
 
+      btnCopyText.addEventListener('click', () => {
+        if (currentTextData) {
+          navigator.clipboard.writeText(currentTextData).catch(() => {});
+        }
+      });
+
       // ── Tab switching ───────────────────────────────────────────────
       function switchTab(tab) {
         [tabText, tabDetails].forEach(t => t.classList.remove('active'));
@@ -1460,17 +1842,89 @@ export class ProfilerPanelProvider {
       tabText.addEventListener('click',    () => switchTab(tabText));
       tabDetails.addEventListener('click', () => switchTab(tabDetails));
 
-      // Sort by duration
-      thDuration.addEventListener('click', () => {
-        sortDurDesc = !sortDurDesc;
-        thDuration.textContent = 'Duration (ms) ' + (sortDurDesc ? '↓' : '↑');
+      // ── Generic column sort ─────────────────────────────────────────
+      eventsTableHead.addEventListener('click', (e) => {
+        const th = e.target.closest('th.sortable');
+        if (!th) { return; }
+        const col  = th.dataset.col;
+        const type = th.dataset.type || 'string';
+        if (sortCol === col) {
+          sortDesc = !sortDesc;
+        } else {
+          sortCol  = col;
+          sortDesc = true;
+        }
+        // Update all th indicators
+        eventsTableHead.querySelectorAll('th.sortable').forEach(h => {
+          const base = h.textContent.replace(/ [↕↓↑]$/, '');
+          h.textContent = base + ' ↕';
+          h.classList.remove('sort-active');
+        });
+        const base = th.textContent.replace(/ [↕↓↑]$/, '');
+        th.textContent = base + ' ' + (sortDesc ? '↓' : '↑');
+        th.classList.add('sort-active');
+        // Re-inject resize handles (textContent clobbers them)
+        eventsTableHead.querySelectorAll('th').forEach(h => {
+          if (!h.querySelector('.col-resizer')) {
+            const d = document.createElement('div');
+            d.className = 'col-resizer';
+            h.appendChild(d);
+          }
+        });
+        // Sort rows
         const rows = Array.from(eventsTableBody.querySelectorAll('tr[data-duration]'));
         rows.sort((a, b) => {
-          const va = parseFloat(a.dataset.duration || '0');
-          const vb = parseFloat(b.dataset.duration || '0');
-          return sortDurDesc ? vb - va : va - vb;
+          const va = a.dataset[col] || '';
+          const vb = b.dataset[col] || '';
+          let cmp;
+          if (type === 'number') {
+            cmp = (parseFloat(va) || 0) - (parseFloat(vb) || 0);
+          } else {
+            cmp = va.localeCompare(vb);
+          }
+          return sortDesc ? -cmp : cmp;
         });
         rows.forEach(r => eventsTableBody.appendChild(r));
+      });
+
+      // ── Column resize drag handles ──────────────────────────────────
+      function injectResizers() {
+        eventsTableHead.querySelectorAll('th').forEach(th => {
+          if (!th.querySelector('.col-resizer')) {
+            const d = document.createElement('div');
+            d.className = 'col-resizer';
+            th.appendChild(d);
+          }
+        });
+      }
+      injectResizers();
+
+      const colgroup = document.querySelector('.events-table colgroup');
+      const cols     = colgroup ? Array.from(colgroup.querySelectorAll('col')) : [];
+
+      eventsTableHead.addEventListener('mousedown', (e) => {
+        const resizer = e.target.closest('.col-resizer');
+        if (!resizer) { return; }
+        e.preventDefault();
+        const th       = resizer.parentElement;
+        const thIndex  = Array.from(eventsTableHead.querySelectorAll('th')).indexOf(th);
+        const col      = cols[thIndex];
+        const startX   = e.pageX;
+        const startW   = th.offsetWidth;
+        resizer.classList.add('resizing');
+
+        function onMouseMove(me) {
+          const newW = Math.max(40, startW + me.pageX - startX);
+          if (col) { col.style.width = newW + 'px'; }
+          th.style.width = newW + 'px';
+        }
+        function onMouseUp() {
+          resizer.classList.remove('resizing');
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
       });
 
       // ── Starting indicator ──────────────────────────────────────────
@@ -1485,6 +1939,98 @@ export class ProfilerPanelProvider {
           startLabel.textContent = 'Start';
         }
       }
+
+      // ── Filter dialog ────────────────────────────────────────────────
+
+      /** Update Apply button enabled state based on whether any input has a value */
+      function updateFilterApplyBtn() {
+        const hasValue =
+          fEventClass.value.trim()      !== '' ||
+          fTextData.value.trim()        !== '' ||
+          fApplicationName.value.trim() !== '' ||
+          fNTUserName.value.trim()      !== '' ||
+          fLoginName.value.trim()       !== '' ||
+          fDatabaseName.value.trim()    !== '';
+        filterApplyBtn.disabled = !hasValue;
+      }
+
+      /** Open the filter dialog, pre-populating inputs from current activeFilter */
+      function openFilterDialog() {
+        fEventClass.value      = activeFilter.eventClass;
+        fTextData.value        = activeFilter.textData;
+        fApplicationName.value = activeFilter.applicationName;
+        fNTUserName.value      = activeFilter.ntUserName;
+        fLoginName.value       = activeFilter.loginName;
+        fDatabaseName.value    = activeFilter.databaseName;
+        updateFilterApplyBtn();
+        filterModalOverlay.classList.add('open');
+        fEventClass.focus();
+      }
+
+      /** Close the filter dialog without saving */
+      function closeFilterDialog() {
+        filterModalOverlay.classList.remove('open');
+      }
+
+      /**
+       * Update the filter button badge and clearFilterBtn state.
+       * Called both when the extension sends updateFilter, and when Apply is clicked.
+       */
+      function updateFilterUI(filter) {
+        activeFilter = filter;
+        const isActive =
+          filter.eventClass      !== '' ||
+          filter.textData        !== '' ||
+          filter.applicationName !== '' ||
+          filter.ntUserName      !== '' ||
+          filter.loginName       !== '' ||
+          filter.databaseName    !== '';
+        filterBtn.classList.toggle('filter-active', isActive);
+        clearFilterBtn.disabled = !isActive;
+      }
+
+      /** Read inputs and send applyFilters to extension */
+      function applyFilterDialog() {
+        const filter = {
+          eventClass:      fEventClass.value.trim(),
+          textData:        fTextData.value.trim(),
+          applicationName: fApplicationName.value.trim(),
+          ntUserName:      fNTUserName.value.trim(),
+          loginName:       fLoginName.value.trim(),
+          databaseName:    fDatabaseName.value.trim(),
+        };
+        vscode.postMessage({ command: 'applyFilters', data: filter });
+        updateFilterUI(filter);
+        closeFilterDialog();
+      }
+
+      // Filter button listeners
+      filterBtn.addEventListener('click', openFilterDialog);
+
+      clearFilterBtn.addEventListener('click', () => {
+        vscode.postMessage({ command: 'clearFilters' });
+        updateFilterUI({ eventClass: '', textData: '', applicationName: '', ntUserName: '', loginName: '', databaseName: '' });
+      });
+
+      filterApplyBtn.addEventListener('click', applyFilterDialog);
+      filterCancelBtn.addEventListener('click', closeFilterDialog);
+      filterCloseBtn.addEventListener('click', closeFilterDialog);
+
+      // Close when clicking the dark overlay backdrop (outside the modal card)
+      filterModalOverlay.addEventListener('click', (e) => {
+        if (e.target === filterModalOverlay) { closeFilterDialog(); }
+      });
+
+      // Enable/disable Apply button live as user types
+      [fEventClass, fTextData, fApplicationName, fNTUserName, fLoginName, fDatabaseName]
+        .forEach(input => input.addEventListener('input', updateFilterApplyBtn));
+
+      // Close on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && filterModalOverlay.classList.contains('open')) {
+          closeFilterDialog();
+        }
+      });
 
       // ── Messages from extension ─────────────────────────────────────
       window.addEventListener('message', (event) => {
@@ -1506,8 +2052,12 @@ export class ProfilerPanelProvider {
           case 'clearEvents':
             clearEventsUI();
             break;
+          case 'updateFilter':
+            updateFilterUI(msg.data);
+            break;
           case 'error':
             setStarting(false);
+            updateState(currentState);
             showError(msg.data);
             break;
         }
@@ -1552,32 +2102,46 @@ export class ProfilerPanelProvider {
           const durClass = durMs === null ? '' :
             durMs < 100  ? 'dur-fast' :
             durMs < 1000 ? 'dur-medium' : 'dur-slow';
-          const durText = durMs !== null ? durMs.toFixed(2) : '—';
+          const durText = durMs !== null ? durMs.toFixed(2) : '';
 
           // TextData: truncate for display, full value stored on event object
           const textDisplay = event.textData
             ? (event.textData.length > 60 ? event.textData.substring(0, 60) + '…' : event.textData)
-            : '—';
+            : '';
 
           const row = document.createElement('tr');
-          row.dataset.duration = durMs !== null ? String(durMs) : '0';
+          row.dataset.duration        = durMs !== null ? String(durMs) : '0';
+          row.dataset.eventClass      = event.eventClass      || '';
+          row.dataset.textData        = event.textData        || '';
+          row.dataset.applicationName = event.applicationName || '';
+          row.dataset.hostName        = event.hostName        || '';
+          row.dataset.ntUserName      = event.ntUserName      || '';
+          row.dataset.loginName       = event.loginName       || '';
+          row.dataset.clientProcessId = event.clientProcessId || '';
+          row.dataset.spid            = event.spid            || '';
+          row.dataset.startTime       = event.startTime       || '';
+          row.dataset.cpu             = event.cpu             || '';
+          row.dataset.reads           = event.reads           || '';
+          row.dataset.writes          = event.writes          || '';
+          row.dataset.databaseId      = event.databaseId      || '';
+          row.dataset.databaseName    = event.databaseName    || '';
 
           row.innerHTML =
-            '<td><span class="event-badge">' + escapeHtml(event.eventClass || '—') + '</span></td>' +
+            '<td><span class="event-badge">' + escapeHtml(event.eventClass || '') + '</span></td>' +
             '<td title="' + escapeHtml(event.textData || '') + '">' + escapeHtml(textDisplay) + '</td>' +
-            '<td>' + escapeHtml(event.applicationName || '—') + '</td>' +
-            '<td>' + escapeHtml(event.hostName || '—') + '</td>' +
-            '<td>' + escapeHtml(event.ntUserName || '—') + '</td>' +
-            '<td>' + escapeHtml(event.loginName || '—') + '</td>' +
-            '<td>' + escapeHtml(event.clientProcessId || '—') + '</td>' +
-            '<td>' + escapeHtml(event.spid || '—') + '</td>' +
+            '<td>' + escapeHtml(event.applicationName || '') + '</td>' +
+            '<td>' + escapeHtml(event.hostName || '') + '</td>' +
+            '<td>' + escapeHtml(event.ntUserName || '') + '</td>' +
+            '<td>' + escapeHtml(event.loginName || '') + '</td>' +
+            '<td>' + escapeHtml(event.clientProcessId || '') + '</td>' +
+            '<td>' + escapeHtml(event.spid || '') + '</td>' +
             '<td>' + formatTimestamp(event.startTime) + '</td>' +
-            '<td>' + escapeHtml(event.cpu || '—') + '</td>' +
-            '<td>' + escapeHtml(event.reads || '—') + '</td>' +
-            '<td>' + escapeHtml(event.writes || '—') + '</td>' +
+            '<td>' + escapeHtml(event.cpu || '') + '</td>' +
+            '<td>' + escapeHtml(event.reads || '') + '</td>' +
+            '<td>' + escapeHtml(event.writes || '') + '</td>' +
             '<td class="' + durClass + '">' + durText + '</td>' +
-            '<td>' + escapeHtml(event.databaseId || '—') + '</td>' +
-            '<td>' + escapeHtml(event.databaseName || '—') + '</td>';
+            '<td>' + escapeHtml(event.databaseId || '') + '</td>' +
+            '<td>' + escapeHtml(event.databaseName || '') + '</td>';
 
           row.addEventListener('click', () => selectRow(row, event));
           eventsTableBody.insertBefore(row, eventsTableBody.firstChild);
@@ -1624,8 +2188,20 @@ export class ProfilerPanelProvider {
         row.classList.add('selected');
         selectedEventRow = row;
 
-        // ── Text tab: highlighted SQL ────────────────────────────────
-        queryCode.innerHTML = event.textData ? highlightSql(event.textData) : '<span style="color:var(--vscode-descriptionForeground);font-style:italic">No text data</span>';
+        // ── Text tab: highlight.js SQL syntax highlighting ───────────
+        currentTextData = event.textData || '';
+        if (currentTextData) {
+          let highlighted;
+          try {
+            highlighted = hljs.highlight(currentTextData, { language: 'sql' }).value;
+          } catch (_) {
+            highlighted = escapeHtml(currentTextData);
+          }
+          queryCode.innerHTML = '<code class="hljs language-sql">' + highlighted + '</code>';
+        } else {
+          queryCode.innerHTML = '<span style="color:var(--vscode-descriptionForeground);font-style:italic">No text data</span>';
+        }
+        btnCopyText.disabled = !currentTextData;
 
         // ── Details tab: key/value table ─────────────────────────────
         const columns = [
@@ -1652,8 +2228,159 @@ export class ProfilerPanelProvider {
         queryPanel.classList.remove('hidden');
       }
 
+      // ── Search ──────────────────────────────────────────────────────
+      function updateSearchCounter() {
+        if (searchMatches.length === 0) {
+          searchCounter.textContent = searchInput.value.trim() ? '0 / 0' : '';
+        } else {
+          searchCounter.textContent = (searchIndex + 1) + ' / ' + searchMatches.length;
+        }
+      }
+
+      function clearSearch() {
+        searchMatches.forEach(function(r) {
+          r.classList.remove('search-match', 'search-current');
+        });
+        searchMatches = [];
+        searchIndex = -1;
+        searchAtWrapEnd = false;
+        searchAtWrapStart = false;
+        searchInput.value = '';
+        searchCounter.textContent = '';
+        searchWrapMsg.textContent = '';
+      }
+
+      function navigateTo(index) {
+        // Remove current highlight from previous row
+        if (searchIndex >= 0 && searchIndex < searchMatches.length) {
+          searchMatches[searchIndex].classList.remove('search-current');
+        }
+        searchIndex = index;
+        const row = searchMatches[searchIndex];
+        row.classList.add('search-current');
+        row.scrollIntoView({ block: 'nearest' });
+        row.click();
+        searchAtWrapEnd = false;
+        searchAtWrapStart = false;
+        searchWrapMsg.textContent = '';
+        updateSearchCounter();
+      }
+
+      function runSearch() {
+        const query = searchInput.value.trim().toLowerCase();
+        searchWrapMsg.textContent = '';
+        searchAtWrapEnd = false;
+        searchAtWrapStart = false;
+
+        // Remove old highlights
+        searchMatches.forEach(function(r) {
+          r.classList.remove('search-match', 'search-current');
+        });
+        searchMatches = [];
+        searchIndex = -1;
+
+        if (!query) {
+          updateSearchCounter();
+          return;
+        }
+
+        const rows = Array.from(eventsTableBody.querySelectorAll('tr[data-duration]'));
+        rows.forEach(function(row) {
+          const text = Object.values(row.dataset).join(' ').toLowerCase();
+          if (text.includes(query)) {
+            row.classList.add('search-match');
+            searchMatches.push(row);
+          }
+        });
+
+        if (searchMatches.length > 0) {
+          searchIndex = 0;
+          searchMatches[0].classList.add('search-current');
+          searchMatches[0].scrollIntoView({ block: 'nearest' });
+          searchMatches[0].click();
+        }
+        updateSearchCounter();
+      }
+
+      function searchNext() {
+        if (searchMatches.length === 0) { return; }
+        if (searchIndex >= searchMatches.length - 1) {
+          // At the last match
+          if (!searchAtWrapEnd) {
+            searchAtWrapEnd = true;
+            searchWrapMsg.textContent = '⚠ End of results — Enter to wrap to start';
+            return;
+          }
+          // Second press — wrap to start
+          searchAtWrapEnd = false;
+          searchWrapMsg.textContent = '';
+          navigateTo(0);
+          return;
+        }
+        searchAtWrapEnd = false;
+        searchAtWrapStart = false;
+        searchWrapMsg.textContent = '';
+        navigateTo(searchIndex + 1);
+      }
+
+      function searchPrev() {
+        if (searchMatches.length === 0) { return; }
+        if (searchIndex <= 0) {
+          // At the first match
+          if (!searchAtWrapStart) {
+            searchAtWrapStart = true;
+            searchWrapMsg.textContent = '⚠ Start of results — Shift+Enter to wrap to end';
+            return;
+          }
+          // Second press — wrap to end
+          searchAtWrapStart = false;
+          searchWrapMsg.textContent = '';
+          navigateTo(searchMatches.length - 1);
+          return;
+        }
+        searchAtWrapEnd = false;
+        searchAtWrapStart = false;
+        searchWrapMsg.textContent = '';
+        navigateTo(searchIndex - 1);
+      }
+
+      // ── Search listeners ─────────────────────────────────────────────
+      searchInput.addEventListener('input', function() {
+        runSearch();
+      });
+
+      searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            searchPrev();
+          } else {
+            searchNext();
+          }
+        } else if (e.key === 'Escape') {
+          clearSearch();
+        }
+      });
+
+      searchNextBtn.addEventListener('click', function() {
+        if (searchInput.value.trim()) {
+          searchNext();
+        }
+      });
+
+      searchPrevBtn.addEventListener('click', function() {
+        if (searchInput.value.trim()) {
+          searchPrev();
+        }
+      });
+
+      searchClearBtn.addEventListener('click', function() {
+        clearSearch();
+      });
+
       // ── Clear ───────────────────────────────────────────────────────
       function clearEventsUI() {
+        clearSearch();
         eventsTableBody.innerHTML =
           '<tr><td colspan="15" class="no-events">' +
           '<span class="no-events-icon">🔍</span>' +
@@ -1682,31 +2409,8 @@ export class ProfilerPanelProvider {
       }
 
       function formatTimestamp(timestamp) {
-        if (!timestamp) { return '—'; }
-        // The server already provides an ISO 8601 string (e.g. 2026-03-10T00:26:04.132Z).
-        // Display it as-is, replacing the T separator with a space for readability.
+        if (!timestamp) { return ''; }
         return String(timestamp).replace('T', ' ');
-      }
-
-      function formatNumber(num) {
-        if (num == null || isNaN(num)) { return '—'; }
-        return Number(num).toLocaleString();
-      }
-
-      // Basic SQL keyword highlighting (no external deps)
-      function highlightSql(sql) {
-        const keywords = /\\b(SELECT|FROM|WHERE|JOIN|LEFT|RIGHT|INNER|OUTER|FULL|CROSS|ON|AS|AND|OR|NOT|IN|EXISTS|LIKE|BETWEEN|IS|NULL|ORDER|BY|GROUP|HAVING|DISTINCT|TOP|INTO|INSERT|UPDATE|DELETE|SET|VALUES|CREATE|ALTER|DROP|TABLE|INDEX|VIEW|PROC|PROCEDURE|FUNCTION|EXEC|EXECUTE|DECLARE|BEGIN|END|IF|ELSE|WHILE|RETURN|CAST|CONVERT|CASE|WHEN|THEN|WITH|CTE|UNION|ALL|EXCEPT|INTERSECT|LIMIT|OFFSET|ASC|DESC)\\b/gi;
-        const strings  = /('(?:[^']|'')*')/g;
-        const comments = /(--[^\\n]*|[/][*][\\s\\S]*?[*][/])/g;
-        const numbers  = /\\b(\\d+(?:\\.\\d+)?)\\b/g;
-
-        const escaped = escapeHtml(sql);
-        // Order matters: comments first, then strings, then keywords, then numbers
-        return escaped
-          .replace(comments, '<span class="sql-comment">$1</span>')
-          .replace(strings,  '<span class="sql-string">$1</span>')
-          .replace(keywords, '<span class="sql-keyword">$&</span>')
-          .replace(numbers,  '<span class="sql-number">$1</span>');
       }
 
     })();
