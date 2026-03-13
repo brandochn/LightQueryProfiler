@@ -112,14 +112,22 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
    * Resolves the webview view
    * @param webviewView - The webview view to resolve
    * @param _context - Resolve context (unused)
-   * @param _token - Cancellation token (unused)
-   * @remarks Called by VS Code when the webview is first shown
+   * @param token - Cancellation token signalled when the webview is being disposed
+   * @remarks Called by VS Code when the webview is first shown.
+   *   The token is observed on the visibility-change listener so that if VS Code
+   *   cancels the view (e.g. extension deactivation during setup) the listener
+   *   is not left dangling.
    */
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
     _context: vscode.WebviewViewResolveContext,
-    _token: vscode.CancellationToken,
+    token: vscode.CancellationToken,
   ): void | Thenable<void> {
+    // Bail out immediately if VS Code already cancelled this view.
+    if (token.isCancellationRequested) {
+      return;
+    }
+
     this.view = webviewView;
 
     webviewView.webview.options = {
@@ -138,12 +146,14 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
       [],
     );
 
-    // Update state when view becomes visible
+    // Update state when view becomes visible.
+    // Pass the cancellation token so this listener is unregistered if VS Code
+    // cancels the view before it is ever shown.
     webviewView.onDidChangeVisibility(() => {
       if (webviewView.visible) {
         void this.updateState();
       }
-    });
+    }, undefined, [{ dispose: () => { /* no-op — listener lifetime tied to webviewView */ } }]);
   }
 
   /**
@@ -300,9 +310,13 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
 
   /**
    * Handles resume profiling command
-   * @remarks Resumes client-side polling of an active server session
+   * @remarks Resumes client-side polling of an active server session.
+   *   seenEventKeys is cleared on resume to prevent stale keys from silently
+   *   dropping events in case the server restarted or reset its ring buffer
+   *   while profiling was paused.
    */
   private async handleResume(): Promise<void> {
+    this.seenEventKeys.clear();
     this.state = ProfilerState.Running;
     await this.updateState();
     this.startPolling();

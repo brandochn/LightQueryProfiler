@@ -6,6 +6,7 @@ using LightQueryProfiler.Shared.Repositories;
 using LightQueryProfiler.Shared.Services;
 using LightQueryProfiler.Shared.Services.Interfaces;
 using Microsoft.Extensions.Logging;
+using StreamJsonRpc;
 
 namespace LightQueryProfiler.JsonRpc;
 
@@ -29,6 +30,13 @@ public class JsonRpcServer
     /// <summary>
     /// Starts a profiling session with the specified parameters
     /// </summary>
+    /// <remarks>
+    /// UseSingleObjectParameterDeserialization = true is required because the TypeScript
+    /// client sends the three fields (SessionName, EngineType, ConnectionString) as a
+    /// single JSON object.  Without it StreamJsonRpc tries to match them as three
+    /// positional parameters and throws "Unable to find method 'StartProfilingAsync/3'".
+    /// </remarks>
+    [JsonRpcMethod("StartProfilingAsync", UseSingleObjectParameterDeserialization = true)]
     public async Task StartProfilingAsync(StartProfilingRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -92,6 +100,12 @@ public class JsonRpcServer
     /// <summary>
     /// Stops the specified profiling session
     /// </summary>
+    /// <remarks>
+    /// UseSingleObjectParameterDeserialization = true is required because the TypeScript
+    /// client sends the fields as a single JSON object.  Without it StreamJsonRpc tries
+    /// to match them as positional parameters and throws "Unable to find method".
+    /// </remarks>
+    [JsonRpcMethod("StopProfilingAsync", UseSingleObjectParameterDeserialization = true)]
     public async Task StopProfilingAsync(StopProfilingRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -138,6 +152,12 @@ public class JsonRpcServer
     /// <summary>
     /// Retrieves the latest events from the specified profiling session
     /// </summary>
+    /// <remarks>
+    /// UseSingleObjectParameterDeserialization = true is required because the TypeScript
+    /// client sends the fields as a single JSON object.  Without it StreamJsonRpc tries
+    /// to match them as positional parameters and throws "Unable to find method".
+    /// </remarks>
+    [JsonRpcMethod("GetLastEventsAsync", UseSingleObjectParameterDeserialization = true)]
     public async Task<List<ProfilerEventDto>> GetLastEventsAsync(GetEventsRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -190,6 +210,12 @@ public class JsonRpcServer
     /// <summary>
     /// Pauses the specified profiling session (not yet implemented in ProfilerService)
     /// </summary>
+    /// <remarks>
+    /// UseSingleObjectParameterDeserialization = true is required because the TypeScript
+    /// client sends the fields as a single JSON object.  Without it StreamJsonRpc tries
+    /// to match them as positional parameters and throws "Unable to find method".
+    /// </remarks>
+    [JsonRpcMethod("PauseProfilingAsync", UseSingleObjectParameterDeserialization = true)]
     public async Task PauseProfilingAsync(StopProfilingRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);

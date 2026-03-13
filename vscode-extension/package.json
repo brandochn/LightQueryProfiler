@@ -22,7 +22,7 @@
     "database"
   ],
   "activationEvents": [
-    "onCommand:lightQueryProfiler.showProfiler"
+    "onStartupFinished"
   ],
   "main": "./dist/extension.js",
   "contributes": {

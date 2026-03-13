@@ -93,6 +93,7 @@ export class ProfilerClient {
   private readonly serverDllPath: string;
   private state: ClientState = ClientState.Idle;
   private readonly activeSessions = new Set<string>();
+  private onServerStoppedCallback: (() => void) | null = null;
 
   constructor(
     dotnetPath: string,
@@ -142,7 +143,10 @@ export class ProfilerClient {
         void this.handleServerFailure(error);
       });
 
-      // Log server stderr output
+      // Log server stderr output and detect the READY signal
+      // NOTE: waitForServerReady() registers its own one-time listener that
+      // resolves on "READY" and then removes itself.  This persistent handler
+      // runs in parallel and logs every stderr line for diagnostics.
       this.serverProcess.stderr?.on('data', (data: Buffer) => {
         const message = data.toString().trim();
         if (message) {
@@ -161,6 +165,13 @@ export class ProfilerClient {
           void this.handleServerExit(code, signal);
         },
       );
+
+      // Wait for the server to emit the READY signal on stderr before
+      // attempting any JSON-RPC communication.  This prevents the
+      // "Pending response rejected since connection got disposed" error
+      // caused by calling startProfiling() before the .NET runtime has
+      // finished JIT-compiling and reached jsonRpc.StartListening().
+      await this.waitForServerReady(8000);
 
       // Create JSON-RPC connection
       this.connection = createMessageConnection(
@@ -300,6 +311,16 @@ export class ProfilerClient {
   }
 
   /**
+   * Registers a callback that is invoked when the server stops unexpectedly.
+   * @param callback - Function to call when the server crashes or exits abnormally.
+   * @remarks The callback is called after cleanup() completes so the client is
+   *   already in Idle state by the time the callback runs.
+   */
+  public setOnServerStopped(callback: () => void): void {
+    this.onServerStoppedCallback = callback;
+  }
+
+  /**
    * Gets the current client state
    * @returns Current state
    */
@@ -327,6 +348,57 @@ export class ProfilerClient {
     this.log('Disposing profiler client...');
     this.state = ClientState.Disposed;
     void this.cleanup();
+  }
+
+  /**
+   * Waits until the server process emits the "READY" signal on stderr
+   * @param timeoutMs - Maximum milliseconds to wait before giving up (default: 8000)
+   * @returns Promise that resolves when READY is received or rejects on timeout/crash
+   * @remarks The .NET server writes "READY" to stderr immediately after
+   *   jsonRpc.StartListening() succeeds.  Waiting for this signal prevents
+   *   "Pending response rejected since connection got disposed" errors that
+   *   occur when JSON-RPC calls are sent before the server is ready to handle them.
+   */
+  private waitForServerReady(timeoutMs: number): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        cleanup();
+        reject(
+          new Error(
+            `Server did not become ready within ${timeoutMs}ms. ` +
+            'Check the Output panel for server startup errors.',
+          ),
+        );
+      }, timeoutMs);
+
+      const cleanup = (): void => {
+        clearTimeout(timer);
+        this.serverProcess?.stderr?.off('data', onData);
+        this.serverProcess?.off('exit', onExit);
+      };
+
+      const onData = (data: Buffer): void => {
+        if (data.toString().includes('READY')) {
+          this.log('Server ready signal received');
+          cleanup();
+          resolve();
+        }
+      };
+
+      const onExit = (code: number | null): void => {
+        cleanup();
+        reject(
+          new Error(
+            `Server process exited (code ${code ?? 'null'}) before becoming ready. ` +
+            'Check the Output panel for server startup errors.',
+          ),
+        );
+      };
+
+      this.serverProcess?.stderr?.on('data', onData);
+      this.serverProcess?.once('exit', onExit);
+    });
   }
 
   /**
@@ -387,20 +459,32 @@ export class ProfilerClient {
       return;
     }
 
-    // Abnormal exit
+    const exitInfo = signal
+      ? `signal ${signal}`
+      : `code ${code ?? 'unknown'}`;
+
+    // Exit during startup — waitForServerReady() will reject via its own onExit
+    // listener, which triggers cleanup() in start()'s catch block.  We only need
+    // to log here; no further action is required to avoid double-cleanup.
+    if (this.state === ClientState.Starting) {
+      this.logError(`Server exited during startup with ${exitInfo}`);
+      return;
+    }
+
+    // Abnormal exit while running
     if (this.state === ClientState.Running) {
-      const exitInfo = signal
-        ? `signal ${signal}`
-        : `code ${code ?? 'unknown'}`;
       this.logError(`Server exited unexpectedly with ${exitInfo}`);
 
+      const hadActiveSessions = this.activeSessions.size > 0;
       await this.cleanup();
 
-      if (this.activeSessions.size > 0) {
+      if (hadActiveSessions) {
         await vscode.window.showWarningMessage(
           'Profiler server stopped unexpectedly. Active profiling sessions have been terminated.',
         );
       }
+
+      this.onServerStoppedCallback?.();
     }
   }
 
@@ -422,6 +506,7 @@ export class ProfilerClient {
     if (this.state === ClientState.Running) {
       this.log('Connection closed unexpectedly');
       await this.cleanup();
+      this.onServerStoppedCallback?.();
     }
   }
 
