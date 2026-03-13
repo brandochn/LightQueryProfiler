@@ -1,8 +1,8 @@
-import * as vscode from "vscode";
-import * as path from "path";
-import * as fs from "fs";
-import { ProfilerPanelProvider } from "./views/profiler-panel-provider";
-import { ProfilerClient } from "./services/profiler-client";
+import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
+import { ProfilerPanelProvider } from './views/profiler-panel-provider';
+import { ProfilerClient } from './services/profiler-client';
 
 /**
  * Logger interface for structured logging
@@ -42,11 +42,11 @@ export async function activate(
 ): Promise<void> {
   // Create output channel first for logging
   state.outputChannel = vscode.window.createOutputChannel(
-    "Light Query Profiler",
+    'Light Query Profiler',
   );
   const log = createLogger(state.outputChannel);
 
-  log.info("Activating Light Query Profiler extension...");
+  log.info('Activating Light Query Profiler extension...');
 
   // IMPORTANT: Register the command IMMEDIATELY — before any awaits.
   // VS Code may dispatch the command while activate() is still running its
@@ -57,19 +57,19 @@ export async function activate(
   // panel or queues a retry once initialization completes.
   let activationReady = false;
   const showProfilerCommand = vscode.commands.registerCommand(
-    "lightQueryProfiler.showProfiler",
+    'lightQueryProfiler.showProfiler',
     () => {
-      log.info("Show SQL Profiler command executed");
+      log.info('Show SQL Profiler command executed');
       if (state.profilerPanelProvider) {
         state.profilerPanelProvider.showPanel();
       } else if (!activationReady) {
         // Extension is still initializing — wait for it then open the panel
-        log.info("Provider not ready yet, deferring panel open...");
+        log.info('Provider not ready yet, deferring panel open...');
         const deferredInterval = setInterval(() => {
           if (state.profilerPanelProvider) {
             clearInterval(deferredInterval);
             clearTimeout(deferredTimeout);
-            log.info("Provider ready, opening deferred panel");
+            log.info('Provider ready, opening deferred panel');
             state.profilerPanelProvider.showPanel();
           }
         }, 50);
@@ -85,9 +85,9 @@ export async function activate(
           },
         });
       } else {
-        log.error("Profiler panel provider not initialized");
+        log.error('Profiler panel provider not initialized');
         void vscode.window.showErrorMessage(
-          "Failed to open SQL Profiler. Please reload the window.",
+          'Failed to open SQL Profiler. Please reload the window.',
         );
       }
     },
@@ -98,10 +98,10 @@ export async function activate(
     // Get server DLL path and dotnet path in parallel (no duplicate dotnet check)
     const serverDllPath = getServerDllPath(context, log);
     if (!serverDllPath) {
-      const message = "Light Query Profiler server not found.";
+      const message = 'Light Query Profiler server not found.';
       log.error(message);
       activationReady = true;
-      await vscode.window.showErrorMessage(message, "Error");
+      await vscode.window.showErrorMessage(message, 'Error');
       return;
     }
 
@@ -131,7 +131,7 @@ export async function activate(
       {
         dispose: async () => {
           if (state.profilerPanelProvider) {
-            log.info("Disposing profiler panel provider...");
+            log.info('Disposing profiler panel provider...');
             await state.profilerPanelProvider.dispose();
           }
         },
@@ -139,7 +139,7 @@ export async function activate(
       {
         dispose: () => {
           if (state.profilerClient) {
-            log.info("Disposing profiler client...");
+            log.info('Disposing profiler client...');
             state.profilerClient.dispose();
           }
         },
@@ -147,7 +147,7 @@ export async function activate(
     );
 
     activationReady = true;
-    log.info("Light Query Profiler extension activated successfully");
+    log.info('Light Query Profiler extension activated successfully');
 
     // Show welcome message (fire-and-forget — do not await so activate() returns immediately)
     void vscode.window.showInformationMessage(
@@ -166,10 +166,10 @@ export async function activate(
     await vscode.window
       .showErrorMessage(
         `Failed to activate Light Query Profiler: ${errorMessage}`,
-        "View Logs",
+        'View Logs',
       )
       .then((selection) => {
-        if (selection === "View Logs" && state.outputChannel) {
+        if (selection === 'View Logs' && state.outputChannel) {
           state.outputChannel.show();
         }
       });
@@ -197,7 +197,7 @@ export async function deactivate(): Promise<void> {
         },
       };
 
-  log.info("Deactivating Light Query Profiler extension...");
+  log.info('Deactivating Light Query Profiler extension...');
 
   // Cleanup is primarily handled by context.subscriptions dispose
   // But we ensure proper cleanup order here
@@ -216,7 +216,7 @@ export async function deactivate(): Promise<void> {
   }
 
   if (state.outputChannel) {
-    log.info("Light Query Profiler extension deactivated");
+    log.info('Light Query Profiler extension deactivated');
     state.outputChannel.dispose();
     state.outputChannel = undefined;
   }
@@ -234,21 +234,21 @@ function getServerDllPath(
   log: Logger,
 ): string | undefined {
   const possiblePaths: ReadonlyArray<string> = [
-    path.join(context.extensionPath, "bin", "LightQueryProfiler.JsonRpc.dll"),
+    path.join(context.extensionPath, 'bin', 'LightQueryProfiler.JsonRpc.dll'),
     path.join(
       context.extensionPath,
-      "server",
-      "LightQueryProfiler.JsonRpc.dll",
+      'server',
+      'LightQueryProfiler.JsonRpc.dll',
     ),
     path.join(
       context.extensionPath,
-      "dist",
-      "server",
-      "LightQueryProfiler.JsonRpc.dll",
+      'dist',
+      'server',
+      'LightQueryProfiler.JsonRpc.dll',
     ),
   ];
 
-  log.info("Searching for server DLL in the following paths:");
+  log.info('Searching for server DLL in the following paths:');
   for (const dllPath of possiblePaths) {
     log.info(`  - ${dllPath}`);
     try {
@@ -261,7 +261,7 @@ function getServerDllPath(
     }
   }
 
-  log.error("Server DLL not found in any expected location");
+  log.error('Server DLL not found in any expected location');
   return undefined;
 }
 
@@ -280,7 +280,7 @@ async function getDotnetPath(log: Logger): Promise<string> {
 
   // Default to 'dotnet' and let the OS resolve it
   log.warn("Could not verify dotnet installation, using 'dotnet' as default");
-  return "dotnet";
+  return 'dotnet';
 }
 
 /**
@@ -291,15 +291,15 @@ async function getDotnetPath(log: Logger): Promise<string> {
  */
 async function findDotnetInPath(log: Logger): Promise<string | undefined> {
   try {
-    const { exec } = await import("child_process");
-    const { promisify } = await import("util");
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
     const execAsync = promisify(exec);
 
-    log.info("Checking for dotnet installation...");
-    const { stdout } = await execAsync("dotnet --version");
+    log.info('Checking for dotnet installation...');
+    const { stdout } = await execAsync('dotnet --version');
     const version = stdout.trim();
     log.info(`Found dotnet version: ${version}`);
-    return "dotnet";
+    return 'dotnet';
   } catch (error) {
     log.warn(`dotnet not found in PATH: ${String(error)}`);
     return undefined;

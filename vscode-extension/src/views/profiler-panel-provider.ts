@@ -1,10 +1,11 @@
-import * as vscode from "vscode";
-import { ProfilerClient } from "../services/profiler-client";
+import * as vscode from 'vscode';
+import { ProfilerClient } from '../services/profiler-client';
 import {
   AuthenticationMode,
   getAllAuthenticationModes,
-} from "../models/authentication-mode";
-import { ProfilerEvent } from "../models/profiler-event";
+} from '../models/authentication-mode';
+import { validateConnectionSettings } from '../models/connection-settings';
+import { ProfilerEvent } from '../models/profiler-event';
 
 /**
  * Connection settings for SQL Server/Azure SQL
@@ -21,9 +22,9 @@ interface ConnectionSettings {
  * Profiler state enumeration
  */
 enum ProfilerState {
-  Stopped = "stopped",
-  Running = "running",
-  Paused = "paused",
+  Stopped = 'stopped',
+  Running = 'running',
+  Paused = 'paused',
 }
 
 /**
@@ -43,7 +44,7 @@ interface EventFilter {
  * Message types sent from webview to extension
  */
 interface WebviewIncomingMessage {
-  command: "start" | "stop" | "pause" | "resume" | "clear" | "applyFilters" | "clearFilters";
+  command: 'start' | 'stop' | 'pause' | 'resume' | 'clear' | 'applyFilters' | 'clearFilters';
   data?: ConnectionSettings | EventFilter;
 }
 
@@ -52,12 +53,13 @@ interface WebviewIncomingMessage {
  */
 interface WebviewOutgoingMessage {
   command:
-    | "updateState"
-    | "updateEventCount"
-    | "addEvents"
-    | "clearEvents"
-    | "updateFilter"
-    | "error";
+    | 'updateState'
+    | 'updateEventCount'
+    | 'addEvents'
+    | 'clearEvents'
+    | 'updateFilter'
+    | 'error'
+    | 'setConnectionFieldsEnabled';
   data?: unknown;
 }
 
@@ -75,19 +77,19 @@ export class ProfilerPanelProvider {
   private readonly profilerClient: ProfilerClient;
   private readonly extensionUri: vscode.Uri;
   private readonly outputChannel: vscode.OutputChannel;
-  private sessionName = "VSCodeProfilerSession";
+  private sessionName = 'VSCodeProfilerSession';
   private state: ProfilerState = ProfilerState.Stopped;
   private pollingInterval: NodeJS.Timeout | null = null;
   private readonly pollingIntervalMs = 900; // Match WinForms implementation
   private eventCount = 0;
   private readonly sessionEventKeys = new Set<string>();
   private eventFilter: EventFilter = {
-    eventClass: "",
-    textData: "",
-    applicationName: "",
-    ntUserName: "",
-    loginName: "",
-    databaseName: "",
+    eventClass: '',
+    textData: '',
+    applicationName: '',
+    ntUserName: '',
+    loginName: '',
+    databaseName: '',
   };
 
   constructor(
@@ -121,8 +123,8 @@ export class ProfilerPanelProvider {
 
     // Create new panel
     this.panel = vscode.window.createWebviewPanel(
-      "lightQueryProfiler",
-      "Light Query Profiler",
+      'lightQueryProfiler',
+      'Light Query Profiler',
       column,
       {
         enableScripts: true,
@@ -136,8 +138,8 @@ export class ProfilerPanelProvider {
 
     // Set icon
     this.panel.iconPath = {
-      light: vscode.Uri.joinPath(this.extensionUri, "media", "icon.svg"),
-      dark: vscode.Uri.joinPath(this.extensionUri, "media", "icon.svg"),
+      light: vscode.Uri.joinPath(this.extensionUri, 'media', 'icon.svg'),
+      dark: vscode.Uri.joinPath(this.extensionUri, 'media', 'icon.svg'),
     };
 
     // Handle messages from webview
@@ -150,7 +152,7 @@ export class ProfilerPanelProvider {
 
     // Handle panel disposal
     this.panel.onDidDispose(() => {
-      this.log("Panel disposed");
+      this.log('Panel disposed');
       // Set panel to undefined first so postMessage becomes a no-op during cleanup.
       this.panel = undefined;
       if (this.state !== ProfilerState.Stopped) {
@@ -164,7 +166,7 @@ export class ProfilerPanelProvider {
       }
     }, undefined);
 
-    this.log("Panel created and shown");
+    this.log('Panel created and shown');
   }
 
   /**
@@ -177,31 +179,31 @@ export class ProfilerPanelProvider {
 
     try {
       switch (message.command) {
-        case "start":
+        case 'start':
           if (message.data && this.isConnectionSettings(message.data)) {
             await this.handleStart(message.data);
           } else {
-            await this.showError("Invalid connection settings");
+            await this.showError('Invalid connection settings');
           }
           break;
-        case "stop":
+        case 'stop':
           await this.handleStop();
           break;
-        case "pause":
+        case 'pause':
           await this.handlePause();
           break;
-        case "resume":
+        case 'resume':
           await this.handleResume();
           break;
-        case "clear":
+        case 'clear':
           await this.handleClear();
           break;
-        case "applyFilters":
+        case 'applyFilters':
           if (message.data && this.isEventFilter(message.data)) {
             await this.handleApplyFilters(message.data);
           }
           break;
-        case "clearFilters":
+        case 'clearFilters':
           await this.handleClearFilters();
           break;
         default:
@@ -223,12 +225,21 @@ export class ProfilerPanelProvider {
    * @remarks Validates connection, starts server session, and begins polling
    */
   private async handleStart(settings: ConnectionSettings): Promise<void> {
-    this.log("Starting profiling session...");
+    this.log('Starting profiling session...');
+
+    // Validate connection settings before attempting to connect.
+    // This mirrors WinForms ConfigureAsync which throws InvalidOperationException
+    // when required fields (e.g., database for Azure SQL) are missing.
+    const validationError = validateConnectionSettings(settings);
+    if (validationError) {
+      await this.showError(validationError);
+      return;
+    }
 
     try {
       // Ensure the .NET server process is running before calling startProfiling
       if (!this.profilerClient.isRunning()) {
-        this.log("Server not running, starting server process...");
+        this.log('Server not running, starting server process...');
         await this.profilerClient.start();
       }
 
@@ -238,22 +249,24 @@ export class ProfilerPanelProvider {
       // Clear previous events before showing new session results
       this.eventCount = 0;
       this.sessionEventKeys.clear();
-      await this.postMessage({ command: "clearEvents" });
+      await this.postMessage({ command: 'clearEvents' });
 
-      // Update state
+      // Update state and disable connection fields while profiling is active
       this.state = ProfilerState.Running;
+      await this.setConnectionFieldsEnabled(false);
       await this.updateState();
 
       // Start polling for events
       this.startPolling();
 
-      this.log("Profiling started successfully");
-      await vscode.window.showInformationMessage("Profiling started");
+      this.log('Profiling started successfully');
+      await vscode.window.showInformationMessage('Profiling started');
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logError(`Failed to start profiling: ${errorMessage}`);
       this.state = ProfilerState.Stopped;
+      await this.setConnectionFieldsEnabled(true);
       await this.updateState();
       await this.showError(`Failed to start profiling: ${errorMessage}`);
     }
@@ -265,11 +278,24 @@ export class ProfilerPanelProvider {
    */
   private async updateState(): Promise<void> {
     await this.postMessage({
-      command: "updateState",
+      command: 'updateState',
       data: {
         state: this.state,
         eventCount: this.eventCount,
       },
+    });
+  }
+
+  /**
+   * Enables or disables connection settings form fields in the webview
+   * @param enabled - True to enable fields (profiling stopped), false to disable them (profiling active)
+   * @remarks Fields are disabled while profiling is running or starting to prevent
+   * the user from modifying connection settings mid-session
+   */
+  private async setConnectionFieldsEnabled(enabled: boolean): Promise<void> {
+    await this.postMessage({
+      command: 'setConnectionFieldsEnabled',
+      data: enabled,
     });
   }
 
@@ -280,15 +306,15 @@ export class ProfilerPanelProvider {
    * @remarks Validates required properties: server, database, authenticationMode
    */
   private isConnectionSettings(data: unknown): data is ConnectionSettings {
-    if (typeof data !== "object" || data === null) {
+    if (typeof data !== 'object' || data === null) {
       return false;
     }
 
     const obj = data as Record<string, unknown>;
     return (
-      typeof obj.server === "string" &&
-      typeof obj.database === "string" &&
-      typeof obj.authenticationMode === "number"
+      typeof obj.server === 'string' &&
+      typeof obj.database === 'string' &&
+      typeof obj.authenticationMode === 'number'
     );
   }
 
@@ -297,7 +323,7 @@ export class ProfilerPanelProvider {
    * @remarks Stops polling, terminates server session, and resets state
    */
   private async handleStop(): Promise<void> {
-    this.log("Stopping profiling session...");
+    this.log('Stopping profiling session...');
     this.stopPolling();
 
     if (this.profilerClient.isRunning()) {
@@ -305,10 +331,11 @@ export class ProfilerPanelProvider {
     }
 
     this.state = ProfilerState.Stopped;
+    await this.setConnectionFieldsEnabled(true);
     await this.updateState();
 
-    this.log("Profiling stopped");
-    await vscode.window.showInformationMessage("Profiling stopped");
+    this.log('Profiling stopped');
+    await vscode.window.showInformationMessage('Profiling stopped');
   }
 
   /**
@@ -336,12 +363,12 @@ export class ProfilerPanelProvider {
    * @remarks Clears local event cache and resets event count without stopping profiling
    */
   private async handleClear(): Promise<void> {
-    this.log("Clearing events");
+    this.log('Clearing events');
     this.eventCount = 0;
     // sessionEventKeys intentionally NOT cleared — session cache must survive Clear
     // so that already-seen ring_buffer events cannot re-appear after a clear.
     await this.postMessage({
-      command: "clearEvents",
+      command: 'clearEvents',
     });
   }
 
@@ -355,7 +382,7 @@ export class ProfilerPanelProvider {
     this.log(
       `Filters applied: ${JSON.stringify(filter)}`,
     );
-    await this.postMessage({ command: "updateFilter", data: filter });
+    await this.postMessage({ command: 'updateFilter', data: filter });
   }
 
   /**
@@ -364,15 +391,15 @@ export class ProfilerPanelProvider {
    */
   private async handleClearFilters(): Promise<void> {
     this.eventFilter = {
-      eventClass: "",
-      textData: "",
-      applicationName: "",
-      ntUserName: "",
-      loginName: "",
-      databaseName: "",
+      eventClass: '',
+      textData: '',
+      applicationName: '',
+      ntUserName: '',
+      loginName: '',
+      databaseName: '',
     };
-    this.log("Filters cleared");
-    await this.postMessage({ command: "updateFilter", data: this.eventFilter });
+    this.log('Filters cleared');
+    await this.postMessage({ command: 'updateFilter', data: this.eventFilter });
   }
 
   /**
@@ -380,14 +407,14 @@ export class ProfilerPanelProvider {
    */
   private isEventFilter(data: unknown): data is EventFilter {
     return (
-      typeof data === "object" &&
+      typeof data === 'object' &&
       data !== null &&
-      "eventClass" in data &&
-      "textData" in data &&
-      "applicationName" in data &&
-      "ntUserName" in data &&
-      "loginName" in data &&
-      "databaseName" in data
+      'eventClass' in data &&
+      'textData' in data &&
+      'applicationName' in data &&
+      'ntUserName' in data &&
+      'loginName' in data &&
+      'databaseName' in data
     );
   }
 
@@ -398,12 +425,13 @@ export class ProfilerPanelProvider {
    * @remarks Called via the onServerStopped callback registered in the constructor.
    */
   private async handleServerCrash(): Promise<void> {
-    this.logError("Server stopped unexpectedly — resetting profiler state");
+    this.logError('Server stopped unexpectedly — resetting profiler state');
     this.stopPolling();
     this.state = ProfilerState.Stopped;
     // Clear dedup cache: after a server restart sequence numbers start from 1 again,
     // so stale keys would silently block all new events from being displayed.
     this.sessionEventKeys.clear();
+    await this.setConnectionFieldsEnabled(true);
     await this.updateState();
   }
 
@@ -475,12 +503,12 @@ export class ProfilerPanelProvider {
 
       // Helper to get a string value from fields or actions (all values come as strings from the XML parser)
       const str = (obj: Record<string, unknown> | undefined, ...keys: string[]): string => {
-        if (!obj) { return ""; }
+        if (!obj) { return ''; }
         for (const k of keys) {
           const v = obj[k];
           if (v !== undefined && v !== null && String(v).length > 0) { return String(v); }
         }
-        return "";
+        return '';
       };
 
       for (const event of events) {
@@ -488,38 +516,38 @@ export class ProfilerPanelProvider {
         const a = event.actions;
 
         // TextData: options_text (login/logout), batch_text (sql_batch_*), statement (rpc_*)
-        const textData = str(f, "options_text", "batch_text", "statement");
+        const textData = str(f, 'options_text', 'batch_text', 'statement');
 
         const displayEvent = {
-          eventClass:      event.name ?? "Unknown",
+          eventClass:      event.name ?? 'Unknown',
           textData,
-          applicationName: str(a, "client_app_name"),
-          hostName:        str(a, "client_hostname"),
-          ntUserName:      str(a, "nt_username"),
-          loginName:       str(a, "server_principal_name", "username"),
-          clientProcessId: str(a, "client_pid"),
-          spid:            str(a, "session_id"),
-          startTime:       event.timestamp ?? "",
-          cpu:             str(f, "cpu_time"),
-          reads:           str(f, "logical_reads"),
-          writes:          str(f, "writes"),
-          duration:        str(f, "duration"),
-          databaseId:      str(f, "database_id"),
-          databaseName:    str(a, "database_name"),
+          applicationName: str(a, 'client_app_name'),
+          hostName:        str(a, 'client_hostname'),
+          ntUserName:      str(a, 'nt_username'),
+          loginName:       str(a, 'server_principal_name', 'username'),
+          clientProcessId: str(a, 'client_pid'),
+          spid:            str(a, 'session_id'),
+          startTime:       event.timestamp ?? '',
+          cpu:             str(f, 'cpu_time'),
+          reads:           str(f, 'logical_reads'),
+          writes:          str(f, 'writes'),
+          duration:        str(f, 'duration'),
+          databaseId:      str(f, 'database_id'),
+          databaseName:    str(a, 'database_name'),
         };
 
         // Dedup key — mirrors ProfilerEvent.GetEventKey() priority exactly:
         //   1. event_sequence  (unique counter per session, most reliable)
         //   2. attach_activity_id (GUID, unique per activity)
         //   3. timestamp|name|session_id  (weakest, same format as C# fallback)
-        const seqKey      = str(a, "event_sequence");
-        const activityKey = str(a, "attach_activity_id");
-        const sessionId   = str(a, "session_id");
+        const seqKey      = str(a, 'event_sequence');
+        const activityKey = str(a, 'attach_activity_id');
+        const sessionId   = str(a, 'session_id');
         const eventKey = seqKey
           ? `seq:${seqKey}`
           : activityKey
             ? `activity:${activityKey}`
-            : `${event.timestamp ?? ""}|${event.name ?? ""}|${sessionId}`;
+            : `${event.timestamp ?? ''}|${event.name ?? ''}|${sessionId}`;
 
         if (this.sessionEventKeys.has(eventKey)) {
           continue;
@@ -550,12 +578,12 @@ export class ProfilerPanelProvider {
         this.eventCount += newEvents.length;
 
         await this.postMessage({
-          command: "addEvents",
+          command: 'addEvents',
           data: newEvents,
         });
 
         await this.postMessage({
-          command: "updateEventCount",
+          command: 'updateEventCount',
           data: this.eventCount,
         });
       }
@@ -572,7 +600,7 @@ export class ProfilerPanelProvider {
   private async showError(message: string): Promise<void> {
     this.logError(message);
     await this.postMessage({
-      command: "error",
+      command: 'error',
       data: message,
     });
     await vscode.window.showErrorMessage(`Light Query Profiler: ${message}`);
@@ -594,7 +622,7 @@ export class ProfilerPanelProvider {
    * @remarks Stops polling and profiling session if active
    */
   public async dispose(): Promise<void> {
-    this.log("Disposing profiler panel provider...");
+    this.log('Disposing profiler panel provider...');
     this.stopPolling();
 
     if (this.state !== ProfilerState.Stopped) {
@@ -612,7 +640,7 @@ export class ProfilerPanelProvider {
       this.panel = undefined;
     }
 
-    this.log("Profiler panel provider disposed");
+    this.log('Profiler panel provider disposed');
   }
 
   /**
@@ -649,13 +677,13 @@ export class ProfilerPanelProvider {
     const authModes = getAllAuthenticationModes();
 
     const hlJsUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, "media", "highlight.min.js"),
+      vscode.Uri.joinPath(this.extensionUri, 'media', 'highlight.min.js'),
     ).toString();
     const hlSqlUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, "media", "highlight-sql.min.js"),
+      vscode.Uri.joinPath(this.extensionUri, 'media', 'highlight-sql.min.js'),
     ).toString();
     const hlCssUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, "media", "highlight-vs2015.min.css"),
+      vscode.Uri.joinPath(this.extensionUri, 'media', 'highlight-vs2015.min.css'),
     ).toString();
 
     return `<!DOCTYPE html>
@@ -923,6 +951,13 @@ export class ProfilerPanelProvider {
 
     .btn:disabled {
       opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    input:disabled,
+    select:disabled {
+      opacity: 0.45;
       cursor: not-allowed;
       pointer-events: none;
     }
@@ -1518,7 +1553,7 @@ export class ProfilerPanelProvider {
           <div class="form-group">
             <label for="authMode">Authentication Mode</label>
             <select id="authMode">
-              ${authModes.map((mode) => '<option value="' + mode.value + '">' + mode.label + "</option>").join("")}
+              ${authModes.map((mode) => '<option value="' + mode.value + '">' + mode.label + '</option>').join('')}
             </select>
           </div>
 
@@ -1845,12 +1880,46 @@ export class ProfilerPanelProvider {
       // ── Button handlers ─────────────────────────────────────────────
       startBtn.addEventListener('click', () => {
         if (isStarting) { return; }
+
+        const mode = parseInt(authMode.value);
+        const serverVal   = serverInput.value.trim();
+        const databaseVal = databaseInput.value.trim();
+        const usernameVal = usernameInput.value.trim();
+        const passwordVal = passwordInput.value;
+
+        // ── Client-side validation ───────────────────────────────────
+        // Mirrors WinForms ConfigureAsync validation logic:
+        //   - Server is always required
+        //   - Database is required for Azure SQL Database (mode === 2)
+        //   - Username and Password are required for SQL Server Auth (1) and Azure SQL (2)
+        if (!serverVal) {
+          showError('Server is required');
+          return;
+        }
+
+        if (mode === 2 && !databaseVal) {
+          showError('Database is required for Azure SQL Database authentication');
+          return;
+        }
+
+        if ((mode === 1 || mode === 2) && !usernameVal) {
+          showError('Username is required for SQL Server and Azure SQL authentication');
+          return;
+        }
+
+        if ((mode === 1 || mode === 2) && !passwordVal) {
+          showError('Password is required for SQL Server and Azure SQL authentication');
+          return;
+        }
+
         const settings = {
-          server: serverInput.value.trim(),
-          database: databaseInput.value.trim() || 'master',
-          authenticationMode: parseInt(authMode.value),
-          username: usernameInput.value.trim() || undefined,
-          password: passwordInput.value || undefined,
+          server: serverVal,
+          // For Azure SQL the database field is required (validated above).
+          // For other modes, fall back to 'master' if the field is left blank.
+          database: databaseVal || (mode !== 2 ? 'master' : ''),
+          authenticationMode: mode,
+          username: usernameVal || undefined,
+          password: passwordVal || undefined,
         };
         vscode.setState({
           server: settings.server,
@@ -2111,6 +2180,15 @@ export class ProfilerPanelProvider {
             updateState(currentState);
             showError(msg.data);
             break;
+          case 'setConnectionFieldsEnabled': {
+            const enabled = /** @type {boolean} */ (msg.data);
+            authMode.disabled      = !enabled;
+            serverInput.disabled   = !enabled;
+            databaseInput.disabled = !enabled;
+            usernameInput.disabled = !enabled;
+            passwordInput.disabled = !enabled;
+            break;
+          }
         }
       });
 
