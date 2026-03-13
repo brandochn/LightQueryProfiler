@@ -65,15 +65,25 @@ export async function activate(
       } else if (!activationReady) {
         // Extension is still initializing — wait for it then open the panel
         log.info("Provider not ready yet, deferring panel open...");
-        const interval = setInterval(() => {
+        const deferredInterval = setInterval(() => {
           if (state.profilerPanelProvider) {
-            clearInterval(interval);
+            clearInterval(deferredInterval);
+            clearTimeout(deferredTimeout);
             log.info("Provider ready, opening deferred panel");
             state.profilerPanelProvider.showPanel();
           }
         }, 50);
         // Safety: stop polling after 10 s regardless
-        setTimeout(() => clearInterval(interval), 10_000);
+        // eslint-disable-next-line prefer-const
+        const deferredTimeout = setTimeout(() => clearInterval(deferredInterval), 10_000);
+        // Register both handles so they are cancelled if the extension is
+        // deactivated within the 10-second initialization window.
+        context.subscriptions.push({
+          dispose: () => {
+            clearInterval(deferredInterval);
+            clearTimeout(deferredTimeout);
+          },
+        });
       } else {
         log.error("Profiler panel provider not initialized");
         void vscode.window.showErrorMessage(

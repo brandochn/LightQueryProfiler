@@ -98,6 +98,12 @@ export class ProfilerPanelProvider {
     this.extensionUri = extensionUri;
     this.profilerClient = profilerClient;
     this.outputChannel = outputChannel;
+
+    // React to unexpected server crashes so the UI is updated immediately
+    // instead of silently continuing to poll against a dead connection.
+    this.profilerClient.setOnServerStopped(() => {
+      void this.handleServerCrash();
+    });
   }
 
   /**
@@ -145,8 +151,17 @@ export class ProfilerPanelProvider {
     // Handle panel disposal
     this.panel.onDidDispose(() => {
       this.log("Panel disposed");
-      this.stopPolling();
+      // Set panel to undefined first so postMessage becomes a no-op during cleanup.
       this.panel = undefined;
+      if (this.state !== ProfilerState.Stopped) {
+        // Stop polling and terminate the XEvent session on SQL Server so it
+        // is not orphaned when the user closes the panel tab.
+        void this.handleStop().catch((err) => {
+          this.logError(`Error stopping profiler on panel dispose: ${String(err)}`);
+        });
+      } else {
+        this.stopPolling();
+      }
     }, undefined);
 
     this.log("Panel created and shown");
@@ -377,6 +392,22 @@ export class ProfilerPanelProvider {
   }
 
   /**
+   * Handles an unexpected server crash.
+   * Stops polling, resets provider state to Stopped, clears the dedup cache
+   * (since the server restart will issue new sequence numbers), and updates the UI.
+   * @remarks Called via the onServerStopped callback registered in the constructor.
+   */
+  private async handleServerCrash(): Promise<void> {
+    this.logError("Server stopped unexpectedly — resetting profiler state");
+    this.stopPolling();
+    this.state = ProfilerState.Stopped;
+    // Clear dedup cache: after a server restart sequence numbers start from 1 again,
+    // so stale keys would silently block all new events from being displayed.
+    this.sessionEventKeys.clear();
+    await this.updateState();
+  }
+
+  /**
    * Starts polling for events
    * @remarks Polls every 900ms to match WinForms implementation timing
    */
@@ -401,10 +432,21 @@ export class ProfilerPanelProvider {
 
   /**
    * Polls for new events from the profiler service
-   * @remarks Filters out previously seen events using Set-based deduplication
+   * @remarks Filters out previously seen events using Set-based deduplication.
+   *   The try/catch wraps the entire body (including the state guard) so that any
+   *   future synchronous throw before the first await cannot escape as an unhandled
+   *   rejection and silently kill the polling loop.
    */
   private async pollEvents(): Promise<void> {
     try {
+      // Guard: only poll while actively running. If the server crashed,
+      // handleServerCrash() will have set state to Stopped and called stopPolling().
+      // This check also prevents stale interval ticks from firing after stopPolling()
+      // is called on a different code path (pause, stop, dispose).
+      if (this.state !== ProfilerState.Running) {
+        return;
+      }
+
       const events: ProfilerEvent[] = await this.profilerClient.getLastEvents(
         this.sessionName,
       );
@@ -1741,11 +1783,20 @@ export class ProfilerPanelProvider {
       // ── State ───────────────────────────────────────────────────────
       let currentState        = 'stopped';
       let selectedEventRow    = null;
-      let allEvents           = [];        // flat array of event objects for stats
+      let allEvents           = [];        // flat array of event objects for stats (capped at MAX_EVENTS)
+      const MAX_EVENTS        = 10000;     // cap to prevent unbounded memory/DOM growth
       let sortCol             = 'duration'; // active sort column key
       let sortDesc            = true;       // sort direction
       let currentTextData     = '';         // raw text for copy button
       let isStarting          = false;
+
+      // Incremental stats accumulators — updated per-event in addEvents()
+      // so updateStats() is O(1) instead of O(n) over the full allEvents array.
+      let statsTotal     = 0;
+      let statsDurSum    = 0.0;
+      let statsDurMax    = 0.0;
+      let statsDurCount  = 0;
+      let statsReadsMax  = 0;
 
       // Filter state — mirrors EventFilter on the TypeScript side
       let activeFilter = {
@@ -2096,13 +2147,24 @@ export class ProfilerPanelProvider {
         events.forEach(event => {
           allEvents.push(event);
 
-          // duration arrives as string in microseconds; convert to ms
+          // ── Update incremental stats accumulators (O(1) per event) ──
+          statsTotal++;
           const durUs = parseFloat(event.duration || '');
-          const durMs = isNaN(durUs) ? null : durUs / 1000;
-          const durClass = durMs === null ? '' :
-            durMs < 100  ? 'dur-fast' :
-            durMs < 1000 ? 'dur-medium' : 'dur-slow';
-          const durText = durMs !== null ? durMs.toFixed(2) : '';
+          if (!isNaN(durUs)) {
+            const durMs = durUs / 1000;
+            statsDurSum += durMs;
+            statsDurCount++;
+            if (durMs > statsDurMax) { statsDurMax = durMs; }
+          }
+          const readsVal = parseFloat(event.reads || '');
+          if (!isNaN(readsVal) && readsVal > statsReadsMax) { statsReadsMax = readsVal; }
+
+          // duration arrives as string in microseconds; convert to ms
+          const durMs2 = isNaN(durUs) ? null : durUs / 1000;
+          const durClass = durMs2 === null ? '' :
+            durMs2 < 100  ? 'dur-fast' :
+            durMs2 < 1000 ? 'dur-medium' : 'dur-slow';
+          const durText = durMs2 !== null ? durMs2.toFixed(2) : '';
 
           // TextData: truncate for display, full value stored on event object
           const textDisplay = event.textData
@@ -2110,7 +2172,7 @@ export class ProfilerPanelProvider {
             : '';
 
           const row = document.createElement('tr');
-          row.dataset.duration        = durMs !== null ? String(durMs) : '0';
+          row.dataset.duration        = durMs2 !== null ? String(durMs2) : '0';
           row.dataset.eventClass      = event.eventClass      || '';
           row.dataset.textData        = event.textData        || '';
           row.dataset.applicationName = event.applicationName || '';
@@ -2147,36 +2209,37 @@ export class ProfilerPanelProvider {
           eventsTableBody.insertBefore(row, eventsTableBody.firstChild);
         });
 
+        // Cap allEvents to prevent unbounded memory growth.
+        // The cap only affects the backup array; the DOM table is not trimmed here
+        // because removing oldest DOM rows would conflict with the newest-on-top
+        // insertion order and user selections. The stats accumulators are not
+        // affected by the cap — they track the full session lifetime.
+        if (allEvents.length > MAX_EVENTS) {
+          allEvents = allEvents.slice(allEvents.length - MAX_EVENTS);
+        }
+
         updateStats();
       }
 
       // ── Stats ───────────────────────────────────────────────────────
+      // Uses incremental accumulators updated in addEvents() — O(1) per call.
       function updateStats() {
-        // duration is a string in microseconds; convert to ms for display
-        const durations = allEvents
-          .map(e => { const v = parseFloat(e.duration || ''); return isNaN(v) ? null : v / 1000; })
-          .filter(d => d !== null);
-        const reads = allEvents
-          .map(e => { const v = parseFloat(e.reads || ''); return isNaN(v) ? null : v; })
-          .filter(r => r !== null);
+        statTotal.textContent = statsTotal;
 
-        statTotal.textContent = allEvents.length;
-
-        if (durations.length > 0) {
-          const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
-          const max = Math.max(...durations);
+        if (statsDurCount > 0) {
+          const avg = statsDurSum / statsDurCount;
           statAvg.textContent = avg.toFixed(1) + ' ms';
-          statMax.textContent = max.toFixed(1) + ' ms';
+          statMax.textContent = statsDurMax.toFixed(1) + ' ms';
           statMax.className = 'stat-value ' +
-            (max < 100 ? 'dur-fast' : max < 1000 ? 'dur-medium' : 'dur-slow');
+            (statsDurMax < 100 ? 'dur-fast' : statsDurMax < 1000 ? 'dur-medium' : 'dur-slow');
         } else {
           statAvg.textContent = '—';
           statMax.textContent = '—';
           statMax.className   = 'stat-value';
         }
 
-        if (reads.length > 0) {
-          statReads.textContent = Math.max(...reads).toLocaleString();
+        if (statsReadsMax > 0) {
+          statReads.textContent = statsReadsMax.toLocaleString();
         } else {
           statReads.textContent = '—';
         }
@@ -2390,6 +2453,12 @@ export class ProfilerPanelProvider {
         selectedEventRow = null;
         errorContainer.classList.add('hidden');
         allEvents = [];
+        // Reset incremental stats accumulators
+        statsTotal    = 0;
+        statsDurSum   = 0.0;
+        statsDurMax   = 0.0;
+        statsDurCount = 0;
+        statsReadsMax = 0;
         updateStats();
         statTotal.textContent = '0';
         eventCount.textContent = '0';

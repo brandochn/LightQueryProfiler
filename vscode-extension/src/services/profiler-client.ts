@@ -93,6 +93,7 @@ export class ProfilerClient {
   private readonly serverDllPath: string;
   private state: ClientState = ClientState.Idle;
   private readonly activeSessions = new Set<string>();
+  private onServerStoppedCallback: (() => void) | null = null;
 
   constructor(
     dotnetPath: string,
@@ -310,6 +311,16 @@ export class ProfilerClient {
   }
 
   /**
+   * Registers a callback that is invoked when the server stops unexpectedly.
+   * @param callback - Function to call when the server crashes or exits abnormally.
+   * @remarks The callback is called after cleanup() completes so the client is
+   *   already in Idle state by the time the callback runs.
+   */
+  public setOnServerStopped(callback: () => void): void {
+    this.onServerStoppedCallback = callback;
+  }
+
+  /**
    * Gets the current client state
    * @returns Current state
    */
@@ -448,20 +459,32 @@ export class ProfilerClient {
       return;
     }
 
-    // Abnormal exit
+    const exitInfo = signal
+      ? `signal ${signal}`
+      : `code ${code ?? 'unknown'}`;
+
+    // Exit during startup — waitForServerReady() will reject via its own onExit
+    // listener, which triggers cleanup() in start()'s catch block.  We only need
+    // to log here; no further action is required to avoid double-cleanup.
+    if (this.state === ClientState.Starting) {
+      this.logError(`Server exited during startup with ${exitInfo}`);
+      return;
+    }
+
+    // Abnormal exit while running
     if (this.state === ClientState.Running) {
-      const exitInfo = signal
-        ? `signal ${signal}`
-        : `code ${code ?? 'unknown'}`;
       this.logError(`Server exited unexpectedly with ${exitInfo}`);
 
+      const hadActiveSessions = this.activeSessions.size > 0;
       await this.cleanup();
 
-      if (this.activeSessions.size > 0) {
+      if (hadActiveSessions) {
         await vscode.window.showWarningMessage(
           'Profiler server stopped unexpectedly. Active profiling sessions have been terminated.',
         );
       }
+
+      this.onServerStoppedCallback?.();
     }
   }
 
@@ -483,6 +506,7 @@ export class ProfilerClient {
     if (this.state === ClientState.Running) {
       this.log('Connection closed unexpectedly');
       await this.cleanup();
+      this.onServerStoppedCallback?.();
     }
   }
 
