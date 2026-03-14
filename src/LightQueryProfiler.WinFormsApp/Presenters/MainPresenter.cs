@@ -11,6 +11,7 @@ using LightQueryProfiler.Shared.Services;
 using LightQueryProfiler.Shared.Services.Interfaces;
 using LightQueryProfiler.WinFormsApp.Data;
 using LightQueryProfiler.WinFormsApp.Helpers;
+using LightQueryProfiler.WinFormsApp.Services;
 using LightQueryProfiler.WinFormsApp.Views;
 using Microsoft.Data.SqlClient;
 
@@ -68,7 +69,7 @@ namespace LightQueryProfiler.WinFormsApp.Presenters
             view.OnRecentConnectionsClick += OnRecentConnectionsClick;
             view.OnExportEvents += OnExportEvents;
             view.OnImportEvents += OnImportEvents;
-            _connectionRepository = new ConnectionRepository(new SqliteContext());
+            _connectionRepository = new ConnectionRepository(new SqliteContext(), new DpapiPasswordProtectionService());
             view.Show();
         }
 
