@@ -1,6 +1,7 @@
-﻿using LightQueryProfiler.Shared.Enums;
+using LightQueryProfiler.Shared.Enums;
 using LightQueryProfiler.Shared.Models;
 using LightQueryProfiler.Shared.Repositories.Interfaces;
+using LightQueryProfiler.Shared.Services.Interfaces;
 using Microsoft.Data.Sqlite;
 
 namespace LightQueryProfiler.Shared.Repositories
@@ -8,16 +9,55 @@ namespace LightQueryProfiler.Shared.Repositories
     public class ConnectionRepository : IRepository<Connection>
     {
         private readonly IDatabaseContext _context;
+        private readonly IPasswordProtectionService? _passwordProtectionService;
 
+        /// <summary>
+        /// Initializes the repository without password protection (plain-text storage).
+        /// Provided for backward compatibility with existing tests and non-Windows environments.
+        /// </summary>
+        /// <param name="context">The database context used to obtain connections.</param>
         public ConnectionRepository(IDatabaseContext context)
         {
+            ArgumentNullException.ThrowIfNull(context);
             _context = context;
         }
+
+        /// <summary>
+        /// Initializes the repository with password protection.
+        /// Passwords are encrypted before storage and decrypted after retrieval.
+        /// </summary>
+        /// <param name="context">The database context used to obtain connections.</param>
+        /// <param name="passwordProtectionService">
+        /// Service that encrypts passwords on save and decrypts them on load.
+        /// Pass <c>null</c> to disable encryption (plain-text behaviour).
+        /// </param>
+        public ConnectionRepository(IDatabaseContext context, IPasswordProtectionService? passwordProtectionService)
+        {
+            ArgumentNullException.ThrowIfNull(context);
+            _context = context;
+            _passwordProtectionService = passwordProtectionService;
+        }
+
+        /// <summary>
+        /// Returns the encrypted representation of <paramref name="plainPassword"/> ready for persistence.
+        /// When no service is configured the original value is returned unchanged.
+        /// </summary>
+        private string? EncryptPassword(string? plainPassword)
+            => _passwordProtectionService?.Encrypt(plainPassword) ?? plainPassword;
+
+        /// <summary>
+        /// Returns the decrypted plain-text password from the value stored in the database.
+        /// When no service is configured the original value is returned unchanged.
+        /// </summary>
+        private string? DecryptPassword(string? storedPassword)
+            => _passwordProtectionService?.Decrypt(storedPassword) ?? storedPassword;
 
         public async Task AddAsync(Connection entity)
         {
             await using var db = _context.GetConnection() as SqliteConnection ?? throw new Exception("db cannot be null or empty");
             await db.OpenAsync();
+
+            string? encryptedPassword = EncryptPassword(entity.Password);
 
             // Try with EngineType column first
             try
@@ -29,7 +69,7 @@ namespace LightQueryProfiler.Shared.Repositories
                 sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                 sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
                 sqliteCommand.Parameters.AddWithValue("@UserId", entity.UserId);
-                sqliteCommand.Parameters.AddWithValue("@Password", entity.Password);
+                sqliteCommand.Parameters.AddWithValue("@Password", encryptedPassword);
                 sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                 sqliteCommand.Parameters.AddWithValue("@CreationDate", entity.CreationDate);
                 sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
@@ -48,7 +88,7 @@ namespace LightQueryProfiler.Shared.Repositories
                     sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                     sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
                     sqliteCommand.Parameters.AddWithValue("@UserId", entity.UserId);
-                    sqliteCommand.Parameters.AddWithValue("@Password", entity.Password);
+                    sqliteCommand.Parameters.AddWithValue("@Password", encryptedPassword);
                     sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                     sqliteCommand.Parameters.AddWithValue("@CreationDate", entity.CreationDate);
                     sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
@@ -64,7 +104,7 @@ namespace LightQueryProfiler.Shared.Repositories
                     sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                     sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
                     sqliteCommand.Parameters.AddWithValue("@UserId", entity.UserId);
-                    sqliteCommand.Parameters.AddWithValue("@Password", entity.Password);
+                    sqliteCommand.Parameters.AddWithValue("@Password", encryptedPassword);
                     sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                     sqliteCommand.Parameters.AddWithValue("@CreationDate", entity.CreationDate);
                     await sqliteCommand.ExecuteNonQueryAsync();
@@ -96,35 +136,35 @@ namespace LightQueryProfiler.Shared.Repositories
 
         public async Task<IList<Connection>> GetAllAsync()
         {
+            // SELECT column ordinals:
+            // 0=Id, 1=InitialCatalog, 2=CreationDate, 3=DataSource,
+            // 4=IntegratedSecurity, 5=Password, 6=UserId, [7=EngineType, [8=AuthenticationMode]]
             List<Connection> connections = new List<Connection>();
             await using var db = _context.GetConnection() as SqliteConnection ?? throw new Exception("db cannot be null or empty");
             await db.OpenAsync();
 
-            // Try with EngineType column first
+            // Try with AuthenticationMode column first
             try
             {
                 const string sqlWithAuthMode = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId, EngineType, AuthenticationMode FROM Connections";
                 await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithAuthMode, db);
                 await using var query = await sqliteCommand.ExecuteReaderAsync();
 
-                int index;
                 while (query.Read())
                 {
-                    index = 0;
                     var engineTypeValue = query.IsDBNull(7) ? null : (DatabaseEngineType?)query.GetInt32(7);
                     var authModeValue = query.IsDBNull(8) ? AuthenticationMode.WindowsAuth : (AuthenticationMode)query.GetInt32(8);
+                    var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
                     connections.Add(new Connection(
-                                                   query.GetInt32(index++),
-                                                   query.GetString(index++),
-                                                   query.GetDateTime(index++),
-                                                   query.GetString(index++),
-                                                   query.GetBoolean(index++),
-                                                   query.GetString(index++),
-                                                   query.GetString(index++),
-                                                   engineTypeValue,
-                                                   authModeValue
-                                                   )
-    );
+                        query.GetInt32(0),
+                        query.GetString(1),
+                        query.GetDateTime(2),
+                        query.GetString(3),
+                        query.GetBoolean(4),
+                        DecryptPassword(storedPassword),
+                        query.IsDBNull(6) ? null : query.GetString(6),
+                        engineTypeValue,
+                        authModeValue));
                 }
             }
             catch (SqliteException)
@@ -136,22 +176,19 @@ namespace LightQueryProfiler.Shared.Repositories
                     await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithEngineType, db);
                     await using var query = await sqliteCommand.ExecuteReaderAsync();
 
-                    int index;
                     while (query.Read())
                     {
-                        index = 0;
                         var engineTypeValue = query.IsDBNull(7) ? null : (DatabaseEngineType?)query.GetInt32(7);
+                        var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
                         connections.Add(new Connection(
-                                                       query.GetInt32(index++),
-                                                       query.GetString(index++),
-                                                       query.GetDateTime(index++),
-                                                       query.GetString(index++),
-                                                       query.GetBoolean(index++),
-                                                       query.GetString(index++),
-                                                       query.GetString(index++),
-                                                       engineTypeValue
-                                                       )
-        );
+                            query.GetInt32(0),
+                            query.GetString(1),
+                            query.GetDateTime(2),
+                            query.GetString(3),
+                            query.GetBoolean(4),
+                            DecryptPassword(storedPassword),
+                            query.IsDBNull(6) ? null : query.GetString(6),
+                            engineTypeValue));
                     }
                 }
                 catch (SqliteException)
@@ -161,21 +198,18 @@ namespace LightQueryProfiler.Shared.Repositories
                     await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithoutEngineType, db);
                     await using var query = await sqliteCommand.ExecuteReaderAsync();
 
-                    int index;
                     while (query.Read())
                     {
-                        index = 0;
+                        var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
                         connections.Add(new Connection(
-                                                       query.GetInt32(index++),
-                                                       query.GetString(index++),
-                                                       query.GetDateTime(index++),
-                                                       query.GetString(index++),
-                                                       query.GetBoolean(index++),
-                                                       query.GetString(index++),
-                                                       query.GetString(index++),
-                                                       null
-                                                       )
-        );
+                            query.GetInt32(0),
+                            query.GetString(1),
+                            query.GetDateTime(2),
+                            query.GetString(3),
+                            query.GetBoolean(4),
+                            DecryptPassword(storedPassword),
+                            query.IsDBNull(6) ? null : query.GetString(6),
+                            null));
                     }
                 }
             }
@@ -185,11 +219,14 @@ namespace LightQueryProfiler.Shared.Repositories
 
         public async Task<Connection> GetByIdAsync(int id)
         {
+            // SELECT column ordinals:
+            // 0=Id, 1=InitialCatalog, 2=CreationDate, 3=DataSource,
+            // 4=IntegratedSecurity, 5=Password, 6=UserId, [7=EngineType, [8=AuthenticationMode]]
             Connection? connection = null;
             await using var db = _context.GetConnection() as SqliteConnection ?? throw new Exception("db cannot be null or empty");
             await db.OpenAsync();
 
-            // Try with EngineType column first
+            // Try with AuthenticationMode column first
             try
             {
                 const string sqlWithAuthMode = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId, EngineType, AuthenticationMode FROM Connections WHERE Id = @Id";
@@ -197,21 +234,21 @@ namespace LightQueryProfiler.Shared.Repositories
                 sqliteCommand.Parameters.AddWithValue("@Id", id);
                 await using var query = await sqliteCommand.ExecuteReaderAsync();
 
-                int index;
                 while (query.Read())
                 {
-                    index = 0;
                     var engineTypeValue = query.IsDBNull(7) ? null : (DatabaseEngineType?)query.GetInt32(7);
                     var authModeValue = query.IsDBNull(8) ? AuthenticationMode.WindowsAuth : (AuthenticationMode)query.GetInt32(8);
-                    connection = new Connection(query.GetInt32(index++),
-                                                   query.GetString(index++),
-                                                   query.GetDateTime(index++),
-                                                   query.GetString(index++),
-                                                   query.GetBoolean(index++),
-                                                   query.GetString(index++),
-                                                   query.GetString(index++),
-                                                   engineTypeValue,
-                                                   authModeValue);
+                    var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
+                    connection = new Connection(
+                        query.GetInt32(0),
+                        query.GetString(1),
+                        query.GetDateTime(2),
+                        query.GetString(3),
+                        query.GetBoolean(4),
+                        DecryptPassword(storedPassword),
+                        query.IsDBNull(6) ? null : query.GetString(6),
+                        engineTypeValue,
+                        authModeValue);
                 }
             }
             catch (SqliteException)
@@ -224,19 +261,19 @@ namespace LightQueryProfiler.Shared.Repositories
                     sqliteCommand.Parameters.AddWithValue("@Id", id);
                     await using var query = await sqliteCommand.ExecuteReaderAsync();
 
-                    int index;
                     while (query.Read())
                     {
-                        index = 0;
                         var engineTypeValue = query.IsDBNull(7) ? null : (DatabaseEngineType?)query.GetInt32(7);
-                        connection = new Connection(query.GetInt32(index++),
-                                                       query.GetString(index++),
-                                                       query.GetDateTime(index++),
-                                                       query.GetString(index++),
-                                                       query.GetBoolean(index++),
-                                                       query.GetString(index++),
-                                                       query.GetString(index++),
-                                                       engineTypeValue);
+                        var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
+                        connection = new Connection(
+                            query.GetInt32(0),
+                            query.GetString(1),
+                            query.GetDateTime(2),
+                            query.GetString(3),
+                            query.GetBoolean(4),
+                            DecryptPassword(storedPassword),
+                            query.IsDBNull(6) ? null : query.GetString(6),
+                            engineTypeValue);
                     }
                 }
                 catch (SqliteException)
@@ -247,18 +284,18 @@ namespace LightQueryProfiler.Shared.Repositories
                     sqliteCommand.Parameters.AddWithValue("@Id", id);
                     await using var query = await sqliteCommand.ExecuteReaderAsync();
 
-                    int index;
                     while (query.Read())
                     {
-                        index = 0;
-                        connection = new Connection(query.GetInt32(index++),
-                                                       query.GetString(index++),
-                                                       query.GetDateTime(index++),
-                                                       query.GetString(index++),
-                                                       query.GetBoolean(index++),
-                                                       query.GetString(index++),
-                                                       query.GetString(index++),
-                                                       null);
+                        var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
+                        connection = new Connection(
+                            query.GetInt32(0),
+                            query.GetString(1),
+                            query.GetDateTime(2),
+                            query.GetString(3),
+                            query.GetBoolean(4),
+                            DecryptPassword(storedPassword),
+                            query.IsDBNull(6) ? null : query.GetString(6),
+                            null);
                     }
                 }
             }
@@ -276,7 +313,9 @@ namespace LightQueryProfiler.Shared.Repositories
             await using var db = _context.GetConnection() as SqliteConnection ?? throw new Exception("db cannot be null or empty");
             await db.OpenAsync();
 
-            // Try with EngineType column first
+            string? encryptedPassword = EncryptPassword(entity.Password);
+
+            // Try with AuthenticationMode column first
             try
             {
                 const string sqlWithAuthMode = "UPDATE Connections SET DataSource=@DataSource, InitialCatalog=@InitialCatalog, UserId=@UserId, Password=@Password, IntegratedSecurity=@IntegratedSecurity, EngineType=@EngineType, AuthenticationMode=@AuthenticationMode WHERE Id = @Id";
@@ -285,7 +324,7 @@ namespace LightQueryProfiler.Shared.Repositories
                 sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                 sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
                 sqliteCommand.Parameters.AddWithValue("@UserId", entity.UserId);
-                sqliteCommand.Parameters.AddWithValue("@Password", entity.Password);
+                sqliteCommand.Parameters.AddWithValue("@Password", encryptedPassword);
                 sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                 sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
                 sqliteCommand.Parameters.AddWithValue("@AuthenticationMode", (int)entity.AuthenticationMode);
@@ -302,7 +341,7 @@ namespace LightQueryProfiler.Shared.Repositories
                     sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                     sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
                     sqliteCommand.Parameters.AddWithValue("@UserId", entity.UserId);
-                    sqliteCommand.Parameters.AddWithValue("@Password", entity.Password);
+                    sqliteCommand.Parameters.AddWithValue("@Password", encryptedPassword);
                     sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                     sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
                     await sqliteCommand.ExecuteNonQueryAsync();
@@ -316,7 +355,7 @@ namespace LightQueryProfiler.Shared.Repositories
                     sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                     sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
                     sqliteCommand.Parameters.AddWithValue("@UserId", entity.UserId);
-                    sqliteCommand.Parameters.AddWithValue("@Password", entity.Password);
+                    sqliteCommand.Parameters.AddWithValue("@Password", encryptedPassword);
                     sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                     await sqliteCommand.ExecuteNonQueryAsync();
                 }
