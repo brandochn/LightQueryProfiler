@@ -101,7 +101,12 @@ The project runs on **Windows**, **Linux**, and **macOS**, provided .NET 10 is i
 
 ## Status
 
-Project is: _in progress_. Contributions are always welcome — feel free to submit a pull request.
+This project is actively under development. Stable releases are already available for both the desktop application and the VS Code extension:
+
+- **VS Code Extension** — available on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=brandochn.light-query-profiler)
+- **Desktop App** — available on the [GitHub Releases](https://github.com/brandochn/LightQueryProfiler/releases) page
+
+Contributions are always welcome — feel free to open an issue or submit a pull request.
 
 ---
 
