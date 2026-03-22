@@ -136,10 +136,14 @@ export class ProfilerPanelProvider {
     // Set HTML content
     this.panel.webview.html = this.getHtmlContent(this.panel.webview);
 
-    // Set icon
+    // Set icon — use a dedicated small SVG (icon-small.svg, 16×16 viewBox)
+    // for the panel tab. The main icon.png is used by the Marketplace and the
+    // activity-bar entry (via package.json). Using a separate file avoids the
+    // issue where the detailed 128×128 design becomes unrecognisable when
+    // VS Code renders it at ~16 px in the editor tab strip.
     this.panel.iconPath = {
-      light: vscode.Uri.joinPath(this.extensionUri, 'media', 'icon.svg'),
-      dark: vscode.Uri.joinPath(this.extensionUri, 'media', 'icon.svg'),
+      light: vscode.Uri.joinPath(this.extensionUri, 'media', 'icon-small.svg'),
+      dark: vscode.Uri.joinPath(this.extensionUri, 'media', 'icon-small.svg'),
     };
 
     // Handle messages from webview
@@ -724,21 +728,32 @@ export class ProfilerPanelProvider {
       gap: 12px;
     }
 
-    .app-title {
+    .session-timer-group {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--vscode-titleBar-activeForeground, var(--vscode-foreground));
-      letter-spacing: 0.3px;
-      white-space: nowrap;
+      gap: 6px;
+      user-select: none;
     }
 
-    .app-title-icon {
-      width: 16px;
-      height: 16px;
-      opacity: 0.85;
+    .session-timer-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: var(--vscode-descriptionForeground);
+    }
+
+    .session-timer {
+      font-family: var(--vscode-editor-font-family, monospace);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: var(--vscode-descriptionForeground);
+      min-width: 44px;
+    }
+
+    .session-timer.running {
+      color: var(--vscode-foreground);
     }
 
     .header-status {
@@ -1506,16 +1521,9 @@ export class ProfilerPanelProvider {
 
   <!-- ── Top header bar ──────────────────────────────────────────── -->
   <div class="app-header">
-    <div class="app-title">
-      <svg class="app-title-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="8" cy="4" rx="6" ry="2.5" fill="var(--vscode-button-background,#007acc)" opacity="0.9"/>
-        <path d="M2 4v4c0 1.38 2.69 2.5 6 2.5s6-1.12 6-2.5V4" stroke="var(--vscode-button-background,#007acc)" stroke-width="1.2" fill="none"/>
-        <path d="M2 8v4c0 1.38 2.69 2.5 6 2.5s6-1.12 6-2.5V8" stroke="var(--vscode-button-background,#007acc)" stroke-width="1.2" fill="none" opacity="0.6"/>
-        <rect x="9.5" y="8" width="1" height="4" rx="0.5" fill="#f0b429"/>
-        <rect x="11.5" y="6" width="1" height="6" rx="0.5" fill="#f0b429"/>
-        <rect x="13.5" y="9.5" width="1" height="2.5" rx="0.5" fill="#f0b429"/>
-      </svg>
-      SQL Server Query Profiler
+    <div class="session-timer-group">
+      <span class="session-timer-label">Session Duration</span>
+      <span class="session-timer" id="sessionTimer">—</span>
     </div>
     <div class="header-status">
       <div class="status-badge stopped" id="statusBadge">
@@ -1845,7 +1853,20 @@ export class ProfilerPanelProvider {
       let searchAtWrapEnd     = false; // true when user just hit next at last match (pending wrap forward)
       let searchAtWrapStart   = false; // true when user just hit prev at first match (pending wrap back)
 
+      // Timer state
+      let sessionStartTime    = null; // Date.now() snapshot when current run started
+      let timerInterval       = null; // setInterval handle (1-second tick)
+
       // ── Auth mode visibility ────────────────────────────────────────
+      function formatDuration(ms) {
+        const totalSec = Math.floor(ms / 1000);
+        const h   = Math.floor(totalSec / 3600);
+        const m   = Math.floor((totalSec % 3600) / 60);
+        const s   = totalSec % 60;
+        const pad = n => String(n).padStart(2, '0');
+        return pad(h) + ':' + pad(m) + ':' + pad(s);
+      }
+
       function updateAuthVisibility() {
         const mode = parseInt(authMode.value);
         const isWindows = mode === 0;
@@ -2214,6 +2235,31 @@ export class ProfilerPanelProvider {
         resumeBtn.classList.toggle('hidden', !isPaused);
         resumeBtn.disabled = !isPaused;
         stopBtn.disabled   = isStopped;
+
+        // Timer
+        const timerEl = document.getElementById('sessionTimer');
+        if (isRunning) {
+          // Reset and start fresh (also covers Resume → new run)
+          clearInterval(timerInterval);
+          sessionStartTime = Date.now();
+          timerEl.className = 'session-timer running';
+          timerEl.textContent = '00:00:00';
+          timerInterval = setInterval(function() {
+            timerEl.textContent = formatDuration(Date.now() - sessionStartTime);
+          }, 1000);
+        } else if (isPaused) {
+          // Freeze display — stop ticking but keep current value
+          clearInterval(timerInterval);
+          timerInterval = null;
+          timerEl.className = 'session-timer';
+        } else {
+          // Stopped — clear everything
+          clearInterval(timerInterval);
+          timerInterval = null;
+          sessionStartTime = null;
+          timerEl.className = 'session-timer';
+          timerEl.textContent = '\u2014'; // —
+        }
       }
 
       // ── Add events ──────────────────────────────────────────────────
@@ -2221,6 +2267,17 @@ export class ProfilerPanelProvider {
         // Remove placeholder row
         const placeholder = eventsTableBody.querySelector('td[colspan]');
         if (placeholder) { eventsTableBody.innerHTML = ''; }
+
+        // ── Scroll anchoring: capture selected row position before inserting ──
+        // When new rows are inserted above the selected row, the browser keeps
+        // scrollTop at the same absolute pixel value, which causes the selected
+        // row to drift downward visually. We compensate by measuring the delta
+        // in offsetTop before/after insertion and adjusting scrollTop to match.
+        // NOTE: this code runs as plain JavaScript in the webview — no TypeScript
+        // syntax (as casts, type annotations) is allowed here.
+        const anchorRow = selectedEventRow;
+        const anchorOffsetBefore = anchorRow ? anchorRow.offsetTop : null;
+        const scrollTopBefore = eventsContainer ? eventsContainer.scrollTop : 0;
 
         events.forEach(event => {
           allEvents.push(event);
@@ -2286,6 +2343,20 @@ export class ProfilerPanelProvider {
           row.addEventListener('click', () => selectRow(row, event));
           eventsTableBody.insertBefore(row, eventsTableBody.firstChild);
         });
+
+        // ── Scroll anchoring: restore visual position of selected row ──
+        // After inserting new rows at the top, compensate the container's
+        // scrollTop by the exact number of pixels the anchor row moved down.
+        // This keeps the selected row stationary on screen regardless of
+        // how many new events arrive. If no row is selected, scrollTop is
+        // left untouched so the table continues showing the newest events.
+        if (anchorRow !== null && anchorOffsetBefore !== null && eventsContainer) {
+          const anchorOffsetAfter = anchorRow.offsetTop;
+          const delta = anchorOffsetAfter - anchorOffsetBefore;
+          if (delta > 0) {
+            eventsContainer.scrollTop = scrollTopBefore + delta;
+          }
+        }
 
         // Cap allEvents to prevent unbounded memory growth.
         // The cap only affects the backup array; the DOM table is not trimmed here

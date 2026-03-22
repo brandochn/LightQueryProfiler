@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <!-- Blue circle background — matches icon.png -->
+  <circle cx="8" cy="8" r="7.5" fill="#007ACC" stroke="#003F7F" stroke-width="0.5"/>
+  <!-- Database cylinder body (white) -->
+  <ellipse cx="7.5" cy="5.5" rx="3.5" ry="1.2" fill="#FFFFFF" opacity="0.9"/>
+  <rect x="4" y="5.5" width="7" height="4" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="7.5" cy="9.5" rx="3.5" ry="1.2" fill="#FFFFFF" opacity="0.9"/>
+  <!-- Cylinder outline -->
+  <ellipse cx="7.5" cy="5.5" rx="3.5" ry="1.2" fill="none" stroke="#003F7F" stroke-width="0.5"/>
+  <line x1="4" y1="5.5" x2="4" y2="9.5" stroke="#003F7F" stroke-width="0.5"/>
+  <line x1="11" y1="5.5" x2="11" y2="9.5" stroke="#003F7F" stroke-width="0.5"/>
+  <ellipse cx="7.5" cy="9.5" rx="3.5" ry="1.2" fill="none" stroke="#003F7F" stroke-width="0.5"/>
+  <!-- Bar chart — yellow, right side -->
+  <rect x="11.5" y="8.5" width="1.2" height="2.8" rx="0.3" fill="#FFD700"/>
+  <rect x="13"   y="7"   width="1.2" height="4.3" rx="0.3" fill="#FFD700"/>
+  <!-- Light rays — two gold triangles at top, matching icon.png -->
+  <path d="M4 2.8 L3.2 1.2 L5 1.8 Z" fill="#FFD700" opacity="0.8"/>
+  <path d="M11 2.8 L11.8 1.2 L10 1.8 Z" fill="#FFD700" opacity="0.8"/>
+</svg>
