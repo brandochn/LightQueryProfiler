@@ -5,6 +5,15 @@ All notable changes to the Light Query Profiler extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-03-24
+
+### Changed
+- Welcome message now only appears on first activation after installation
+- Improved user experience by preventing repetitive notification on every VS Code startup
+
+### Technical
+- Implemented `globalState` persistence for welcome message display tracking
+
 ## [1.0.0] - 2026-03-21
 
 ### Added

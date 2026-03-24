@@ -149,10 +149,16 @@ export async function activate(
     activationReady = true;
     log.info('Light Query Profiler extension activated successfully');
 
-    // Show welcome message (fire-and-forget — do not await so activate() returns immediately)
-    void vscode.window.showInformationMessage(
-      "Light Query Profiler is ready! Run 'Show SQL Profiler' command to open the profiler.",
-    );
+    // Show welcome message only on first activation
+    const hasShownWelcomeMessage = context.globalState.get<boolean>('hasShownWelcomeMessage', false);
+    if (!hasShownWelcomeMessage) {
+      void vscode.window.showInformationMessage(
+        "Light Query Profiler is ready! Run 'Show SQL Profiler' command to open the profiler.",
+      ).then(() => {
+        // Mark as shown after user dismisses or acknowledges the message
+        void context.globalState.update('hasShownWelcomeMessage', true);
+      });
+    }
   } catch (error) {
     activationReady = true; // Stop the deferred-panel polling
     const errorMessage = error instanceof Error ? error.message : String(error);
