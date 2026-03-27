@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { ProfilerClient } from '../services/profiler-client';
+import {
+  EventExportImportService,
+  DisplayEvent,
+} from '../services/event-export-import.service';
 import {
   AuthenticationMode,
   getAllAuthenticationModes,
@@ -44,7 +49,17 @@ interface EventFilter {
  * Message types sent from webview to extension
  */
 interface WebviewIncomingMessage {
-  command: 'start' | 'stop' | 'pause' | 'resume' | 'clear' | 'applyFilters' | 'clearFilters';
+  command:
+    | 'start'
+    | 'stop'
+    | 'pause'
+    | 'resume'
+    | 'clear'
+    | 'applyFilters'
+    | 'clearFilters'
+    | 'exportEvents'
+    | 'importEvents'
+    | 'webviewReady';
   data?: ConnectionSettings | EventFilter;
 }
 
@@ -59,7 +74,8 @@ interface WebviewOutgoingMessage {
     | 'clearEvents'
     | 'updateFilter'
     | 'error'
-    | 'setConnectionFieldsEnabled';
+    | 'setConnectionFieldsEnabled'
+    | 'loadImportedEvents';
   data?: unknown;
 }
 
@@ -91,6 +107,27 @@ export class ProfilerPanelProvider {
     loginName: '',
     databaseName: '',
   };
+
+  /**
+   * Host-side mirror of the webview's `allEvents` array.
+   * Populated in `pollEvents()` (post-filter) and replaced on import.
+   * Cleared in `handleStart()` and `handleClear()` to stay in sync with the webview.
+   * Capped at `maxCapturedEvents` to prevent unbounded memory growth in the host.
+   */
+  private capturedEvents: DisplayEvent[] = [];
+
+  /**
+   * Maximum number of events kept in `capturedEvents`.
+   * Matches the `MAX_EVENTS` cap used by the webview's `allEvents` array.
+   */
+  private static readonly maxCapturedEvents = 10_000;
+
+  /**
+   * Events waiting to be sent to the webview after it signals readiness via `webviewReady`.
+   * Set by `importEvents()` when the panel is not yet open; cleared by the
+   * `webviewReady` handler once the data has been forwarded.
+   */
+  private pendingImportEvents: DisplayEvent[] | null = null;
 
   constructor(
     extensionUri: vscode.Uri,
@@ -163,7 +200,9 @@ export class ProfilerPanelProvider {
         // Stop polling and terminate the XEvent session on SQL Server so it
         // is not orphaned when the user closes the panel tab.
         void this.handleStop().catch((err) => {
-          this.logError(`Error stopping profiler on panel dispose: ${String(err)}`);
+          this.logError(
+            `Error stopping profiler on panel dispose: ${String(err)}`,
+          );
         });
       } else {
         this.stopPolling();
@@ -210,6 +249,24 @@ export class ProfilerPanelProvider {
         case 'clearFilters':
           await this.handleClearFilters();
           break;
+        case 'exportEvents':
+          await this.exportEvents();
+          break;
+        case 'importEvents':
+          await this.importEvents();
+          break;
+        case 'webviewReady':
+          // If importEvents() stored pending data while the panel was opening,
+          // forward it now that the webview has signalled it is ready.
+          if (this.pendingImportEvents) {
+            const pending = this.pendingImportEvents;
+            this.pendingImportEvents = null;
+            await this.postMessage({
+              command: 'loadImportedEvents',
+              data: pending,
+            });
+          }
+          break;
         default:
           this.logError(`Unknown command: ${String(message.command)}`);
       }
@@ -253,6 +310,7 @@ export class ProfilerPanelProvider {
       // Clear previous events before showing new session results
       this.eventCount = 0;
       this.sessionEventKeys.clear();
+      this.capturedEvents = [];
       await this.postMessage({ command: 'clearEvents' });
 
       // Update state and disable connection fields while profiling is active
@@ -369,6 +427,7 @@ export class ProfilerPanelProvider {
   private async handleClear(): Promise<void> {
     this.log('Clearing events');
     this.eventCount = 0;
+    this.capturedEvents = [];
     // sessionEventKeys intentionally NOT cleared — session cache must survive Clear
     // so that already-seen ring_buffer events cannot re-appear after a clear.
     await this.postMessage({
@@ -383,9 +442,7 @@ export class ProfilerPanelProvider {
    */
   private async handleApplyFilters(filter: EventFilter): Promise<void> {
     this.eventFilter = filter;
-    this.log(
-      `Filters applied: ${JSON.stringify(filter)}`,
-    );
+    this.log(`Filters applied: ${JSON.stringify(filter)}`);
     await this.postMessage({ command: 'updateFilter', data: filter });
   }
 
@@ -487,30 +544,21 @@ export class ProfilerPanelProvider {
         return;
       }
 
-      const newEvents: Array<{
-        eventClass: string;
-        textData: string;
-        applicationName: string;
-        hostName: string;
-        ntUserName: string;
-        loginName: string;
-        clientProcessId: string;
-        spid: string;
-        startTime: string;
-        cpu: string;
-        reads: string;
-        writes: string;
-        duration: string;
-        databaseId: string;
-        databaseName: string;
-      }> = [];
+      const newEvents: DisplayEvent[] = [];
 
       // Helper to get a string value from fields or actions (all values come as strings from the XML parser)
-      const str = (obj: Record<string, unknown> | undefined, ...keys: string[]): string => {
-        if (!obj) { return ''; }
+      const str = (
+        obj: Record<string, unknown> | undefined,
+        ...keys: string[]
+      ): string => {
+        if (!obj) {
+          return '';
+        }
         for (const k of keys) {
           const v = obj[k];
-          if (v !== undefined && v !== null && String(v).length > 0) { return String(v); }
+          if (v !== undefined && v !== null && String(v).length > 0) {
+            return String(v);
+          }
         }
         return '';
       };
@@ -523,30 +571,30 @@ export class ProfilerPanelProvider {
         const textData = str(f, 'options_text', 'batch_text', 'statement');
 
         const displayEvent = {
-          eventClass:      event.name ?? 'Unknown',
+          eventClass: event.name ?? 'Unknown',
           textData,
           applicationName: str(a, 'client_app_name'),
-          hostName:        str(a, 'client_hostname'),
-          ntUserName:      str(a, 'nt_username'),
-          loginName:       str(a, 'server_principal_name', 'username'),
+          hostName: str(a, 'client_hostname'),
+          ntUserName: str(a, 'nt_username'),
+          loginName: str(a, 'server_principal_name', 'username'),
           clientProcessId: str(a, 'client_pid'),
-          spid:            str(a, 'session_id'),
-          startTime:       event.timestamp ?? '',
-          cpu:             str(f, 'cpu_time'),
-          reads:           str(f, 'logical_reads'),
-          writes:          str(f, 'writes'),
-          duration:        str(f, 'duration'),
-          databaseId:      str(f, 'database_id'),
-          databaseName:    str(a, 'database_name'),
+          spid: str(a, 'session_id'),
+          startTime: event.timestamp ?? '',
+          cpu: str(f, 'cpu_time'),
+          reads: str(f, 'logical_reads'),
+          writes: str(f, 'writes'),
+          duration: str(f, 'duration'),
+          databaseId: str(f, 'database_id'),
+          databaseName: str(a, 'database_name'),
         };
 
         // Dedup key — mirrors ProfilerEvent.GetEventKey() priority exactly:
         //   1. event_sequence  (unique counter per session, most reliable)
         //   2. attach_activity_id (GUID, unique per activity)
         //   3. timestamp|name|session_id  (weakest, same format as C# fallback)
-        const seqKey      = str(a, 'event_sequence');
+        const seqKey = str(a, 'event_sequence');
         const activityKey = str(a, 'attach_activity_id');
-        const sessionId   = str(a, 'session_id');
+        const sessionId = str(a, 'session_id');
         const eventKey = seqKey
           ? `seq:${seqKey}`
           : activityKey
@@ -565,12 +613,12 @@ export class ProfilerPanelProvider {
         const contains = (value: string, term: string): boolean =>
           !term || value.toLowerCase().includes(term.toLowerCase());
         if (
-          !contains(displayEvent.eventClass,      fil.eventClass)      ||
-          !contains(displayEvent.textData,        fil.textData)        ||
+          !contains(displayEvent.eventClass, fil.eventClass) ||
+          !contains(displayEvent.textData, fil.textData) ||
           !contains(displayEvent.applicationName, fil.applicationName) ||
-          !contains(displayEvent.ntUserName,      fil.ntUserName)      ||
-          !contains(displayEvent.loginName,       fil.loginName)       ||
-          !contains(displayEvent.databaseName,    fil.databaseName)
+          !contains(displayEvent.ntUserName, fil.ntUserName) ||
+          !contains(displayEvent.loginName, fil.loginName) ||
+          !contains(displayEvent.databaseName, fil.databaseName)
         ) {
           continue;
         }
@@ -590,6 +638,19 @@ export class ProfilerPanelProvider {
           command: 'updateEventCount',
           data: this.eventCount,
         });
+
+        // Sync host-side captured events — only post-filter events that were
+        // actually sent to the webview are stored here. Capped at
+        // maxCapturedEvents to match the webview's allEvents cap.
+        this.capturedEvents.push(...newEvents);
+        if (
+          this.capturedEvents.length > ProfilerPanelProvider.maxCapturedEvents
+        ) {
+          this.capturedEvents = this.capturedEvents.slice(
+            this.capturedEvents.length -
+              ProfilerPanelProvider.maxCapturedEvents,
+          );
+        }
       }
     } catch (error) {
       this.logError(`Error polling events: ${String(error)}`);
@@ -608,6 +669,136 @@ export class ProfilerPanelProvider {
       data: message,
     });
     await vscode.window.showErrorMessage(`Light Query Profiler: ${message}`);
+  }
+
+  /**
+   * Exports captured events to a JSON file chosen via a VS Code save dialog.
+   *
+   * @remarks
+   * Uses `capturedEvents` (host-side mirror) so the panel does not need to be
+   * open. Shows an informational message when there are no events to export.
+   * Called both from the webview toolbar button (`exportEvents` message) and
+   * from the `lightQueryProfiler.exportEvents` palette command.
+   */
+  public async exportEvents(): Promise<void> {
+    if (this.capturedEvents.length === 0) {
+      await vscode.window.showInformationMessage(
+        'Light Query Profiler: No events to export.',
+      );
+      return;
+    }
+
+    const defaultUri = vscode.Uri.file(
+      EventExportImportService.generateDefaultFilename(),
+    );
+
+    const uri = await vscode.window.showSaveDialog({
+      defaultUri,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      filters: { 'JSON Files': ['json'], 'All Files': ['*'] },
+      title: 'Export Profiler Events',
+      saveLabel: 'Export',
+    });
+
+    if (!uri) {
+      return; // User cancelled
+    }
+
+    try {
+      await EventExportImportService.exportEvents(
+        this.capturedEvents,
+        uri.fsPath,
+      );
+      const count = this.capturedEvents.length;
+      this.log(`Exported ${count} events to ${uri.fsPath}`);
+      await vscode.window.showInformationMessage(
+        `Light Query Profiler: Exported ${count} event(s) to ${path.basename(uri.fsPath)}`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logError(`Export failed: ${message}`);
+      await vscode.window.showErrorMessage(
+        `Light Query Profiler: Export failed — ${message}`,
+      );
+    }
+  }
+
+  /**
+   * Imports events from a JSON file chosen via a VS Code open dialog.
+   *
+   * @remarks
+   * If the panel is already open the imported events are sent directly via
+   * `loadImportedEvents`. If not, the panel is opened and the events are
+   * stored in `pendingImportEvents`; the `webviewReady` handshake then
+   * forwards them once the webview has finished initialising.
+   * Called both from the webview toolbar button (`importEvents` message) and
+   * from the `lightQueryProfiler.importEvents` palette command.
+   */
+  public async importEvents(): Promise<void> {
+    const uris = await vscode.window.showOpenDialog({
+      canSelectFiles: true,
+      canSelectFolders: false,
+      canSelectMany: false,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      filters: { 'JSON Files': ['json'], 'All Files': ['*'] },
+      title: 'Import Profiler Events',
+      openLabel: 'Import',
+    });
+
+    if (!uris || uris.length === 0) {
+      return; // User cancelled
+    }
+
+    const selectedUri = uris[0];
+    if (!selectedUri) {
+      return; // Should never happen given the length check above
+    }
+
+    // Confirm replacement when events are already loaded
+    if (this.capturedEvents.length > 0) {
+      const answer = await vscode.window.showWarningMessage(
+        `This will replace ${this.capturedEvents.length} existing event(s). Continue?`,
+        { modal: true },
+        'Replace',
+      );
+      if (answer !== 'Replace') {
+        return;
+      }
+    }
+
+    try {
+      const result = await EventExportImportService.importEvents(
+        selectedUri.fsPath,
+      );
+      const imported = result.events;
+
+      // Update host-side state so subsequent exports reflect the imported data
+      this.capturedEvents = [...imported];
+      this.eventCount = imported.length;
+
+      if (this.panel) {
+        // Panel is already open — send directly
+        await this.postMessage({
+          command: 'loadImportedEvents',
+          data: imported,
+        });
+      } else {
+        // Panel not yet open — store as pending; webviewReady will forward
+        this.pendingImportEvents = imported;
+        this.showPanel();
+      }
+
+      this.log(`Imported ${imported.length} events from ${selectedUri.fsPath}`);
+      await vscode.window.showInformationMessage(
+        `Light Query Profiler: Imported ${imported.length} event(s) from ${path.basename(selectedUri.fsPath)}`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logError(`Import failed: ${message}`);
+      await vscode.window.showErrorMessage(
+        `Light Query Profiler: Import failed — ${message}`,
+      );
+    }
   }
 
   /**
@@ -680,15 +871,25 @@ export class ProfilerPanelProvider {
   private getHtmlContent(webview: vscode.Webview): string {
     const authModes = getAllAuthenticationModes();
 
-    const hlJsUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'media', 'highlight.min.js'),
-    ).toString();
-    const hlSqlUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'media', 'highlight-sql.min.js'),
-    ).toString();
-    const hlCssUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'media', 'highlight-vs2015.min.css'),
-    ).toString();
+    const hlJsUri = webview
+      .asWebviewUri(
+        vscode.Uri.joinPath(this.extensionUri, 'media', 'highlight.min.js'),
+      )
+      .toString();
+    const hlSqlUri = webview
+      .asWebviewUri(
+        vscode.Uri.joinPath(this.extensionUri, 'media', 'highlight-sql.min.js'),
+      )
+      .toString();
+    const hlCssUri = webview
+      .asWebviewUri(
+        vscode.Uri.joinPath(
+          this.extensionUri,
+          'media',
+          'highlight-vs2015.min.css',
+        ),
+      )
+      .toString();
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -1614,6 +1815,13 @@ export class ProfilerPanelProvider {
         <button class="btn btn-secondary" id="clearFilterBtn" title="Clear all filters" disabled>
           <span class="btn-icon">✕</span> Clear Filters
         </button>
+        <div class="toolbar-divider"></div>
+        <button class="btn btn-secondary" id="exportBtn" title="Export captured events to a JSON file" aria-label="Export Events">
+          <span class="btn-icon">⬆</span> Export...
+        </button>
+        <button class="btn btn-secondary" id="importBtn" title="Import events from a JSON file" aria-label="Import Events">
+          <span class="btn-icon">⬇</span> Import...
+        </button>
       </div>
     </div>
 
@@ -1812,6 +2020,8 @@ export class ProfilerPanelProvider {
       // Filter controls
       const filterBtn            = document.getElementById('filterBtn');
       const clearFilterBtn       = document.getElementById('clearFilterBtn');
+      const exportBtn            = document.getElementById('exportBtn');
+      const importBtn            = document.getElementById('importBtn');
       const filterModalOverlay   = document.getElementById('filterModalOverlay');
       const filterCloseBtn       = document.getElementById('filterCloseBtn');
       const filterApplyBtn       = document.getElementById('filterApplyBtn');
@@ -1956,6 +2166,8 @@ export class ProfilerPanelProvider {
       resumeBtn.addEventListener('click', () => vscode.postMessage({ command: 'resume' }));
       stopBtn.addEventListener('click',   () => vscode.postMessage({ command: 'stop' }));
       clearBtn.addEventListener('click',  () => vscode.postMessage({ command: 'clear' }));
+      exportBtn.addEventListener('click', () => vscode.postMessage({ command: 'exportEvents' }));
+      importBtn.addEventListener('click', () => vscode.postMessage({ command: 'importEvents' }));
 
       errorClose.addEventListener('click', () => errorContainer.classList.add('hidden'));
       queryPanelClose.addEventListener('click', () => {
@@ -2201,6 +2413,14 @@ export class ProfilerPanelProvider {
             updateState(currentState);
             showError(msg.data);
             break;
+          case 'loadImportedEvents':
+            // Replace all events with the imported set.
+            // clearEventsUI() resets DOM, allEvents, accumulators and search.
+            clearEventsUI();
+            if (msg.data && msg.data.length > 0) {
+              addEvents(msg.data);
+            }
+            break;
           case 'setConnectionFieldsEnabled': {
             const enabled = /** @type {boolean} */ (msg.data);
             authMode.disabled      = !enabled;
@@ -2235,6 +2455,10 @@ export class ProfilerPanelProvider {
         resumeBtn.classList.toggle('hidden', !isPaused);
         resumeBtn.disabled = !isPaused;
         stopBtn.disabled   = isStopped;
+        // Export and Import are only available when stopped — running would
+        // mix live events with exported/imported data, producing a confusing result.
+        exportBtn.disabled = !isStopped;
+        importBtn.disabled = !isStopped;
 
         // Timer
         const timerEl = document.getElementById('sessionTimer');
@@ -2373,7 +2597,8 @@ export class ProfilerPanelProvider {
       // ── Stats ───────────────────────────────────────────────────────
       // Uses incremental accumulators updated in addEvents() — O(1) per call.
       function updateStats() {
-        statTotal.textContent = statsTotal;
+        statTotal.textContent  = statsTotal;
+        eventCount.textContent = String(statsTotal);
 
         if (statsDurCount > 0) {
           const avg = statsDurSum / statsDurCount;
@@ -2630,6 +2855,12 @@ export class ProfilerPanelProvider {
         if (!timestamp) { return ''; }
         return String(timestamp).replace('T', ' ');
       }
+
+      // ── Webview ready handshake ──────────────────────────────────────
+      // Notify the extension host that the webview JS has fully initialised.
+      // If importEvents() was called while the panel was closed, the host
+      // stored the data in pendingImportEvents and will forward it now.
+      vscode.postMessage({ command: 'webviewReady' });
 
     })();
   </script>

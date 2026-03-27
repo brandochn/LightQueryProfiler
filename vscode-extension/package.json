@@ -2,7 +2,7 @@
   "name": "light-query-profiler",
   "displayName": "Light Query Profiler",
   "description": "SQL Server and Azure SQL Database query profiler for VS Code",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "publisher": "brandochn",
   "author": {
     "name": "Hildebrando Chávez",
@@ -40,6 +40,18 @@
           "light": "media/icon-small.svg",
           "dark": "media/icon-small.svg"
         }
+      },
+      {
+        "command": "lightQueryProfiler.exportEvents",
+        "title": "Export Events...",
+        "category": "Light Query Profiler",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "lightQueryProfiler.importEvents",
+        "title": "Import Events...",
+        "category": "Light Query Profiler",
+        "icon": "$(arrow-down)"
       }
     ]
   },

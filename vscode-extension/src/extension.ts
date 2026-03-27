@@ -56,6 +56,36 @@ export async function activate(
   // The handler checks whether the provider is ready and either shows the
   // panel or queues a retry once initialization completes.
   let activationReady = false;
+  const exportEventsCommand = vscode.commands.registerCommand(
+    'lightQueryProfiler.exportEvents',
+    () => {
+      log.info('Export Events command executed');
+      if (state.profilerPanelProvider) {
+        void state.profilerPanelProvider.exportEvents();
+      } else {
+        void vscode.window.showErrorMessage(
+          'Light Query Profiler: Extension is not initialized.',
+        );
+      }
+    },
+  );
+  context.subscriptions.push(exportEventsCommand);
+
+  const importEventsCommand = vscode.commands.registerCommand(
+    'lightQueryProfiler.importEvents',
+    () => {
+      log.info('Import Events command executed');
+      if (state.profilerPanelProvider) {
+        void state.profilerPanelProvider.importEvents();
+      } else {
+        void vscode.window.showErrorMessage(
+          'Light Query Profiler: Extension is not initialized.',
+        );
+      }
+    },
+  );
+  context.subscriptions.push(importEventsCommand);
+
   const showProfilerCommand = vscode.commands.registerCommand(
     'lightQueryProfiler.showProfiler',
     () => {
@@ -75,7 +105,10 @@ export async function activate(
         }, 50);
         // Safety: stop polling after 10 s regardless
         // eslint-disable-next-line prefer-const
-        const deferredTimeout = setTimeout(() => clearInterval(deferredInterval), 10_000);
+        const deferredTimeout = setTimeout(
+          () => clearInterval(deferredInterval),
+          10_000,
+        );
         // Register both handles so they are cancelled if the extension is
         // deactivated within the 10-second initialization window.
         context.subscriptions.push({
@@ -150,14 +183,19 @@ export async function activate(
     log.info('Light Query Profiler extension activated successfully');
 
     // Show welcome message only on first activation
-    const hasShownWelcomeMessage = context.globalState.get<boolean>('hasShownWelcomeMessage', false);
+    const hasShownWelcomeMessage = context.globalState.get<boolean>(
+      'hasShownWelcomeMessage',
+      false,
+    );
     if (!hasShownWelcomeMessage) {
-      void vscode.window.showInformationMessage(
-        "Light Query Profiler is ready! Run 'Show SQL Profiler' command to open the profiler.",
-      ).then(() => {
-        // Mark as shown after user dismisses or acknowledges the message
-        void context.globalState.update('hasShownWelcomeMessage', true);
-      });
+      void vscode.window
+        .showInformationMessage(
+          "Light Query Profiler is ready! Run 'Show SQL Profiler' command to open the profiler.",
+        )
+        .then(() => {
+          // Mark as shown after user dismisses or acknowledges the message
+          void context.globalState.update('hasShownWelcomeMessage', true);
+        });
     }
   } catch (error) {
     activationReady = true; // Stop the deferred-panel polling
