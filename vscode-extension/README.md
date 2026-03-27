@@ -10,6 +10,8 @@ A SQL Server and Azure SQL Database query profiler for Visual Studio Code, power
 - Event filtering and full-text search
 - Sortable, resizable event columns
 - Detailed event inspection with tabbed view
+- Export captured events to a JSON file for offline analysis or sharing
+- Import previously exported events without needing an active SQL Server connection
 
 ## Requirements
 
@@ -27,6 +29,35 @@ A SQL Server and Azure SQL Database query profiler for Visual Studio Code, power
    - Database name
    - Authentication mode and credentials
 5. Click **Start** to begin profiling
+
+## Export & Import Events
+
+Light Query Profiler lets you save captured events to a JSON file and reload them later — no active SQL Server connection required.
+
+### Exporting Events
+
+1. Capture events by starting a profiling session
+2. Click **⬆ Export...** in the toolbar, or run **Light Query Profiler: Export Events...** from the Command Palette (`Ctrl+Shift+P`)
+3. Choose a destination and file name — the default is `ProfilerEvents_yyyyMMdd_HHmmss.json`
+4. A confirmation shows the number of events exported
+
+> **Note:** Up to 10,000 events are kept in memory per session. If more events are captured, the oldest ones are automatically removed.
+
+### Importing Events
+
+1. Click **⬇ Import...** in the toolbar, or run **Light Query Profiler: Import Events...** from the Command Palette
+2. Select a previously exported JSON file
+3. If events are already loaded, you will be asked to confirm the replacement
+4. The imported events appear in the table immediately, with full search, sort, and filter support
+
+### JSON File Format
+
+The exported JSON is a plain array where each entry contains the event fields (EventClass, TextData, ApplicationName, Duration, CPU, Reads, Writes, etc.) plus two metadata fields:
+
+- `__RowIndex` — preserves the original capture order
+- `__Timestamp` — copy of the event start time for alternative sorting
+
+The format is compatible with events exported from the **Light Query Profiler desktop application**.
 
 ## Authentication Modes
 

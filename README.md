@@ -43,6 +43,7 @@ Light Query Profiler works with [Extended Events](https://docs.microsoft.com/en-
 - Sortable, resizable event columns
 - Detailed event inspection with tabbed view
 - Cross-platform support: Windows, Linux, and macOS
+- Export and import captured events as JSON files for offline analysis and sharing
 
 ---
 
@@ -62,6 +63,15 @@ Light Query Profiler is available on the **Visual Studio Code Marketplace**:
    - Database name
    - Authentication mode and credentials
 5. Click **Start** to begin profiling
+
+### Export & Import Events
+
+Captured events can be **exported to a JSON file** for offline analysis, sharing, or archiving — and **imported back** at any time without needing an active SQL Server connection.
+
+- Click **⬆ Export...** in the toolbar, or use **Light Query Profiler: Export Events...** from the Command Palette
+- Click **⬇ Import...** in the toolbar, or use **Light Query Profiler: Import Events...** from the Command Palette
+
+The exported JSON format is compatible between the VS Code extension and the desktop application.
 
 ---
 
