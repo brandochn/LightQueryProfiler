@@ -390,9 +390,7 @@ $requiredFiles = @(
     @{ Path = (Join-Path (Join-Path (Join-Path (Join-Path $BinDir "runtimes") "win-x64") "native") "Microsoft.Data.SqlClient.SNI.dll"); Desc = "Native: win-x64 SqlClient SNI" },
     @{ Path = (Join-Path (Join-Path (Join-Path (Join-Path $BinDir "runtimes") "linux-x64") "native") "libe_sqlite3.so");               Desc = "Native: linux-x64 SQLite" },
     @{ Path = (Join-Path $DistDir "extension.js");                                           Desc = "Compiled extension entry point" },
-    @{ Path = $IconPng;                                                                       Desc = "icon.png (128x128)" },
-    @{ Path = (Join-Path $MediaDir "start-profiling.gif");                                    Desc = "start-profiling.gif (demo)" },
-    @{ Path = (Join-Path $MediaDir "recent-connections.gif");                                  Desc = "recent-connections.gif (demo)" }
+    @{ Path = $IconPng;                                                                       Desc = "icon.png (128x128)" }
 )
 
 $allValid = $true

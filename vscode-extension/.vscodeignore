@@ -12,3 +12,6 @@ vsc-extension-quickstart.md
 node_modules/**
 *.vsix
 .eslintcache
+# GIF demo assets are referenced via absolute GitHub URLs in README.md;
+# they do not need to be bundled inside the .vsix package.
+media/*.gif
