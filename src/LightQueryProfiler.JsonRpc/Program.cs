@@ -1,4 +1,5 @@
 using LightQueryProfiler.JsonRpc;
+using LightQueryProfiler.Shared.Data;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Serialization;
@@ -19,7 +20,7 @@ using StreamJsonRpc;
 //   Solution: open the raw streams immediately at program start, before ANY
 //   logging or Console API calls, then redirect all diagnostic output to stderr.
 // ─────────────────────────────────────────────────────────────────────────────
-var rawStdin  = Console.OpenStandardInput();
+var rawStdin = Console.OpenStandardInput();
 var rawStdout = Console.OpenStandardOutput();
 
 // Redirect stderr for diagnostic logging (stdout belongs to JSON-RPC).
@@ -37,8 +38,8 @@ services.AddLogging(builder =>
 });
 
 var serviceProvider = services.BuildServiceProvider();
-var loggerFactory   = serviceProvider.GetRequiredService<ILoggerFactory>();
-var logger          = loggerFactory.CreateLogger<Program>();
+var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+var logger = loggerFactory.CreateLogger<Program>();
 
 logger.LogInformation("LightQueryProfiler JSON-RPC Server starting...");
 
@@ -53,8 +54,11 @@ Console.CancelKeyPress += (_, e) =>
 
 try
 {
+    // Initialize the local SQLite database (fire-and-forget, same pattern as WinForms MainView)
+    SqliteContext.InitializeDatabase();
+
     var jsonRpcLogger = loggerFactory.CreateLogger<JsonRpcServer>();
-    var rpcServer     = new JsonRpcServer(jsonRpcLogger);
+    var rpcServer = new JsonRpcServer(jsonRpcLogger);
 
     // Configure Newtonsoft.Json camelCase so property names on the wire match
     // the TypeScript ProfilerEvent interface (name, timestamp, fields, actions).

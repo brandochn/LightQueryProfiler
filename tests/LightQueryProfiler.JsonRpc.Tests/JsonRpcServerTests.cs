@@ -1,5 +1,7 @@
 using LightQueryProfiler.JsonRpc;
 using LightQueryProfiler.JsonRpc.Models;
+using LightQueryProfiler.Shared.Models;
+using LightQueryProfiler.Shared.Repositories.Interfaces;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -182,5 +184,109 @@ public class JsonRpcServerTests
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _server.PauseProfilingAsync(request, TestContext.Current.CancellationToken));
         Assert.Contains("No active profiling session found", exception.Message);
+    }
+
+    // ─── GetRecentConnectionsAsync ───────────────────────────────────────────
+
+    [Fact]
+    public async Task GetRecentConnectionsAsync_WhenRequestIsNull_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var mockRepo = new Mock<IConnectionRepository>();
+        var server = new JsonRpcServer(_mockLogger.Object, mockRepo.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            server.GetRecentConnectionsAsync(null!, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task GetRecentConnectionsAsync_WhenNoConnections_ReturnsEmptyList()
+    {
+        // Arrange
+        var mockRepo = new Mock<IConnectionRepository>();
+        mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Connection>());
+        var server = new JsonRpcServer(_mockLogger.Object, mockRepo.Object);
+
+        // Act
+        var result = await server.GetRecentConnectionsAsync(
+            new GetRecentConnectionsRequest(),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Empty(result);
+    }
+
+    // ─── SaveRecentConnectionAsync ───────────────────────────────────────────
+
+    [Fact]
+    public async Task SaveRecentConnectionAsync_WhenRequestIsNull_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var mockRepo = new Mock<IConnectionRepository>();
+        var server = new JsonRpcServer(_mockLogger.Object, mockRepo.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            server.SaveRecentConnectionAsync(null!, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task SaveRecentConnectionAsync_WhenDataSourceIsEmpty_ThrowsArgumentException()
+    {
+        // Arrange
+        var mockRepo = new Mock<IConnectionRepository>();
+        var server = new JsonRpcServer(_mockLogger.Object, mockRepo.Object);
+        var request = new SaveRecentConnectionRequest
+        {
+            DataSource = "",
+            InitialCatalog = "MyDatabase"
+        };
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            server.SaveRecentConnectionAsync(request, TestContext.Current.CancellationToken));
+        Assert.Contains("DataSource", exception.Message);
+    }
+
+    [Fact]
+    public async Task SaveRecentConnectionAsync_WhenInitialCatalogIsEmpty_ThrowsArgumentException()
+    {
+        // Arrange
+        var mockRepo = new Mock<IConnectionRepository>();
+        var server = new JsonRpcServer(_mockLogger.Object, mockRepo.Object);
+        var request = new SaveRecentConnectionRequest
+        {
+            DataSource = "localhost",
+            InitialCatalog = ""
+        };
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            server.SaveRecentConnectionAsync(request, TestContext.Current.CancellationToken));
+        Assert.Contains("InitialCatalog", exception.Message);
+    }
+
+    [Fact]
+    public async Task SaveRecentConnectionAsync_WhenValid_CallsUpsert()
+    {
+        // Arrange
+        var mockRepo = new Mock<IConnectionRepository>();
+        mockRepo.Setup(r => r.UpsertAsync(It.IsAny<Connection>())).Returns(Task.CompletedTask);
+        var server = new JsonRpcServer(_mockLogger.Object, mockRepo.Object);
+        var request = new SaveRecentConnectionRequest
+        {
+            DataSource = "localhost",
+            InitialCatalog = "AdventureWorks"
+        };
+
+        // Act
+        await server.SaveRecentConnectionAsync(request, TestContext.Current.CancellationToken);
+
+        // Assert
+        mockRepo.Verify(r => r.UpsertAsync(It.Is<Connection>(c =>
+            c.DataSource == "localhost" &&
+            c.InitialCatalog == "AdventureWorks")), Times.Once);
     }
 }

@@ -2,7 +2,7 @@
   "name": "light-query-profiler",
   "displayName": "Light Query Profiler",
   "description": "SQL Server and Azure SQL Database query profiler for VS Code",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "brandochn",
   "author": {
     "name": "Hildebrando Chávez",
@@ -52,8 +52,23 @@
         "title": "Import Events...",
         "category": "Light Query Profiler",
         "icon": "$(arrow-down)"
+      },
+      {
+        "command": "lightQueryProfiler.showRecentConnections",
+        "title": "Show Recent Connections",
+        "category": "Light Query Profiler",
+        "icon": "$(history)"
       }
-    ]
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "lightQueryProfiler.showRecentConnections",
+          "when": "activeWebviewPanelId == 'lightQueryProfiler'",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run bundle",
@@ -91,5 +106,8 @@
     "url": "https://github.com/brandochn/LightQueryProfiler/issues"
   },
   "homepage": "https://github.com/brandochn/LightQueryProfiler?tab=License-1-ov-file#readme",
-  "license": "MIT"
+  "license": "MIT",
+  "vsce": {
+    "baseImagesUrl": "https://github.com/brandochn/LightQueryProfiler/raw/main/vscode-extension"
+  }
 }

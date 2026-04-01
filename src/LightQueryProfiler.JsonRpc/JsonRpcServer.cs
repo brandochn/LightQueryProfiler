@@ -2,7 +2,9 @@ using LightQueryProfiler.JsonRpc.Models;
 using LightQueryProfiler.Shared.Data;
 using LightQueryProfiler.Shared.Enums;
 using LightQueryProfiler.Shared.Factories;
+using LightQueryProfiler.Shared.Models;
 using LightQueryProfiler.Shared.Repositories;
+using LightQueryProfiler.Shared.Repositories.Interfaces;
 using LightQueryProfiler.Shared.Services;
 using LightQueryProfiler.Shared.Services.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -18,6 +20,7 @@ public class JsonRpcServer
     private readonly ILogger<JsonRpcServer> _logger;
     private readonly Dictionary<string, IProfilerService> _activeSessions;
     private readonly Dictionary<string, IApplicationDbContext> _activeContexts;
+    private readonly IConnectionRepository _connectionRepository;
 
     public JsonRpcServer(ILogger<JsonRpcServer> logger)
     {
@@ -25,6 +28,23 @@ public class JsonRpcServer
         _logger = logger;
         _activeSessions = new Dictionary<string, IProfilerService>();
         _activeContexts = new Dictionary<string, IApplicationDbContext>();
+        _connectionRepository = new ConnectionRepository(
+            new SqliteContext(),
+            new AesGcmPasswordProtectionService());
+    }
+
+    /// <summary>
+    /// Internal constructor for unit testing — allows injection of a mock repository
+    /// without requiring a real SQLite database on disk.
+    /// </summary>
+    internal JsonRpcServer(ILogger<JsonRpcServer> logger, IConnectionRepository connectionRepository)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(connectionRepository);
+        _logger = logger;
+        _activeSessions = new Dictionary<string, IProfilerService>();
+        _activeContexts = new Dictionary<string, IApplicationDbContext>();
+        _connectionRepository = connectionRepository;
     }
 
     /// <summary>
@@ -255,6 +275,102 @@ public class JsonRpcServer
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to pause profiling session: {SessionName}", request.SessionName);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Returns all saved recent connections sorted by most recent first.
+    /// Passwords in the returned DTOs are already decrypted by the repository layer.
+    /// </summary>
+    [JsonRpcMethod("GetRecentConnectionsAsync", UseSingleObjectParameterDeserialization = true)]
+    public async Task<List<RecentConnectionDto>> GetRecentConnectionsAsync(
+        GetRecentConnectionsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
+        {
+            var connections = await _connectionRepository.GetAllAsync().ConfigureAwait(false);
+
+            return connections
+                .OrderByDescending(c => c.CreationDate)
+                .Select(c => new RecentConnectionDto
+                {
+                    Id = c.Id,
+                    DataSource = c.DataSource,
+                    InitialCatalog = c.InitialCatalog,
+                    UserId = c.UserId,
+                    Password = c.Password,
+                    IntegratedSecurity = c.IntegratedSecurity,
+                    EngineType = c.EngineType.HasValue ? (int)c.EngineType.Value : null,
+                    AuthenticationMode = (int)c.AuthenticationMode,
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve recent connections");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Saves (upserts) a connection. If the same DataSource+UserId+InitialCatalog already
+    /// exists the row is updated; otherwise a new row is inserted.
+    /// Passwords are encrypted by the repository layer before storage.
+    /// </summary>
+    [JsonRpcMethod("SaveRecentConnectionAsync", UseSingleObjectParameterDeserialization = true)]
+    public async Task SaveRecentConnectionAsync(
+        SaveRecentConnectionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (string.IsNullOrWhiteSpace(request.DataSource))
+        {
+            throw new ArgumentException("DataSource cannot be null or empty", nameof(request));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.InitialCatalog))
+        {
+            throw new ArgumentException("InitialCatalog cannot be null or empty", nameof(request));
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
+        {
+            var connection = new Connection(
+                id: 0,
+                initialCatalog: request.InitialCatalog,
+                creationDate: DateTime.UtcNow,
+                dataSource: request.DataSource,
+                integratedSecurity: request.IntegratedSecurity,
+                password: request.Password,
+                userId: request.UserId,
+                engineType: request.EngineType.HasValue
+                    ? (DatabaseEngineType?)request.EngineType.Value
+                    : null,
+                authenticationMode: request.AuthenticationMode.HasValue
+                    ? (AuthenticationMode)request.AuthenticationMode.Value
+                    : AuthenticationMode.WindowsAuth);
+
+            await _connectionRepository.UpsertAsync(connection).ConfigureAwait(false);
+
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation(
+                    "Recent connection saved: DataSource={DataSource}, InitialCatalog={InitialCatalog}",
+                    request.DataSource,
+                    request.InitialCatalog);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save recent connection: {DataSource}", request.DataSource);
             throw;
         }
     }

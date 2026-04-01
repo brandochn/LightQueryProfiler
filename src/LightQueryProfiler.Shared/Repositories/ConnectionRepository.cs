@@ -6,7 +6,7 @@ using Microsoft.Data.Sqlite;
 
 namespace LightQueryProfiler.Shared.Repositories
 {
-    public class ConnectionRepository : IRepository<Connection>
+    public class ConnectionRepository : IConnectionRepository
     {
         private readonly IDatabaseContext _context;
         private readonly IPasswordProtectionService? _passwordProtectionService;
@@ -68,8 +68,8 @@ namespace LightQueryProfiler.Shared.Repositories
                 await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithAuthMode, db);
                 sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                 sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
-                sqliteCommand.Parameters.AddWithValue("@UserId", entity.UserId);
-                sqliteCommand.Parameters.AddWithValue("@Password", encryptedPassword);
+                sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
+                sqliteCommand.Parameters.AddWithValue("@Password", (object?)encryptedPassword ?? DBNull.Value);
                 sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                 sqliteCommand.Parameters.AddWithValue("@CreationDate", entity.CreationDate);
                 sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
@@ -87,8 +87,8 @@ namespace LightQueryProfiler.Shared.Repositories
                     await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithEngineType, db);
                     sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                     sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
-                    sqliteCommand.Parameters.AddWithValue("@UserId", entity.UserId);
-                    sqliteCommand.Parameters.AddWithValue("@Password", encryptedPassword);
+                    sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
+                    sqliteCommand.Parameters.AddWithValue("@Password", (object?)encryptedPassword ?? DBNull.Value);
                     sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                     sqliteCommand.Parameters.AddWithValue("@CreationDate", entity.CreationDate);
                     sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
@@ -103,8 +103,8 @@ namespace LightQueryProfiler.Shared.Repositories
                     await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithoutEngineType, db);
                     sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                     sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
-                    sqliteCommand.Parameters.AddWithValue("@UserId", entity.UserId);
-                    sqliteCommand.Parameters.AddWithValue("@Password", encryptedPassword);
+                    sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
+                    sqliteCommand.Parameters.AddWithValue("@Password", (object?)encryptedPassword ?? DBNull.Value);
                     sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                     sqliteCommand.Parameters.AddWithValue("@CreationDate", entity.CreationDate);
                     await sqliteCommand.ExecuteNonQueryAsync();
@@ -121,6 +121,44 @@ namespace LightQueryProfiler.Shared.Repositories
             }
 
             return null;
+        }
+
+        public async Task UpsertAsync(Connection entity)
+        {
+            ArgumentNullException.ThrowIfNull(entity);
+
+            // Normalise empty UserId to null so that "" and null are treated as the
+            // same key — preventing duplicate rows when Windows-Auth sessions send
+            // an empty string instead of null.
+            var normalizedUserId = string.IsNullOrEmpty(entity.UserId) ? null : entity.UserId;
+
+            var existing = await Find(f =>
+                string.Equals(f.DataSource, entity.DataSource, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(
+                    string.IsNullOrEmpty(f.UserId) ? null : f.UserId,
+                    normalizedUserId,
+                    StringComparison.OrdinalIgnoreCase)
+                && string.Equals(f.InitialCatalog, entity.InitialCatalog, StringComparison.OrdinalIgnoreCase));
+
+            if (existing == null)
+            {
+                await AddAsync(entity);
+            }
+            else
+            {
+                // Connection is immutable — reconstruct with the existing Id
+                var updated = new Connection(
+                    existing.Id,
+                    entity.InitialCatalog,
+                    DateTime.UtcNow,
+                    entity.DataSource,
+                    entity.IntegratedSecurity,
+                    entity.Password,
+                    entity.UserId,
+                    entity.EngineType,
+                    entity.AuthenticationMode);
+                await UpdateAsync(updated);
+            }
         }
 
         public async Task Delete(int id)
@@ -323,8 +361,8 @@ namespace LightQueryProfiler.Shared.Repositories
                 sqliteCommand.Parameters.AddWithValue("@Id", entity.Id);
                 sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                 sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
-                sqliteCommand.Parameters.AddWithValue("@UserId", entity.UserId);
-                sqliteCommand.Parameters.AddWithValue("@Password", encryptedPassword);
+                sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
+                sqliteCommand.Parameters.AddWithValue("@Password", (object?)encryptedPassword ?? DBNull.Value);
                 sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                 sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
                 sqliteCommand.Parameters.AddWithValue("@AuthenticationMode", (int)entity.AuthenticationMode);
@@ -340,8 +378,8 @@ namespace LightQueryProfiler.Shared.Repositories
                     sqliteCommand.Parameters.AddWithValue("@Id", entity.Id);
                     sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                     sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
-                    sqliteCommand.Parameters.AddWithValue("@UserId", entity.UserId);
-                    sqliteCommand.Parameters.AddWithValue("@Password", encryptedPassword);
+                    sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
+                    sqliteCommand.Parameters.AddWithValue("@Password", (object?)encryptedPassword ?? DBNull.Value);
                     sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                     sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
                     await sqliteCommand.ExecuteNonQueryAsync();
@@ -354,8 +392,8 @@ namespace LightQueryProfiler.Shared.Repositories
                     sqliteCommand.Parameters.AddWithValue("@Id", entity.Id);
                     sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                     sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
-                    sqliteCommand.Parameters.AddWithValue("@UserId", entity.UserId);
-                    sqliteCommand.Parameters.AddWithValue("@Password", encryptedPassword);
+                    sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
+                    sqliteCommand.Parameters.AddWithValue("@Password", (object?)encryptedPassword ?? DBNull.Value);
                     sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                     await sqliteCommand.ExecuteNonQueryAsync();
                 }

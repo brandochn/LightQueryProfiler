@@ -118,6 +118,10 @@ $MediaDir       = Join-Path $ExtDir "media"
 $JsonRpcCsproj  = Join-Path (Join-Path $SrcDir "LightQueryProfiler.JsonRpc") "LightQueryProfiler.JsonRpc.csproj"
 $IconSvg        = Join-Path $MediaDir "icon.svg"
 $IconPng        = Join-Path $MediaDir "icon.png"
+# Base URL vsce uses to resolve relative image paths in README.md.
+# Must include the 'vscode-extension' subdirectory because the repo root
+# is the parent of the extension folder; without it vsce generates wrong URLs.
+$BaseImagesUrl  = "https://github.com/brandochn/LightQueryProfiler/raw/main/vscode-extension"
 
 # ---------------------------------------------------------------------------
 # Header
@@ -386,7 +390,9 @@ $requiredFiles = @(
     @{ Path = (Join-Path (Join-Path (Join-Path (Join-Path $BinDir "runtimes") "win-x64") "native") "Microsoft.Data.SqlClient.SNI.dll"); Desc = "Native: win-x64 SqlClient SNI" },
     @{ Path = (Join-Path (Join-Path (Join-Path (Join-Path $BinDir "runtimes") "linux-x64") "native") "libe_sqlite3.so");               Desc = "Native: linux-x64 SQLite" },
     @{ Path = (Join-Path $DistDir "extension.js");                                           Desc = "Compiled extension entry point" },
-    @{ Path = $IconPng;                                                                       Desc = "icon.png (128x128)" }
+    @{ Path = $IconPng;                                                                       Desc = "icon.png (128x128)" },
+    @{ Path = (Join-Path $MediaDir "start-profiling.gif");                                    Desc = "start-profiling.gif (demo)" },
+    @{ Path = (Join-Path $MediaDir "recent-connections.gif");                                  Desc = "recent-connections.gif (demo)" }
 )
 
 $allValid = $true
@@ -438,7 +444,7 @@ if ($publisher -eq "your-publisher-id") {
     Write-Host ""
 }
 
-Write-Info "Running: npx vsce package --out $vsixName"
+Write-Info "Running: npx vsce package --baseImagesUrl <github-subdirectory-url> --out $vsixName"
 Write-Host ""
 
 # vsce requires a LICENSE file in the extension directory.
@@ -454,7 +460,7 @@ if ((Test-Path $rootLicense) -and (-not (Test-Path $extLicense))) {
 
 Push-Location $ExtDir
 try {
-    & npx vsce package --out $vsixName
+    & npx vsce package --baseImagesUrl $BaseImagesUrl --out $vsixName
     if ($LASTEXITCODE -ne 0) {
         Write-Host ""
         Write-Fail "vsce package failed with exit code $LASTEXITCODE"
