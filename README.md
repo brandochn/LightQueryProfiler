@@ -45,6 +45,12 @@ Light Query Profiler works with [Extended Events](https://docs.microsoft.com/en-
 - Cross-platform support: Windows, Linux, and macOS
 - Export and import captured events as JSON files for offline analysis and sharing
 
+### Recent Connections
+
+Light Query Profiler automatically saves your connection settings when you stop a profiling session.
+Use the **Show Recent Connections** command to quickly reconnect to a previous server and database
+without re-entering credentials.
+
 ---
 
 ## VS Code Extension
@@ -86,11 +92,11 @@ The exported JSON format is compatible between the VS Code extension and the des
 
 ## Authentication Modes
 
-| Mode | Description |
-|---|---|
-| Windows Authentication | Uses the current Windows user credentials (Windows only) |
-| SQL Server Authentication | Username and password |
-| Azure Active Directory | Azure AD authentication for Azure SQL Database |
+| Mode                      | Description                                              |
+| ------------------------- | -------------------------------------------------------- |
+| Windows Authentication    | Uses the current Windows user credentials (Windows only) |
+| SQL Server Authentication | Username and password                                    |
+| Azure Active Directory    | Azure AD authentication for Azure SQL Database           |
 
 ---
 

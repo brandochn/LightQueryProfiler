@@ -13,6 +13,7 @@ import {
   toConnectionString,
   getEngineType,
 } from '../models/connection-settings';
+import { RecentConnection } from '../models/recent-connection';
 
 /**
  * Request parameters for starting a profiling session
@@ -59,6 +60,18 @@ const getEventsRequestType = new RequestType<
   ProfilerEvent[],
   void
 >('GetLastEventsAsync');
+
+const getRecentConnectionsRequestType = new RequestType<
+  Record<string, never>,
+  RecentConnection[],
+  void
+>('GetRecentConnectionsAsync');
+
+const saveRecentConnectionRequestType = new RequestType<
+  Omit<RecentConnection, 'id'>,
+  void,
+  void
+>('SaveRecentConnectionAsync');
 
 /**
  * Client state enum for tracking lifecycle
@@ -303,6 +316,49 @@ export class ProfilerClient {
   }
 
   /**
+   * Retrieves all saved recent connections from the backend, sorted most-recent first.
+   * @returns Array of recent connections (passwords already decrypted by backend).
+   * @throws Error if the connection is not established or request fails.
+   */
+  public async getRecentConnections(): Promise<RecentConnection[]> {
+    this.ensureRunning();
+
+    try {
+      const connections = await this.connection!.sendRequest(
+        getRecentConnectionsRequestType,
+        {},
+      );
+      return connections;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logError(`Failed to get recent connections: ${message}`);
+      throw new Error(`Failed to get recent connections: ${message}`);
+    }
+  }
+
+  /**
+   * Saves (upserts) a connection to the backend recent-connections store.
+   * @param connection - Connection details to save (without id).
+   * @throws Error if the connection is not established or request fails.
+   */
+  public async saveRecentConnection(
+    connection: Omit<RecentConnection, 'id'>,
+  ): Promise<void> {
+    this.ensureRunning();
+
+    try {
+      await this.connection!.sendRequest(
+        saveRecentConnectionRequestType,
+        connection,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logError(`Failed to save recent connection: ${message}`);
+      throw new Error(`Failed to save recent connection: ${message}`);
+    }
+  }
+
+  /**
    * Checks if the server is running
    * @returns True if server is running
    */
@@ -367,7 +423,7 @@ export class ProfilerClient {
         reject(
           new Error(
             `Server did not become ready within ${timeoutMs}ms. ` +
-            'Check the Output panel for server startup errors.',
+              'Check the Output panel for server startup errors.',
           ),
         );
       }, timeoutMs);
@@ -391,7 +447,7 @@ export class ProfilerClient {
         reject(
           new Error(
             `Server process exited (code ${code ?? 'null'}) before becoming ready. ` +
-            'Check the Output panel for server startup errors.',
+              'Check the Output panel for server startup errors.',
           ),
         );
       };
@@ -459,9 +515,7 @@ export class ProfilerClient {
       return;
     }
 
-    const exitInfo = signal
-      ? `signal ${signal}`
-      : `code ${code ?? 'unknown'}`;
+    const exitInfo = signal ? `signal ${signal}` : `code ${code ?? 'unknown'}`;
 
     // Exit during startup — waitForServerReady() will reject via its own onExit
     // listener, which triggers cleanup() in start()'s catch block.  We only need

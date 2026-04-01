@@ -12,6 +12,26 @@ A SQL Server and Azure SQL Database query profiler for Visual Studio Code, power
 - Detailed event inspection with tabbed view
 - Export captured events to a JSON file for offline analysis or sharing
 - Import previously exported events without needing an active SQL Server connection
+- **Recent Connections**: Automatically saves connection settings after each session for quick reconnection
+
+## Usage
+
+### Starting a profiling session
+
+Open the profiler panel, enter your connection details, and click **Start** to begin capturing SQL Server events in real time.
+
+![Start Profiling](media/start-profiling.gif)
+
+## Recent Connections
+
+Light Query Profiler automatically saves your connection settings when you stop a profiling session. Open the **Recent Connections** panel to reconnect instantly without re-entering credentials.
+
+![Recent Connections](media/recent-connections.gif)
+
+- **Open the panel**: Click the **⏱ Recent...** button in the profiler toolbar, use the Command Palette → `Light Query Profiler: Show Recent Connections`, or click the history icon in the editor title bar.
+- **Reconnect quickly**: Double-click any row in the list to pre-fill the profiler form (server, database, authentication mode, username, and password).
+- **Search**: Type in the search box to filter by server name or database name.
+- **Security**: Credentials are stored locally using AES-256-GCM encryption scoped to the current user and machine.
 
 ## Requirements
 
@@ -61,11 +81,11 @@ The format is compatible with events exported from the **Light Query Profiler de
 
 ## Authentication Modes
 
-| Mode | Description |
-|---|---|
-| Windows Authentication | Uses the current Windows user credentials (Windows only) |
-| SQL Server Authentication | Username and password |
-| Azure Active Directory | Azure AD authentication for Azure SQL Database |
+| Mode                      | Description                                              |
+| ------------------------- | -------------------------------------------------------- |
+| Windows Authentication    | Uses the current Windows user credentials (Windows only) |
+| SQL Server Authentication | Username and password                                    |
+| Azure Active Directory    | Azure AD authentication for Azure SQL Database           |
 
 ## Supported Platforms
 
