@@ -22,6 +22,7 @@ interface ConnectionSettings {
   authenticationMode: AuthenticationMode;
   username?: string;
   password?: string;
+  connectionString?: string;
 }
 
 /**
@@ -434,12 +435,16 @@ export class ProfilerPanelProvider {
             settings.authenticationMode === AuthenticationMode.WindowsAuth,
           authenticationMode: settings.authenticationMode,
           engineType: undefined,
+          connectionString: settings.connectionString, // ← NEW
         });
         this.log("Recent connection saved");
       } catch (saveError) {
         const saveMessage =
           saveError instanceof Error ? saveError.message : String(saveError);
         this.logError(`Failed to save recent connection: ${saveMessage}`);
+      } finally {
+        // Clear sensitive data: connection strings can contain embedded passwords.
+        this.currentConnectionSettings = undefined;
       }
     }
 
@@ -1202,6 +1207,33 @@ export class ProfilerPanelProvider {
       box-shadow: 0 0 0 1px var(--vscode-focusBorder);
     }
 
+    textarea {
+      width: 100%;
+      padding: 5px 8px;
+      background-color: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+      border-radius: 3px;
+      font-family: var(--vscode-editor-font-family, monospace);
+      font-size: 12px;
+      line-height: 1.5;
+      min-height: 64px;
+      resize: vertical;
+      transition: border-color 0.15s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--vscode-focusBorder);
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+    }
+
+    textarea:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
     /* ── Toolbar ────────────────────────────────────────────────────── */
     .toolbar {
       display: flex;
@@ -1835,7 +1867,7 @@ export class ProfilerPanelProvider {
             </select>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" id="serverGroup">
             <label for="server">Server</label>
             <input type="text" id="server" placeholder="e.g. myserver\\instance or myserver.database.windows.net" />
           </div>
@@ -1853,6 +1885,18 @@ export class ProfilerPanelProvider {
           <div class="form-group hidden span-full" id="passwordGroup">
             <label for="password">Password</label>
             <input type="password" id="password" autocomplete="current-password" />
+          </div>
+          <div class="form-group span-full hidden" id="connectionStringGroup">
+            <label for="connectionStringInput">Connection String</label>
+            <textarea
+              id="connectionStringInput"
+              rows="3"
+              aria-required="false"
+              aria-describedby="errorText"
+              placeholder="e.g. Server=myserver;Database=mydb;User Id=myuser;Password=mypass;"
+              autocomplete="off"
+              spellcheck="false"
+            ></textarea>
           </div>
         </div>
       </div>
@@ -2048,6 +2092,9 @@ export class ProfilerPanelProvider {
       const usernameGroup    = document.getElementById('usernameGroup');
       const passwordGroup    = document.getElementById('passwordGroup');
       const databaseGroup    = document.getElementById('databaseGroup');
+      const serverGroup          = document.getElementById('serverGroup');
+      const connectionStringInput = document.getElementById('connectionStringInput');
+      const connectionStringGroup = document.getElementById('connectionStringGroup');
 
       const startBtn         = document.getElementById('startBtn');
       const startIcon        = document.getElementById('startIcon');
@@ -2152,14 +2199,24 @@ export class ProfilerPanelProvider {
       }
 
       function updateAuthVisibility() {
-        const mode = parseInt(authMode.value);
+        const mode = parseInt(authMode.value, 10);
         const isWindows = mode === 0;
         const needsCreds = mode === 1 || mode === 2;
+        const isConnString = mode === 3;
 
-        databaseGroup.classList.toggle('hidden', isWindows);
-        if (isWindows) { databaseInput.value = ''; }
+        serverGroup.classList.toggle('hidden', isConnString);
+        databaseGroup.classList.toggle('hidden', isWindows || isConnString);
         usernameGroup.classList.toggle('hidden', !needsCreds);
         passwordGroup.classList.toggle('hidden', !needsCreds);
+        connectionStringGroup.classList.toggle('hidden', !isConnString);
+
+        connectionStringInput.setAttribute(
+          'aria-required',
+          isConnString ? 'true' : 'false'
+        );
+
+        if (isWindows) { databaseInput.value = ''; }
+        if (!isConnString) { connectionStringInput.value = ''; }
       }
 
       authMode.addEventListener('change', updateAuthVisibility);
@@ -2186,11 +2243,33 @@ export class ProfilerPanelProvider {
       startBtn.addEventListener('click', () => {
         if (isStarting) { return; }
 
-        const mode = parseInt(authMode.value);
+        const mode = parseInt(authMode.value, 10);
         const serverVal   = serverInput.value.trim();
         const databaseVal = databaseInput.value.trim();
         const usernameVal = usernameInput.value.trim();
         const passwordVal = passwordInput.value;
+
+        // ── Connection String mode (mode === 3) ──────────────────────────────
+        if (mode === 3) {
+          const csVal = connectionStringInput.value.trim();
+          if (!csVal) {
+            showError('Connection String is required');
+            return;
+          }
+          const settings = {
+            server: '',
+            database: '',
+            authenticationMode: mode,
+            connectionString: csVal,
+          };
+          // ⚠ Security: do NOT include connectionString in vscode.setState.
+          // Connection strings may contain passwords — consistent with the existing
+          // behaviour that excludes the 'password' field from state.
+          vscode.setState({ authenticationMode: mode });
+          setStarting(true);
+          vscode.postMessage({ command: 'start', data: settings });
+          return;
+        }
 
         // ── Client-side validation ───────────────────────────────────
         // Mirrors WinForms ConfigureAsync validation logic:
@@ -2503,17 +2582,21 @@ export class ProfilerPanelProvider {
             databaseInput.disabled = !enabled;
             usernameInput.disabled = !enabled;
             passwordInput.disabled = !enabled;
+            connectionStringInput.disabled = !enabled;
             break;
           }
           case 'setConnectionFields': {
             const conn = /** @type {*} */ (msg.data);
-            // Set auth mode first so the change event fires before other fields
             authMode.value = String(conn.authenticationMode ?? 0);
             authMode.dispatchEvent(new Event('change'));
-            serverInput.value   = conn.dataSource   ?? '';
-            databaseInput.value = conn.initialCatalog ?? '';
-            usernameInput.value = conn.userId   ?? '';
-            passwordInput.value = conn.password ?? '';
+            if (conn.authenticationMode === 3) {
+              connectionStringInput.value = conn.connectionString ?? '';
+            } else {
+              serverInput.value   = conn.dataSource    ?? '';
+              databaseInput.value = conn.initialCatalog ?? '';
+              usernameInput.value = conn.userId        ?? '';
+              passwordInput.value = conn.password      ?? '';
+            }
             break;
           }
         }

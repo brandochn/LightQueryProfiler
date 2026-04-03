@@ -3,6 +3,7 @@ using LightQueryProfiler.JsonRpc.Models;
 using LightQueryProfiler.Shared.Models;
 using LightQueryProfiler.Shared.Repositories.Interfaces;
 using Microsoft.Extensions.Logging;
+using LightQueryProfiler.Shared.Services.Interfaces;
 using Moq;
 using Xunit;
 
@@ -288,5 +289,111 @@ public class JsonRpcServerTests
         mockRepo.Verify(r => r.UpsertAsync(It.Is<Connection>(c =>
             c.DataSource == "localhost" &&
             c.InitialCatalog == "AdventureWorks")), Times.Once);
+    }
+
+    // ─── ConnectionString mode tests ─────────────────────────────────────────
+
+    [Fact]
+    public async Task SaveRecentConnectionAsync_WhenConnectionStringMode_ParsesAndSavesCorrectly()
+    {
+        // Arrange
+        var mockRepo = new Mock<IConnectionRepository>();
+        mockRepo.Setup(r => r.UpsertAsync(It.IsAny<Connection>())).Returns(Task.CompletedTask);
+        var server = new JsonRpcServer(_mockLogger.Object, mockRepo.Object);
+        var request = new SaveRecentConnectionRequest
+        {
+            DataSource = "",
+            InitialCatalog = "",
+            AuthenticationMode = 3,
+            ConnectionString = "Server=myserver;Database=mydb;User Id=myuser;Password=mypass;"
+        };
+
+        // Act
+        await server.SaveRecentConnectionAsync(request, TestContext.Current.CancellationToken);
+
+        // Assert
+        mockRepo.Verify(r => r.UpsertAsync(It.Is<Connection>(c =>
+            c.AuthenticationMode == LightQueryProfiler.Shared.Enums.AuthenticationMode.ConnectionString &&
+            c.ConnectionString == "Server=myserver;Database=mydb;User Id=myuser;Password=mypass;" &&
+            c.DataSource == "myserver" &&
+            c.InitialCatalog == "mydb")), Times.Once);
+    }
+
+    [Fact]
+    public async Task SaveRecentConnectionAsync_WhenConnectionStringModeAndMissingConnectionString_ThrowsArgumentException()
+    {
+        // Arrange
+        var mockRepo = new Mock<IConnectionRepository>();
+        var server = new JsonRpcServer(_mockLogger.Object, mockRepo.Object);
+        var request = new SaveRecentConnectionRequest
+        {
+            DataSource = "",
+            InitialCatalog = "",
+            AuthenticationMode = 3,
+            ConnectionString = ""
+        };
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            server.SaveRecentConnectionAsync(request, TestContext.Current.CancellationToken));
+        Assert.Contains("request", exception.Message);
+    }
+
+    [Fact]
+    public async Task GetRecentConnectionsAsync_WhenConnectionStringModeRow_ReturnsDtoWithConnectionString()
+    {
+        // Arrange
+        var mockRepo = new Mock<IConnectionRepository>();
+        var storedConnection = new Connection(
+            id: 1,
+            initialCatalog: "mydb",
+            creationDate: DateTime.UtcNow,
+            dataSource: "myserver",
+            integratedSecurity: false,
+            password: null,
+            userId: "myuser",
+            engineType: null,
+            authenticationMode: LightQueryProfiler.Shared.Enums.AuthenticationMode.ConnectionString,
+            connectionString: "Server=myserver;Database=mydb;User Id=myuser;Password=mypass;");
+
+        mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Connection> { storedConnection });
+        var server = new JsonRpcServer(_mockLogger.Object, mockRepo.Object);
+
+        // Act
+        var result = await server.GetRecentConnectionsAsync(
+            new GetRecentConnectionsRequest(),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Single(result);
+        var dto = result[0];
+        Assert.Equal(3, dto.AuthenticationMode);
+        Assert.Equal("Server=myserver;Database=mydb;User Id=myuser;Password=mypass;", dto.ConnectionString);
+        Assert.Equal("myserver", dto.DataSource);
+        Assert.Equal("mydb", dto.InitialCatalog);
+    }
+
+    [Fact]
+    public async Task StartProfilingAsync_WhenEngineTypeIsZero_IsValidInput()
+    {
+        // Arrange — EngineType=0 should NOT throw; it will attempt to connect (and fail in tests, but not on validation)
+        var request = new StartProfilingRequest
+        {
+            SessionName = "TestSession",
+            EngineType = 0,
+            ConnectionString = "Server=localhost;Database=test;"
+        };
+
+        // Act
+        // EngineType=0 is now valid (auto-detect sentinel); the method will proceed past
+        // the validation guard and fail when it tries to open a real DB connection.
+        // We verify that the exception thrown is NOT an ArgumentException about EngineType.
+        var exception = await Record.ExceptionAsync(() =>
+            _server.StartProfilingAsync(request, TestContext.Current.CancellationToken));
+
+        // Assert — should NOT throw ArgumentException for EngineType
+        Assert.True(
+            exception == null || exception is not ArgumentException,
+            $"Expected no ArgumentException for EngineType=0, but got: {exception?.GetType().Name}: {exception?.Message}");
     }
 }

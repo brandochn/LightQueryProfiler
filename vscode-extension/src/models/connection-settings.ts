@@ -28,6 +28,13 @@ export interface ConnectionSettings {
    * Password (for SQL Server Auth and Azure SQL)
    */
   password?: string;
+
+  /**
+   * Raw ADO.NET connection string entered by the user.
+   * Only populated when authenticationMode === AuthenticationMode.ConnectionString.
+   * @remarks Never log this value (may contain credentials).
+   */
+  connectionString?: string;
 }
 
 /**
@@ -39,6 +46,17 @@ export interface ConnectionSettings {
 export function validateConnectionSettings(
   settings: ConnectionSettings,
 ): string | undefined {
+  // Connection String mode — only the connectionString field is required
+  if (settings.authenticationMode === AuthenticationMode.ConnectionString) {
+    if (
+      !settings.connectionString ||
+      settings.connectionString.trim().length === 0
+    ) {
+      return 'Connection String is required';
+    }
+    return undefined;
+  }
+
   if (!settings.server || settings.server.trim().length === 0) {
     return 'Server is required';
   }
@@ -71,6 +89,11 @@ export function validateConnectionSettings(
  * @remarks Never log the returned connection string as it may contain passwords
  */
 export function toConnectionString(settings: ConnectionSettings): string {
+  // Connection String mode — return the raw connection string as-is
+  if (settings.authenticationMode === AuthenticationMode.ConnectionString) {
+    return settings.connectionString ?? '';
+  }
+
   const parts: string[] = [
     `Server=${settings.server}`,
     `Database=${settings.database}`,
@@ -101,9 +124,16 @@ export function toConnectionString(settings: ConnectionSettings): string {
 /**
  * Gets the database engine type based on authentication mode
  * @param mode - Authentication mode
- * @returns Engine type (1 = SQL Server, 2 = Azure SQL Database)
- * @remarks Maps authentication mode to the engine type expected by the profiler service
+ * @returns Engine type (0 = auto-detect, 1 = SQL Server, 2 = Azure SQL Database)
+ * @remarks Maps authentication mode to the engine type expected by the profiler service.
+ * ConnectionString mode returns 0 to signal auto-detection to the backend.
  */
 export function getEngineType(mode: AuthenticationMode): number {
-  return mode === AuthenticationMode.AzureSqlDatabase ? 2 : 1;
+  if (mode === AuthenticationMode.AzureSqlDatabase) {
+    return 2;
+  }
+  if (mode === AuthenticationMode.ConnectionString) {
+    return 0;
+  }
+  return 1;
 }

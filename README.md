@@ -5,8 +5,9 @@
 [![.NET Version](https://img.shields.io/badge/.NET-10.0-blue)](https://dotnet.microsoft.com/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/brandochn.light-query-profiler?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=brandochn.light-query-profiler)
 [![VS Code Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/brandochn.light-query-profiler)](https://marketplace.visualstudio.com/items?itemName=brandochn.light-query-profiler)
+[![Open VSX Registry](https://img.shields.io/open-vsx/v/brandochn/light-query-profiler?label=Open%20VSX%20Registry)](https://open-vsx.org/extension/brandochn/light-query-profiler)
 
-> A lightweight query profiler for SQL Server and Azure SQL Database — available as a desktop application and as a [VS Code extension](https://marketplace.visualstudio.com/items?itemName=brandochn.light-query-profiler).
+> A lightweight query profiler for SQL Server and Azure SQL Database — available as a desktop application and as a VS Code extension on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=brandochn.light-query-profiler) and the [Open VSX Registry](https://open-vsx.org/extension/brandochn/light-query-profiler).
 
 ## Table of Contents
 
@@ -55,13 +56,15 @@ without re-entering credentials.
 
 ## VS Code Extension
 
-Light Query Profiler is available on the **Visual Studio Code Marketplace**:
+Light Query Profiler is available on the **Visual Studio Code Marketplace** and the **Open VSX Registry**:
 
 **[Install from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=brandochn.light-query-profiler)**
 
+**[Install from the Open VSX Registry](https://open-vsx.org/extension/brandochn/light-query-profiler)**
+
 ### Getting Started with the VS Code Extension
 
-1. Install the extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=brandochn.light-query-profiler)
+1. Install the extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=brandochn.light-query-profiler) or the [Open VSX Registry](https://open-vsx.org/extension/brandochn/light-query-profiler)
 2. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
 3. Run **Light Query Profiler: Show SQL Profiler**
 4. Enter your connection details:
@@ -92,11 +95,12 @@ The exported JSON format is compatible between the VS Code extension and the des
 
 ## Authentication Modes
 
-| Mode                      | Description                                              |
-| ------------------------- | -------------------------------------------------------- |
-| Windows Authentication    | Uses the current Windows user credentials (Windows only) |
-| SQL Server Authentication | Username and password                                    |
-| Azure Active Directory    | Azure AD authentication for Azure SQL Database           |
+| Mode                      | Description                                                                                                      |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Windows Authentication    | Uses the current Windows user credentials (Windows only)                                                         |
+| SQL Server Authentication | Username and password                                                                                            |
+| Azure Active Directory    | Azure AD authentication for Azure SQL Database                                                                   |
+| Connection String         | Provide a full ADO.NET connection string. Supports any valid SQL Server or Azure SQL Database connection string. |
 
 ---
 
@@ -119,7 +123,7 @@ The project runs on **Windows**, **Linux**, and **macOS**, provided .NET 10 is i
 
 This project is actively under development. Stable releases are already available for both the desktop application and the VS Code extension:
 
-- **VS Code Extension** — available on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=brandochn.light-query-profiler)
+- **VS Code Extension** — available on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=brandochn.light-query-profiler) and the [Open VSX Registry](https://open-vsx.org/extension/brandochn/light-query-profiler)
 - **Desktop App** — available on the [GitHub Releases](https://github.com/brandochn/LightQueryProfiler/releases) page
 
 Contributions are always welcome — feel free to open an issue or submit a pull request.

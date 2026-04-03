@@ -37,7 +37,8 @@ namespace LightQueryProfiler.Shared.Data
                         IntegratedSecurity INTEGER NULL,
                         CreationDate Date,
                         EngineType INTEGER NULL,
-                        AuthenticationMode INTEGER NULL
+                        AuthenticationMode INTEGER NULL,
+                        ConnectionString NVARCHAR(2000) NULL
                     )";
 
             SqliteCommand createTable = new(tableCommand, db);
@@ -73,6 +74,22 @@ namespace LightQueryProfiler.Shared.Data
                 const string alterTableAuthModeCommand = "ALTER TABLE Connections ADD COLUMN AuthenticationMode INTEGER NULL";
                 SqliteCommand alterTableAuthMode = new(alterTableAuthModeCommand, db);
                 await alterTableAuthMode.ExecuteNonQueryAsync();
+            }
+
+            // Migration: Add ConnectionString column if it doesn't exist
+            const string addConnStringColumnCheck = @"
+                    SELECT COUNT(*) as ColumnExists
+                    FROM pragma_table_info('Connections')
+                    WHERE name='ConnectionString'";
+
+            SqliteCommand checkConnStringColumn = new(addConnStringColumnCheck, db);
+            var connStringResult = await checkConnStringColumn.ExecuteScalarAsync();
+
+            if (connStringResult != null && Convert.ToInt32(connStringResult) == 0)
+            {
+                const string alterTableConnString = "ALTER TABLE Connections ADD COLUMN ConnectionString NVARCHAR(2000) NULL";
+                SqliteCommand alterTableCmd = new(alterTableConnString, db);
+                await alterTableCmd.ExecuteNonQueryAsync();
             }
         }
     }

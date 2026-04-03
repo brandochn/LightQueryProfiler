@@ -7,6 +7,7 @@ using LightQueryProfiler.Shared.Repositories;
 using LightQueryProfiler.Shared.Repositories.Interfaces;
 using LightQueryProfiler.Shared.Services;
 using LightQueryProfiler.Shared.Services.Interfaces;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using StreamJsonRpc;
 
@@ -21,6 +22,7 @@ public class JsonRpcServer
     private readonly Dictionary<string, IProfilerService> _activeSessions;
     private readonly Dictionary<string, IApplicationDbContext> _activeContexts;
     private readonly IConnectionRepository _connectionRepository;
+    private readonly IDatabaseEngineDetector _engineDetector;
 
     public JsonRpcServer(ILogger<JsonRpcServer> logger)
     {
@@ -31,13 +33,14 @@ public class JsonRpcServer
         _connectionRepository = new ConnectionRepository(
             new SqliteContext(),
             new AesGcmPasswordProtectionService());
+        _engineDetector = new DatabaseEngineDetector();
     }
 
     /// <summary>
     /// Internal constructor for unit testing — allows injection of a mock repository
     /// without requiring a real SQLite database on disk.
     /// </summary>
-    internal JsonRpcServer(ILogger<JsonRpcServer> logger, IConnectionRepository connectionRepository)
+    internal JsonRpcServer(ILogger<JsonRpcServer> logger, IConnectionRepository connectionRepository, IDatabaseEngineDetector? engineDetector = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(connectionRepository);
@@ -45,6 +48,7 @@ public class JsonRpcServer
         _activeSessions = new Dictionary<string, IProfilerService>();
         _activeContexts = new Dictionary<string, IApplicationDbContext>();
         _connectionRepository = connectionRepository;
+        _engineDetector = engineDetector ?? new DatabaseEngineDetector();
     }
 
     /// <summary>
@@ -71,7 +75,8 @@ public class JsonRpcServer
             throw new ArgumentException("ConnectionString cannot be null or empty", nameof(request));
         }
 
-        if (!Enum.IsDefined(typeof(DatabaseEngineType), request.EngineType))
+        // Allow 0 (auto-detect for ConnectionString mode) or a defined DatabaseEngineType value.
+        if (request.EngineType != 0 && !Enum.IsDefined(typeof(DatabaseEngineType), request.EngineType))
         {
             throw new ArgumentException($"Invalid EngineType: {request.EngineType}", nameof(request));
         }
@@ -83,31 +88,40 @@ public class JsonRpcServer
                 request.SessionName, request.EngineType);
         }
 
-
         try
         {
-            // Create context and services for this session
             var dbContext = new ApplicationDbContext(request.ConnectionString);
+
+            DatabaseEngineType effectiveEngineType;
+            if (request.EngineType == 0)
+            {
+                effectiveEngineType = await _engineDetector.DetectEngineTypeAsync(dbContext, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                effectiveEngineType = (DatabaseEngineType)request.EngineType;
+            }
+
             var xEventRepository = new XEventRepository(dbContext);
-            xEventRepository.SetEngineType((DatabaseEngineType)request.EngineType);
+            xEventRepository.SetEngineType(effectiveEngineType);
 
             var xEventService = new XEventService();
             var profilerService = new ProfilerService(xEventRepository, xEventService);
 
-            // Create template based on engine type
-            var template = ProfilerSessionTemplateFactory.CreateTemplate((DatabaseEngineType)request.EngineType);
+            var template = ProfilerSessionTemplateFactory.CreateTemplate(effectiveEngineType);
 
-            // Start profiling
             await Task.Run(() => profilerService.StartProfiling(request.SessionName, template), cancellationToken)
                 .ConfigureAwait(false);
 
-            // Store for later use
             _activeSessions[request.SessionName] = profilerService;
             _activeContexts[request.SessionName] = dbContext;
 
             if (_logger.IsEnabled(LogLevel.Information))
             {
-                _logger.LogInformation("Profiling session started successfully: {SessionName}", request.SessionName);
+                _logger.LogInformation(
+                    "Profiling session started successfully: {SessionName} with engine type: {EngineType}",
+                    request.SessionName, effectiveEngineType);
             }
         }
         catch (Exception ex)
@@ -307,6 +321,7 @@ public class JsonRpcServer
                     IntegratedSecurity = c.IntegratedSecurity,
                     EngineType = c.EngineType.HasValue ? (int)c.EngineType.Value : null,
                     AuthenticationMode = (int)c.AuthenticationMode,
+                    ConnectionString = c.ConnectionString,
                 })
                 .ToList();
         }
@@ -328,7 +343,41 @@ public class JsonRpcServer
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
 
+        // ── ConnectionString mode — MUST come before DataSource/InitialCatalog guards ──
+        if (request.AuthenticationMode.HasValue
+            && request.AuthenticationMode.Value == (int)AuthenticationMode.ConnectionString)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(request.ConnectionString, nameof(request));
+
+            var builder = new SqlConnectionStringBuilder(request.ConnectionString);
+            var connection = new Connection(
+                id: 0,
+                initialCatalog: builder.InitialCatalog,
+                creationDate: DateTime.UtcNow,
+                dataSource: builder.DataSource,
+                integratedSecurity: builder.IntegratedSecurity,
+                password: null,
+                userId: string.IsNullOrEmpty(builder.UserID) ? null : builder.UserID,
+                engineType: null,
+                authenticationMode: AuthenticationMode.ConnectionString,
+                connectionString: request.ConnectionString);
+
+            await _connectionRepository.UpsertAsync(connection).ConfigureAwait(false);
+
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation(
+                    "Recent connection saved (ConnString mode): DataSource={DataSource}, InitialCatalog={InitialCatalog}",
+                    builder.DataSource,
+                    builder.InitialCatalog);
+            }
+
+            return;
+        }
+
+        // ── Standard mode guards (unchanged) ──────────────────────────────────
         if (string.IsNullOrWhiteSpace(request.DataSource))
         {
             throw new ArgumentException("DataSource cannot be null or empty", nameof(request));
@@ -338,8 +387,6 @@ public class JsonRpcServer
         {
             throw new ArgumentException("InitialCatalog cannot be null or empty", nameof(request));
         }
-
-        cancellationToken.ThrowIfCancellationRequested();
 
         try
         {

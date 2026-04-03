@@ -5,5 +5,6 @@
         WindowsAuth = 0,
         SQLServerAuth = 1,
         AzureSQLDatabase = 2,
+        ConnectionString = 3,
     }
 }

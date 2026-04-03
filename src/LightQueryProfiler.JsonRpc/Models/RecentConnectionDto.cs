@@ -16,5 +16,14 @@ namespace LightQueryProfiler.JsonRpc.Models
         public bool IntegratedSecurity { get; init; }
         public int? EngineType { get; init; }
         public int? AuthenticationMode { get; init; }
+
+        /// <summary>
+        /// Gets the plain-text ADO.NET connection string, decrypted by the repository layer before mapping.
+        /// </summary>
+        /// <remarks>
+        /// Only populated when <c>AuthenticationMode</c> equals 3 (<c>ConnectionString</c> mode).
+        /// Never log this value — it may contain credentials.
+        /// </remarks>
+        public string? ConnectionString { get; init; }
     }
 }

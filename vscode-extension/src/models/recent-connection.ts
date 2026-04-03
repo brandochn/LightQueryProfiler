@@ -12,4 +12,10 @@ export interface RecentConnection {
   integratedSecurity: boolean;
   engineType?: number;
   authenticationMode?: number;
+  /**
+   * Plain-text connection string — decrypted by the backend before sending.
+   * Only set when authenticationMode === 3 (ConnectionString).
+   * @remarks Never log this value.
+   */
+  connectionString?: string;
 }

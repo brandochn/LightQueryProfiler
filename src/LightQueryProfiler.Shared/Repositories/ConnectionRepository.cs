@@ -52,6 +52,12 @@ namespace LightQueryProfiler.Shared.Repositories
         private string? DecryptPassword(string? storedPassword)
             => _passwordProtectionService?.Decrypt(storedPassword) ?? storedPassword;
 
+        private string? EncryptConnectionString(string? plainConnectionString)
+            => _passwordProtectionService?.Encrypt(plainConnectionString) ?? plainConnectionString;
+
+        private string? DecryptConnectionString(string? storedConnectionString)
+            => _passwordProtectionService?.Decrypt(storedConnectionString) ?? storedConnectionString;
+
         public async Task AddAsync(Connection entity)
         {
             await using var db = _context.GetConnection() as SqliteConnection ?? throw new Exception("db cannot be null or empty");
@@ -59,13 +65,13 @@ namespace LightQueryProfiler.Shared.Repositories
 
             string? encryptedPassword = EncryptPassword(entity.Password);
 
-            // Try with EngineType column first
+            // Try with ConnectionString column first
             try
             {
-                const string sqlWithAuthMode = @"INSERT INTO Connections (DataSource, InitialCatalog, UserId, Password, IntegratedSecurity, CreationDate, EngineType, AuthenticationMode)
-                                       VALUES (@DataSource, @InitialCatalog, @UserId, @Password, @IntegratedSecurity, @CreationDate, @EngineType, @AuthenticationMode)";
+                const string sqlWithConnString = @"INSERT INTO Connections (DataSource, InitialCatalog, UserId, Password, IntegratedSecurity, CreationDate, EngineType, AuthenticationMode, ConnectionString)
+                                       VALUES (@DataSource, @InitialCatalog, @UserId, @Password, @IntegratedSecurity, @CreationDate, @EngineType, @AuthenticationMode, @ConnectionString)";
 
-                await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithAuthMode, db);
+                await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithConnString, db);
                 sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                 sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
                 sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
@@ -74,17 +80,18 @@ namespace LightQueryProfiler.Shared.Repositories
                 sqliteCommand.Parameters.AddWithValue("@CreationDate", entity.CreationDate);
                 sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
                 sqliteCommand.Parameters.AddWithValue("@AuthenticationMode", (int)entity.AuthenticationMode);
+                sqliteCommand.Parameters.AddWithValue("@ConnectionString", (object?)EncryptConnectionString(entity.ConnectionString) ?? DBNull.Value);
                 await sqliteCommand.ExecuteNonQueryAsync();
             }
             catch (SqliteException)
             {
-                // Fallback for databases without AuthenticationMode column
+                // Fallback for databases without ConnectionString column
                 try
                 {
-                    const string sqlWithEngineType = @"INSERT INTO Connections (DataSource, InitialCatalog, UserId, Password, IntegratedSecurity, CreationDate, EngineType)
-                                           VALUES (@DataSource, @InitialCatalog, @UserId, @Password, @IntegratedSecurity, @CreationDate, @EngineType)";
+                    const string sqlWithAuthMode = @"INSERT INTO Connections (DataSource, InitialCatalog, UserId, Password, IntegratedSecurity, CreationDate, EngineType, AuthenticationMode)
+                                           VALUES (@DataSource, @InitialCatalog, @UserId, @Password, @IntegratedSecurity, @CreationDate, @EngineType, @AuthenticationMode)";
 
-                    await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithEngineType, db);
+                    await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithAuthMode, db);
                     sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                     sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
                     sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
@@ -92,22 +99,42 @@ namespace LightQueryProfiler.Shared.Repositories
                     sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                     sqliteCommand.Parameters.AddWithValue("@CreationDate", entity.CreationDate);
                     sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
+                    sqliteCommand.Parameters.AddWithValue("@AuthenticationMode", (int)entity.AuthenticationMode);
                     await sqliteCommand.ExecuteNonQueryAsync();
                 }
                 catch (SqliteException)
                 {
-                    // Fallback for databases without EngineType or AuthenticationMode column
-                    const string sqlWithoutEngineType = @"INSERT INTO Connections (DataSource, InitialCatalog, UserId, Password, IntegratedSecurity, CreationDate)
-                                           VALUES (@DataSource, @InitialCatalog, @UserId, @Password, @IntegratedSecurity, @CreationDate)";
+                    // Fallback for databases without AuthenticationMode column
+                    try
+                    {
+                        const string sqlWithEngineType = @"INSERT INTO Connections (DataSource, InitialCatalog, UserId, Password, IntegratedSecurity, CreationDate, EngineType)
+                                               VALUES (@DataSource, @InitialCatalog, @UserId, @Password, @IntegratedSecurity, @CreationDate, @EngineType)";
 
-                    await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithoutEngineType, db);
-                    sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
-                    sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
-                    sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
-                    sqliteCommand.Parameters.AddWithValue("@Password", (object?)encryptedPassword ?? DBNull.Value);
-                    sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
-                    sqliteCommand.Parameters.AddWithValue("@CreationDate", entity.CreationDate);
-                    await sqliteCommand.ExecuteNonQueryAsync();
+                        await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithEngineType, db);
+                        sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
+                        sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
+                        sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
+                        sqliteCommand.Parameters.AddWithValue("@Password", (object?)encryptedPassword ?? DBNull.Value);
+                        sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
+                        sqliteCommand.Parameters.AddWithValue("@CreationDate", entity.CreationDate);
+                        sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
+                        await sqliteCommand.ExecuteNonQueryAsync();
+                    }
+                    catch (SqliteException)
+                    {
+                        // Fallback for databases without EngineType or AuthenticationMode column
+                        const string sqlWithoutEngineType = @"INSERT INTO Connections (DataSource, InitialCatalog, UserId, Password, IntegratedSecurity, CreationDate)
+                                               VALUES (@DataSource, @InitialCatalog, @UserId, @Password, @IntegratedSecurity, @CreationDate)";
+
+                        await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithoutEngineType, db);
+                        sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
+                        sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
+                        sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
+                        sqliteCommand.Parameters.AddWithValue("@Password", (object?)encryptedPassword ?? DBNull.Value);
+                        sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
+                        sqliteCommand.Parameters.AddWithValue("@CreationDate", entity.CreationDate);
+                        await sqliteCommand.ExecuteNonQueryAsync();
+                    }
                 }
             }
         }
@@ -156,7 +183,8 @@ namespace LightQueryProfiler.Shared.Repositories
                     entity.Password,
                     entity.UserId,
                     entity.EngineType,
-                    entity.AuthenticationMode);
+                    entity.AuthenticationMode,
+                    entity.ConnectionString);
                 await UpdateAsync(updated);
             }
         }
@@ -176,16 +204,16 @@ namespace LightQueryProfiler.Shared.Repositories
         {
             // SELECT column ordinals:
             // 0=Id, 1=InitialCatalog, 2=CreationDate, 3=DataSource,
-            // 4=IntegratedSecurity, 5=Password, 6=UserId, [7=EngineType, [8=AuthenticationMode]]
+            // 4=IntegratedSecurity, 5=Password, 6=UserId, [7=EngineType, [8=AuthenticationMode, [9=ConnectionString]]]
             List<Connection> connections = new List<Connection>();
             await using var db = _context.GetConnection() as SqliteConnection ?? throw new Exception("db cannot be null or empty");
             await db.OpenAsync();
 
-            // Try with AuthenticationMode column first
+            // Try with ConnectionString column first
             try
             {
-                const string sqlWithAuthMode = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId, EngineType, AuthenticationMode FROM Connections";
-                await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithAuthMode, db);
+                const string sqlWithConnString = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId, EngineType, AuthenticationMode, ConnectionString FROM Connections";
+                await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithConnString, db);
                 await using var query = await sqliteCommand.ExecuteReaderAsync();
 
                 while (query.Read())
@@ -193,6 +221,7 @@ namespace LightQueryProfiler.Shared.Repositories
                     var engineTypeValue = query.IsDBNull(7) ? null : (DatabaseEngineType?)query.GetInt32(7);
                     var authModeValue = query.IsDBNull(8) ? AuthenticationMode.WindowsAuth : (AuthenticationMode)query.GetInt32(8);
                     var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
+                    var storedConnectionString = query.IsDBNull(9) ? null : query.GetString(9);
                     connections.Add(new Connection(
                         query.GetInt32(0),
                         query.GetString(1),
@@ -202,21 +231,23 @@ namespace LightQueryProfiler.Shared.Repositories
                         DecryptPassword(storedPassword),
                         query.IsDBNull(6) ? null : query.GetString(6),
                         engineTypeValue,
-                        authModeValue));
+                        authModeValue,
+                        connectionString: DecryptConnectionString(storedConnectionString)));
                 }
             }
             catch (SqliteException)
             {
-                // Fallback for databases without AuthenticationMode column
+                // Fallback for databases without ConnectionString column
                 try
                 {
-                    const string sqlWithEngineType = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId, EngineType FROM Connections";
-                    await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithEngineType, db);
+                    const string sqlWithAuthMode = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId, EngineType, AuthenticationMode FROM Connections";
+                    await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithAuthMode, db);
                     await using var query = await sqliteCommand.ExecuteReaderAsync();
 
                     while (query.Read())
                     {
                         var engineTypeValue = query.IsDBNull(7) ? null : (DatabaseEngineType?)query.GetInt32(7);
+                        var authModeValue = query.IsDBNull(8) ? AuthenticationMode.WindowsAuth : (AuthenticationMode)query.GetInt32(8);
                         var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
                         connections.Add(new Connection(
                             query.GetInt32(0),
@@ -226,28 +257,54 @@ namespace LightQueryProfiler.Shared.Repositories
                             query.GetBoolean(4),
                             DecryptPassword(storedPassword),
                             query.IsDBNull(6) ? null : query.GetString(6),
-                            engineTypeValue));
+                            engineTypeValue,
+                            authModeValue));
                     }
                 }
                 catch (SqliteException)
                 {
-                    // Fallback for databases without EngineType or AuthenticationMode column
-                    const string sqlWithoutEngineType = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId FROM Connections";
-                    await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithoutEngineType, db);
-                    await using var query = await sqliteCommand.ExecuteReaderAsync();
-
-                    while (query.Read())
+                    // Fallback for databases without AuthenticationMode column
+                    try
                     {
-                        var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
-                        connections.Add(new Connection(
-                            query.GetInt32(0),
-                            query.GetString(1),
-                            query.GetDateTime(2),
-                            query.GetString(3),
-                            query.GetBoolean(4),
-                            DecryptPassword(storedPassword),
-                            query.IsDBNull(6) ? null : query.GetString(6),
-                            null));
+                        const string sqlWithEngineType = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId, EngineType FROM Connections";
+                        await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithEngineType, db);
+                        await using var query = await sqliteCommand.ExecuteReaderAsync();
+
+                        while (query.Read())
+                        {
+                            var engineTypeValue = query.IsDBNull(7) ? null : (DatabaseEngineType?)query.GetInt32(7);
+                            var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
+                            connections.Add(new Connection(
+                                query.GetInt32(0),
+                                query.GetString(1),
+                                query.GetDateTime(2),
+                                query.GetString(3),
+                                query.GetBoolean(4),
+                                DecryptPassword(storedPassword),
+                                query.IsDBNull(6) ? null : query.GetString(6),
+                                engineTypeValue));
+                        }
+                    }
+                    catch (SqliteException)
+                    {
+                        // Fallback for databases without EngineType or AuthenticationMode column
+                        const string sqlWithoutEngineType = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId FROM Connections";
+                        await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithoutEngineType, db);
+                        await using var query = await sqliteCommand.ExecuteReaderAsync();
+
+                        while (query.Read())
+                        {
+                            var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
+                            connections.Add(new Connection(
+                                query.GetInt32(0),
+                                query.GetString(1),
+                                query.GetDateTime(2),
+                                query.GetString(3),
+                                query.GetBoolean(4),
+                                DecryptPassword(storedPassword),
+                                query.IsDBNull(6) ? null : query.GetString(6),
+                                null));
+                        }
                     }
                 }
             }
@@ -259,16 +316,16 @@ namespace LightQueryProfiler.Shared.Repositories
         {
             // SELECT column ordinals:
             // 0=Id, 1=InitialCatalog, 2=CreationDate, 3=DataSource,
-            // 4=IntegratedSecurity, 5=Password, 6=UserId, [7=EngineType, [8=AuthenticationMode]]
+            // 4=IntegratedSecurity, 5=Password, 6=UserId, [7=EngineType, [8=AuthenticationMode, [9=ConnectionString]]]
             Connection? connection = null;
             await using var db = _context.GetConnection() as SqliteConnection ?? throw new Exception("db cannot be null or empty");
             await db.OpenAsync();
 
-            // Try with AuthenticationMode column first
+            // Try with ConnectionString column first
             try
             {
-                const string sqlWithAuthMode = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId, EngineType, AuthenticationMode FROM Connections WHERE Id = @Id";
-                await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithAuthMode, db);
+                const string sqlWithConnString = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId, EngineType, AuthenticationMode, ConnectionString FROM Connections WHERE Id = @Id";
+                await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithConnString, db);
                 sqliteCommand.Parameters.AddWithValue("@Id", id);
                 await using var query = await sqliteCommand.ExecuteReaderAsync();
 
@@ -277,6 +334,7 @@ namespace LightQueryProfiler.Shared.Repositories
                     var engineTypeValue = query.IsDBNull(7) ? null : (DatabaseEngineType?)query.GetInt32(7);
                     var authModeValue = query.IsDBNull(8) ? AuthenticationMode.WindowsAuth : (AuthenticationMode)query.GetInt32(8);
                     var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
+                    var storedConnectionString = query.IsDBNull(9) ? null : query.GetString(9);
                     connection = new Connection(
                         query.GetInt32(0),
                         query.GetString(1),
@@ -286,22 +344,24 @@ namespace LightQueryProfiler.Shared.Repositories
                         DecryptPassword(storedPassword),
                         query.IsDBNull(6) ? null : query.GetString(6),
                         engineTypeValue,
-                        authModeValue);
+                        authModeValue,
+                        connectionString: DecryptConnectionString(storedConnectionString));
                 }
             }
             catch (SqliteException)
             {
-                // Fallback for databases without AuthenticationMode column
+                // Fallback for databases without ConnectionString column
                 try
                 {
-                    const string sqlWithEngineType = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId, EngineType FROM Connections WHERE Id = @Id";
-                    await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithEngineType, db);
+                    const string sqlWithAuthMode = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId, EngineType, AuthenticationMode FROM Connections WHERE Id = @Id";
+                    await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithAuthMode, db);
                     sqliteCommand.Parameters.AddWithValue("@Id", id);
                     await using var query = await sqliteCommand.ExecuteReaderAsync();
 
                     while (query.Read())
                     {
                         var engineTypeValue = query.IsDBNull(7) ? null : (DatabaseEngineType?)query.GetInt32(7);
+                        var authModeValue = query.IsDBNull(8) ? AuthenticationMode.WindowsAuth : (AuthenticationMode)query.GetInt32(8);
                         var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
                         connection = new Connection(
                             query.GetInt32(0),
@@ -311,29 +371,56 @@ namespace LightQueryProfiler.Shared.Repositories
                             query.GetBoolean(4),
                             DecryptPassword(storedPassword),
                             query.IsDBNull(6) ? null : query.GetString(6),
-                            engineTypeValue);
+                            engineTypeValue,
+                            authModeValue);
                     }
                 }
                 catch (SqliteException)
                 {
-                    // Fallback for databases without EngineType or AuthenticationMode column
-                    const string sqlWithoutEngineType = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId FROM Connections WHERE Id = @Id";
-                    await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithoutEngineType, db);
-                    sqliteCommand.Parameters.AddWithValue("@Id", id);
-                    await using var query = await sqliteCommand.ExecuteReaderAsync();
-
-                    while (query.Read())
+                    // Fallback for databases without AuthenticationMode column
+                    try
                     {
-                        var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
-                        connection = new Connection(
-                            query.GetInt32(0),
-                            query.GetString(1),
-                            query.GetDateTime(2),
-                            query.GetString(3),
-                            query.GetBoolean(4),
-                            DecryptPassword(storedPassword),
-                            query.IsDBNull(6) ? null : query.GetString(6),
-                            null);
+                        const string sqlWithEngineType = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId, EngineType FROM Connections WHERE Id = @Id";
+                        await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithEngineType, db);
+                        sqliteCommand.Parameters.AddWithValue("@Id", id);
+                        await using var query = await sqliteCommand.ExecuteReaderAsync();
+
+                        while (query.Read())
+                        {
+                            var engineTypeValue = query.IsDBNull(7) ? null : (DatabaseEngineType?)query.GetInt32(7);
+                            var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
+                            connection = new Connection(
+                                query.GetInt32(0),
+                                query.GetString(1),
+                                query.GetDateTime(2),
+                                query.GetString(3),
+                                query.GetBoolean(4),
+                                DecryptPassword(storedPassword),
+                                query.IsDBNull(6) ? null : query.GetString(6),
+                                engineTypeValue);
+                        }
+                    }
+                    catch (SqliteException)
+                    {
+                        // Fallback for databases without EngineType or AuthenticationMode column
+                        const string sqlWithoutEngineType = "SELECT Id, InitialCatalog, CreationDate, DataSource, IntegratedSecurity, Password, UserId FROM Connections WHERE Id = @Id";
+                        await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithoutEngineType, db);
+                        sqliteCommand.Parameters.AddWithValue("@Id", id);
+                        await using var query = await sqliteCommand.ExecuteReaderAsync();
+
+                        while (query.Read())
+                        {
+                            var storedPassword = query.IsDBNull(5) ? null : query.GetString(5);
+                            connection = new Connection(
+                                query.GetInt32(0),
+                                query.GetString(1),
+                                query.GetDateTime(2),
+                                query.GetString(3),
+                                query.GetBoolean(4),
+                                DecryptPassword(storedPassword),
+                                query.IsDBNull(6) ? null : query.GetString(6),
+                                null);
+                        }
                     }
                 }
             }
@@ -353,11 +440,11 @@ namespace LightQueryProfiler.Shared.Repositories
 
             string? encryptedPassword = EncryptPassword(entity.Password);
 
-            // Try with AuthenticationMode column first
+            // Try with ConnectionString column first
             try
             {
-                const string sqlWithAuthMode = "UPDATE Connections SET DataSource=@DataSource, InitialCatalog=@InitialCatalog, UserId=@UserId, Password=@Password, IntegratedSecurity=@IntegratedSecurity, EngineType=@EngineType, AuthenticationMode=@AuthenticationMode WHERE Id = @Id";
-                await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithAuthMode, db);
+                const string sqlWithConnString = "UPDATE Connections SET DataSource=@DataSource, InitialCatalog=@InitialCatalog, UserId=@UserId, Password=@Password, IntegratedSecurity=@IntegratedSecurity, EngineType=@EngineType, AuthenticationMode=@AuthenticationMode, ConnectionString=@ConnectionString WHERE Id = @Id";
+                await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithConnString, db);
                 sqliteCommand.Parameters.AddWithValue("@Id", entity.Id);
                 sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                 sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
@@ -366,15 +453,16 @@ namespace LightQueryProfiler.Shared.Repositories
                 sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                 sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
                 sqliteCommand.Parameters.AddWithValue("@AuthenticationMode", (int)entity.AuthenticationMode);
+                sqliteCommand.Parameters.AddWithValue("@ConnectionString", (object?)EncryptConnectionString(entity.ConnectionString) ?? DBNull.Value);
                 await sqliteCommand.ExecuteNonQueryAsync();
             }
             catch (SqliteException)
             {
-                // Fallback for databases without AuthenticationMode column
+                // Fallback for databases without ConnectionString column
                 try
                 {
-                    const string sqlWithEngineType = "UPDATE Connections SET DataSource=@DataSource, InitialCatalog=@InitialCatalog, UserId=@UserId, Password=@Password, IntegratedSecurity=@IntegratedSecurity, EngineType=@EngineType WHERE Id = @Id";
-                    await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithEngineType, db);
+                    const string sqlWithAuthMode = "UPDATE Connections SET DataSource=@DataSource, InitialCatalog=@InitialCatalog, UserId=@UserId, Password=@Password, IntegratedSecurity=@IntegratedSecurity, EngineType=@EngineType, AuthenticationMode=@AuthenticationMode WHERE Id = @Id";
+                    await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithAuthMode, db);
                     sqliteCommand.Parameters.AddWithValue("@Id", entity.Id);
                     sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
                     sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
@@ -382,20 +470,38 @@ namespace LightQueryProfiler.Shared.Repositories
                     sqliteCommand.Parameters.AddWithValue("@Password", (object?)encryptedPassword ?? DBNull.Value);
                     sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
                     sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
+                    sqliteCommand.Parameters.AddWithValue("@AuthenticationMode", (int)entity.AuthenticationMode);
                     await sqliteCommand.ExecuteNonQueryAsync();
                 }
                 catch (SqliteException)
                 {
-                    // Fallback for databases without EngineType or AuthenticationMode column
-                    const string sqlWithoutEngineType = "UPDATE Connections SET DataSource=@DataSource, InitialCatalog=@InitialCatalog, UserId=@UserId, Password=@Password, IntegratedSecurity=@IntegratedSecurity WHERE Id = @Id";
-                    await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithoutEngineType, db);
-                    sqliteCommand.Parameters.AddWithValue("@Id", entity.Id);
-                    sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
-                    sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
-                    sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
-                    sqliteCommand.Parameters.AddWithValue("@Password", (object?)encryptedPassword ?? DBNull.Value);
-                    sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
-                    await sqliteCommand.ExecuteNonQueryAsync();
+                    // Fallback for databases without AuthenticationMode column
+                    try
+                    {
+                        const string sqlWithEngineType = "UPDATE Connections SET DataSource=@DataSource, InitialCatalog=@InitialCatalog, UserId=@UserId, Password=@Password, IntegratedSecurity=@IntegratedSecurity, EngineType=@EngineType WHERE Id = @Id";
+                        await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithEngineType, db);
+                        sqliteCommand.Parameters.AddWithValue("@Id", entity.Id);
+                        sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
+                        sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
+                        sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
+                        sqliteCommand.Parameters.AddWithValue("@Password", (object?)encryptedPassword ?? DBNull.Value);
+                        sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
+                        sqliteCommand.Parameters.AddWithValue("@EngineType", entity.EngineType.HasValue ? (int)entity.EngineType.Value : DBNull.Value);
+                        await sqliteCommand.ExecuteNonQueryAsync();
+                    }
+                    catch (SqliteException)
+                    {
+                        // Fallback for databases without EngineType or AuthenticationMode column
+                        const string sqlWithoutEngineType = "UPDATE Connections SET DataSource=@DataSource, InitialCatalog=@InitialCatalog, UserId=@UserId, Password=@Password, IntegratedSecurity=@IntegratedSecurity WHERE Id = @Id";
+                        await using SqliteCommand sqliteCommand = new SqliteCommand(sqlWithoutEngineType, db);
+                        sqliteCommand.Parameters.AddWithValue("@Id", entity.Id);
+                        sqliteCommand.Parameters.AddWithValue("@DataSource", entity.DataSource);
+                        sqliteCommand.Parameters.AddWithValue("@InitialCatalog", entity.InitialCatalog);
+                        sqliteCommand.Parameters.AddWithValue("@UserId", (object?)entity.UserId ?? DBNull.Value);
+                        sqliteCommand.Parameters.AddWithValue("@Password", (object?)encryptedPassword ?? DBNull.Value);
+                        sqliteCommand.Parameters.AddWithValue("@IntegratedSecurity", entity.IntegratedSecurity);
+                        await sqliteCommand.ExecuteNonQueryAsync();
+                    }
                 }
             }
         }
