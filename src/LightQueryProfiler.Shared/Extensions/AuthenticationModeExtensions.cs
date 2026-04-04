@@ -17,6 +17,9 @@ namespace LightQueryProfiler.Shared.Extensions
                 case AuthenticationMode.AzureSQLDatabase:
                     return "Azure SQL Database";
 
+                case AuthenticationMode.ConnectionString:
+                    return "Connection String";
+
                 default:
                     return string.Empty;
             }

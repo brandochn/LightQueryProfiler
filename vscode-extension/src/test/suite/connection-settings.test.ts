@@ -13,7 +13,9 @@ import type { ConnectionSettings } from '../../models/connection-settings';
  * Builds a valid Azure SQL Database settings object.
  * All required fields populated so individual tests can override one field at a time.
  */
-function makeAzureSettings(overrides: Partial<ConnectionSettings> = {}): ConnectionSettings {
+function makeAzureSettings(
+  overrides: Partial<ConnectionSettings> = {},
+): ConnectionSettings {
   return {
     server: 'myserver.database.windows.net',
     database: 'MyDatabase',
@@ -27,7 +29,9 @@ function makeAzureSettings(overrides: Partial<ConnectionSettings> = {}): Connect
 /**
  * Builds a valid SQL Server Auth settings object.
  */
-function makeSqlServerAuthSettings(overrides: Partial<ConnectionSettings> = {}): ConnectionSettings {
+function makeSqlServerAuthSettings(
+  overrides: Partial<ConnectionSettings> = {},
+): ConnectionSettings {
   return {
     server: 'localhost',
     database: 'master',
@@ -41,7 +45,9 @@ function makeSqlServerAuthSettings(overrides: Partial<ConnectionSettings> = {}):
 /**
  * Builds a valid Windows Auth settings object.
  */
-function makeWindowsAuthSettings(overrides: Partial<ConnectionSettings> = {}): ConnectionSettings {
+function makeWindowsAuthSettings(
+  overrides: Partial<ConnectionSettings> = {},
+): ConnectionSettings {
   return {
     server: 'localhost\\SQLEXPRESS',
     database: 'master',
@@ -56,12 +62,16 @@ suite('validateConnectionSettings', () => {
   // ── Server validation ───────────────────────────────────────────────────
 
   test('returns error when server is empty string', () => {
-    const result = validateConnectionSettings(makeAzureSettings({ server: '' }));
+    const result = validateConnectionSettings(
+      makeAzureSettings({ server: '' }),
+    );
     assert.strictEqual(result, 'Server is required');
   });
 
   test('returns error when server is whitespace only', () => {
-    const result = validateConnectionSettings(makeAzureSettings({ server: '   ' }));
+    const result = validateConnectionSettings(
+      makeAzureSettings({ server: '   ' }),
+    );
     assert.strictEqual(result, 'Server is required');
   });
 
@@ -70,57 +80,95 @@ suite('validateConnectionSettings', () => {
   test('returns error when database is empty for Azure SQL Database', () => {
     // Mirrors WinForms ConfigureAsync: throws InvalidOperationException when
     // authMode == AzureSQLDatabase and database is blank.
-    const result = validateConnectionSettings(makeAzureSettings({ database: '' }));
+    const result = validateConnectionSettings(
+      makeAzureSettings({ database: '' }),
+    );
     assert.strictEqual(result, 'Database is required');
   });
 
   test('returns error when database is whitespace for Azure SQL Database', () => {
-    const result = validateConnectionSettings(makeAzureSettings({ database: '   ' }));
+    const result = validateConnectionSettings(
+      makeAzureSettings({ database: '   ' }),
+    );
     assert.strictEqual(result, 'Database is required');
   });
 
   test('returns error when database is empty for SQL Server Auth', () => {
-    const result = validateConnectionSettings(makeSqlServerAuthSettings({ database: '' }));
+    const result = validateConnectionSettings(
+      makeSqlServerAuthSettings({ database: '' }),
+    );
     assert.strictEqual(result, 'Database is required');
   });
 
   test('returns error when database is empty for Windows Auth', () => {
-    const result = validateConnectionSettings(makeWindowsAuthSettings({ database: '' }));
+    const result = validateConnectionSettings(
+      makeWindowsAuthSettings({ database: '' }),
+    );
     assert.strictEqual(result, 'Database is required');
   });
 
   // ── Credentials validation for Azure SQL Database ───────────────────────
 
   test('returns error when username is empty for Azure SQL Database', () => {
-    const result = validateConnectionSettings(makeAzureSettings({ username: '' }));
-    assert.strictEqual(result, 'Username is required for SQL Server and Azure SQL authentication');
+    const result = validateConnectionSettings(
+      makeAzureSettings({ username: '' }),
+    );
+    assert.strictEqual(
+      result,
+      'Username is required for SQL Server and Azure SQL authentication',
+    );
   });
 
   test('returns error when username is undefined for Azure SQL Database', () => {
-    const result = validateConnectionSettings(makeAzureSettings({ username: undefined }));
-    assert.strictEqual(result, 'Username is required for SQL Server and Azure SQL authentication');
+    const result = validateConnectionSettings(
+      makeAzureSettings({ username: undefined }),
+    );
+    assert.strictEqual(
+      result,
+      'Username is required for SQL Server and Azure SQL authentication',
+    );
   });
 
   test('returns error when password is empty for Azure SQL Database', () => {
-    const result = validateConnectionSettings(makeAzureSettings({ password: '' }));
-    assert.strictEqual(result, 'Password is required for SQL Server and Azure SQL authentication');
+    const result = validateConnectionSettings(
+      makeAzureSettings({ password: '' }),
+    );
+    assert.strictEqual(
+      result,
+      'Password is required for SQL Server and Azure SQL authentication',
+    );
   });
 
   test('returns error when password is undefined for Azure SQL Database', () => {
-    const result = validateConnectionSettings(makeAzureSettings({ password: undefined }));
-    assert.strictEqual(result, 'Password is required for SQL Server and Azure SQL authentication');
+    const result = validateConnectionSettings(
+      makeAzureSettings({ password: undefined }),
+    );
+    assert.strictEqual(
+      result,
+      'Password is required for SQL Server and Azure SQL authentication',
+    );
   });
 
   // ── Credentials validation for SQL Server Auth ──────────────────────────
 
   test('returns error when username is empty for SQL Server Auth', () => {
-    const result = validateConnectionSettings(makeSqlServerAuthSettings({ username: '' }));
-    assert.strictEqual(result, 'Username is required for SQL Server and Azure SQL authentication');
+    const result = validateConnectionSettings(
+      makeSqlServerAuthSettings({ username: '' }),
+    );
+    assert.strictEqual(
+      result,
+      'Username is required for SQL Server and Azure SQL authentication',
+    );
   });
 
   test('returns error when password is empty for SQL Server Auth', () => {
-    const result = validateConnectionSettings(makeSqlServerAuthSettings({ password: '' }));
-    assert.strictEqual(result, 'Password is required for SQL Server and Azure SQL authentication');
+    const result = validateConnectionSettings(
+      makeSqlServerAuthSettings({ password: '' }),
+    );
+    assert.strictEqual(
+      result,
+      'Password is required for SQL Server and Azure SQL authentication',
+    );
   });
 
   // ── Valid settings return undefined ─────────────────────────────────────
@@ -181,33 +229,57 @@ suite('toConnectionString', () => {
 
   test('Azure SQL: includes Server and Database', () => {
     const cs = toConnectionString(makeAzureSettings());
-    assert.ok(cs.includes('Server=myserver.database.windows.net'), `Expected Server in: ${cs}`);
-    assert.ok(cs.includes('Database=MyDatabase'), `Expected Database in: ${cs}`);
+    assert.ok(
+      cs.includes('Server=myserver.database.windows.net'),
+      `Expected Server in: ${cs}`,
+    );
+    assert.ok(
+      cs.includes('Database=MyDatabase'),
+      `Expected Database in: ${cs}`,
+    );
   });
 
   test('Azure SQL: includes User Id and Password', () => {
     const cs = toConnectionString(makeAzureSettings());
     assert.ok(cs.includes('User Id=azureuser'), `Expected User Id in: ${cs}`);
-    assert.ok(cs.includes('Password=Secret123!'), `Expected Password in: ${cs}`);
+    assert.ok(
+      cs.includes('Password=Secret123!'),
+      `Expected Password in: ${cs}`,
+    );
   });
 
   test('Azure SQL: does NOT include Integrated Security', () => {
     const cs = toConnectionString(makeAzureSettings());
-    assert.ok(!cs.includes('Integrated Security'), `Unexpected Integrated Security in: ${cs}`);
+    assert.ok(
+      !cs.includes('Integrated Security'),
+      `Unexpected Integrated Security in: ${cs}`,
+    );
   });
 
   test('Azure SQL: includes required connection metadata', () => {
     const cs = toConnectionString(makeAzureSettings());
-    assert.ok(cs.includes('Application Name=LightQueryProfiler'), `Expected Application Name in: ${cs}`);
-    assert.ok(cs.includes('Connect Timeout=30'), `Expected Connect Timeout in: ${cs}`);
-    assert.ok(cs.includes('TrustServerCertificate=true'), `Expected TrustServerCertificate in: ${cs}`);
+    assert.ok(
+      cs.includes('Application Name=LightQueryProfiler'),
+      `Expected Application Name in: ${cs}`,
+    );
+    assert.ok(
+      cs.includes('Connect Timeout=30'),
+      `Expected Connect Timeout in: ${cs}`,
+    );
+    assert.ok(
+      cs.includes('TrustServerCertificate=true'),
+      `Expected TrustServerCertificate in: ${cs}`,
+    );
   });
 
   // ── Windows Authentication ──────────────────────────────────────────────
 
   test('Windows Auth: includes Integrated Security=true', () => {
     const cs = toConnectionString(makeWindowsAuthSettings());
-    assert.ok(cs.includes('Integrated Security=true'), `Expected Integrated Security in: ${cs}`);
+    assert.ok(
+      cs.includes('Integrated Security=true'),
+      `Expected Integrated Security in: ${cs}`,
+    );
   });
 
   test('Windows Auth: does NOT include User Id or Password', () => {
@@ -221,12 +293,18 @@ suite('toConnectionString', () => {
   test('SQL Server Auth: includes User Id and Password', () => {
     const cs = toConnectionString(makeSqlServerAuthSettings());
     assert.ok(cs.includes('User Id=sa'), `Expected User Id in: ${cs}`);
-    assert.ok(cs.includes('Password=Password1!'), `Expected Password in: ${cs}`);
+    assert.ok(
+      cs.includes('Password=Password1!'),
+      `Expected Password in: ${cs}`,
+    );
   });
 
   test('SQL Server Auth: does NOT include Integrated Security', () => {
     const cs = toConnectionString(makeSqlServerAuthSettings());
-    assert.ok(!cs.includes('Integrated Security'), `Unexpected Integrated Security in: ${cs}`);
+    assert.ok(
+      !cs.includes('Integrated Security'),
+      `Unexpected Integrated Security in: ${cs}`,
+    );
   });
 
   // ── Connection string format ────────────────────────────────────────────
@@ -237,12 +315,126 @@ suite('toConnectionString', () => {
   });
 
   test('omits User Id when username is undefined', () => {
-    const cs = toConnectionString(makeWindowsAuthSettings({ username: undefined }));
+    const cs = toConnectionString(
+      makeWindowsAuthSettings({ username: undefined }),
+    );
     assert.ok(!cs.includes('User Id'), `Unexpected User Id in: ${cs}`);
   });
 
   test('omits Password when password is undefined', () => {
-    const cs = toConnectionString(makeWindowsAuthSettings({ password: undefined }));
+    const cs = toConnectionString(
+      makeWindowsAuthSettings({ password: undefined }),
+    );
     assert.ok(!cs.includes('Password='), `Unexpected Password in: ${cs}`);
+  });
+});
+
+// ── validateConnectionSettings — ConnectionString mode ────────────────────────
+
+suite('validateConnectionSettings — ConnectionString mode', () => {
+  function makeConnStringSettings(
+    overrides: Partial<ConnectionSettings> = {},
+  ): ConnectionSettings {
+    return {
+      server: '',
+      database: '',
+      authenticationMode: AuthenticationMode.ConnectionString,
+      connectionString:
+        'Server=myserver;Database=mydb;User Id=myuser;Password=mypass;',
+      ...overrides,
+    };
+  }
+
+  test('returns undefined for valid non-empty connection string', () => {
+    const result = validateConnectionSettings(makeConnStringSettings());
+    assert.strictEqual(result, undefined);
+  });
+
+  test('returns error when connectionString is empty', () => {
+    const result = validateConnectionSettings(
+      makeConnStringSettings({ connectionString: '' }),
+    );
+    assert.strictEqual(result, 'Connection String is required');
+  });
+
+  test('returns error when connectionString is whitespace only', () => {
+    const result = validateConnectionSettings(
+      makeConnStringSettings({ connectionString: '   ' }),
+    );
+    assert.strictEqual(result, 'Connection String is required');
+  });
+
+  test('returns error when connectionString is undefined', () => {
+    const result = validateConnectionSettings(
+      makeConnStringSettings({ connectionString: undefined }),
+    );
+    assert.strictEqual(result, 'Connection String is required');
+  });
+
+  test('ignores server field in ConnectionString mode', () => {
+    // server is empty — should NOT trigger 'Server is required' in this mode
+    const result = validateConnectionSettings(
+      makeConnStringSettings({ server: '' }),
+    );
+    assert.strictEqual(result, undefined);
+  });
+
+  test('ignores database field in ConnectionString mode', () => {
+    // database is empty — should NOT trigger 'Database is required' in this mode
+    const result = validateConnectionSettings(
+      makeConnStringSettings({ database: '' }),
+    );
+    assert.strictEqual(result, undefined);
+  });
+});
+
+// ── toConnectionString — ConnectionString mode ────────────────────────────────
+
+suite('toConnectionString — ConnectionString mode', () => {
+  test('returns the raw connection string unchanged', () => {
+    const raw = 'Server=myserver;Database=mydb;User Id=myuser;Password=mypass;';
+    const settings: ConnectionSettings = {
+      server: '',
+      database: '',
+      authenticationMode: AuthenticationMode.ConnectionString,
+      connectionString: raw,
+    };
+    const result = toConnectionString(settings);
+    assert.strictEqual(result, raw);
+  });
+
+  test('returns empty string when connectionString is undefined', () => {
+    const settings: ConnectionSettings = {
+      server: '',
+      database: '',
+      authenticationMode: AuthenticationMode.ConnectionString,
+      connectionString: undefined,
+    };
+    const result = toConnectionString(settings);
+    assert.strictEqual(result, '');
+  });
+
+  test('does NOT append Application Name or other metadata', () => {
+    const raw = 'Server=myserver;Database=mydb;';
+    const settings: ConnectionSettings = {
+      server: '',
+      database: '',
+      authenticationMode: AuthenticationMode.ConnectionString,
+      connectionString: raw,
+    };
+    const result = toConnectionString(settings);
+    assert.ok(
+      !result.includes('Application Name'),
+      `Should not include Application Name in: ${result}`,
+    );
+  });
+});
+
+// ── getEngineType — ConnectionString mode ─────────────────────────────────────
+
+suite('getEngineType — ConnectionString mode', () => {
+  test('returns 0 for ConnectionString authentication mode (auto-detect sentinel)', () => {
+    const result = getEngineType(AuthenticationMode.ConnectionString);
+    assert.strictEqual(result, 0);
   });
 });

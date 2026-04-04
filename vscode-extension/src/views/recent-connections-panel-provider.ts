@@ -287,6 +287,7 @@ export class RecentConnectionsPanelProvider implements vscode.Disposable {
         switch (authenticationMode) {
           case 1: return 'SQL Server';
           case 2: return 'Azure AD';
+          case 3: return 'Conn. String';
           default: return 'Windows';
         }
       }

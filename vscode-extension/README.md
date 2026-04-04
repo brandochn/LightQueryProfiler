@@ -86,6 +86,7 @@ The format is compatible with events exported from the **Light Query Profiler de
 | Windows Authentication    | Uses the current Windows user credentials (Windows only) |
 | SQL Server Authentication | Username and password                                    |
 | Azure Active Directory    | Azure AD authentication for Azure SQL Database           |
+| Connection String         | Provide a full ADO.NET connection string. Supports any valid SQL Server or Azure SQL Database connection string. |
 
 ## Supported Platforms
 

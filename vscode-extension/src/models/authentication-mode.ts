@@ -16,6 +16,12 @@ export enum AuthenticationMode {
    * Azure SQL Database Authentication
    */
   AzureSqlDatabase = 2,
+
+  /**
+   * Connection String mode — user provides a raw ADO.NET connection string.
+   * Engine type is detected automatically from the connection string.
+   */
+  ConnectionString = 3,
 }
 
 /**
@@ -31,6 +37,8 @@ export function getAuthenticationModeString(mode: AuthenticationMode): string {
       return 'SQL Server Authentication';
     case AuthenticationMode.AzureSqlDatabase:
       return 'Azure SQL Database';
+    case AuthenticationMode.ConnectionString:
+      return 'Connection String';
     default:
       return 'Unknown';
   }
@@ -62,6 +70,10 @@ export function getAllAuthenticationModes(): ReadonlyArray<AuthenticationModeOpt
     {
       value: AuthenticationMode.AzureSqlDatabase,
       label: getAuthenticationModeString(AuthenticationMode.AzureSqlDatabase),
+    },
+    {
+      value: AuthenticationMode.ConnectionString,
+      label: getAuthenticationModeString(AuthenticationMode.ConnectionString),
     },
   ];
 }
