@@ -90,7 +90,15 @@ public class JsonRpcServer
 
         try
         {
-            var dbContext = new ApplicationDbContext(request.ConnectionString);
+            // Guarantee the profiler's own SQL connections are tagged with "LightQueryProfiler"
+            // as the Application Name. ProfilerService.IsProfilerGeneratedEvent uses
+            // client_app_name to exclude the profiler's XEvent management queries (create session,
+            // read ring buffer, etc.) from the captured event stream. In standard auth modes this
+            // is handled by toConnectionString() on the TypeScript client side; for ConnectionString
+            // mode we normalise here at the server level so all modes are covered consistently.
+            var csBuilder = new SqlConnectionStringBuilder(request.ConnectionString);
+            csBuilder.ApplicationName = "LightQueryProfiler";
+            var dbContext = new ApplicationDbContext(csBuilder.ConnectionString);
 
             DatabaseEngineType effectiveEngineType;
             if (request.EngineType == 0)
