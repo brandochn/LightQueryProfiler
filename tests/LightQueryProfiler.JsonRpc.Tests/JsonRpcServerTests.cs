@@ -373,6 +373,51 @@ public class JsonRpcServerTests
         Assert.Equal("mydb", dto.InitialCatalog);
     }
 
+    // ─── DeleteRecentConnectionAsync ────────────────────────────────────────────
+
+    [Fact]
+    public async Task DeleteRecentConnectionAsync_WhenRequestIsNull_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var mockRepo = new Mock<IConnectionRepository>();
+        var server = new JsonRpcServer(_mockLogger.Object, mockRepo.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            server.DeleteRecentConnectionAsync(null!, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task DeleteRecentConnectionAsync_WhenValidId_CallsRepositoryDelete()
+    {
+        // Arrange
+        var mockRepo = new Mock<IConnectionRepository>();
+        mockRepo.Setup(r => r.Delete(It.IsAny<int>())).Returns(Task.CompletedTask);
+        var server = new JsonRpcServer(_mockLogger.Object, mockRepo.Object);
+        var request = new DeleteRecentConnectionRequest { Id = 42 };
+
+        // Act
+        await server.DeleteRecentConnectionAsync(request, TestContext.Current.CancellationToken);
+
+        // Assert
+        mockRepo.Verify(r => r.Delete(42), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteRecentConnectionAsync_WhenRepositoryThrows_PropagatesException()
+    {
+        // Arrange
+        var mockRepo = new Mock<IConnectionRepository>();
+        mockRepo.Setup(r => r.Delete(It.IsAny<int>()))
+            .ThrowsAsync(new InvalidOperationException("DB error"));
+        var server = new JsonRpcServer(_mockLogger.Object, mockRepo.Object);
+        var request = new DeleteRecentConnectionRequest { Id = 99 };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            server.DeleteRecentConnectionAsync(request, TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public async Task StartProfilingAsync_WhenEngineTypeIsZero_IsValidInput()
     {

@@ -74,6 +74,19 @@ const saveRecentConnectionRequestType = new RequestType<
 >('SaveRecentConnectionAsync');
 
 /**
+ * Request parameters for deleting a recent connection
+ */
+interface DeleteRecentConnectionRequest {
+  readonly id: number;
+}
+
+const deleteRecentConnectionRequestType = new RequestType<
+  DeleteRecentConnectionRequest,
+  void,
+  void
+>('DeleteRecentConnectionAsync');
+
+/**
  * Client state enum for tracking lifecycle
  * @remarks Forms a discriminated union for state machine implementation
  */
@@ -355,6 +368,25 @@ export class ProfilerClient {
       const message = error instanceof Error ? error.message : String(error);
       this.logError(`Failed to save recent connection: ${message}`);
       throw new Error(`Failed to save recent connection: ${message}`);
+    }
+  }
+
+  /**
+   * Deletes a recent connection from the backend store by its identifier.
+   * @param id - Unique identifier of the connection to delete.
+   * @throws Error if the server is not running or the request fails.
+   */
+  public async deleteRecentConnection(id: number): Promise<void> {
+    this.ensureRunning();
+
+    try {
+      await this.connection!.sendRequest(deleteRecentConnectionRequestType, {
+        id,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logError(`Failed to delete recent connection: ${message}`);
+      throw new Error(`Failed to delete recent connection: ${message}`);
     }
   }
 

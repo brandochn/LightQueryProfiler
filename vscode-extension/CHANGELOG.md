@@ -5,6 +5,21 @@ All notable changes to the Light Query Profiler extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-04-21
+
+### Added
+
+- **Recent Connections – Start Profiling button**: Each connection row in the Recent
+  Connections panel now has a **▶ Start** button. Clicking it opens the profiler panel,
+  fills the connection form, and starts profiling automatically — no extra click required.
+- **Recent Connections – Delete button**: Each connection row now has a **✕ Delete** button
+  that permanently removes the entry from the local database and refreshes the list in place.
+- New `DeleteRecentConnectionAsync` JSON-RPC endpoint in the .NET backend that delegates to
+  the existing `ConnectionRepository.Delete(int id)` implementation.
+- New `deleteRecentConnection(id)` method on `ProfilerClient` for TypeScript consumers.
+- New `startProfilingWithConnection(connection)` public method on `ProfilerPanelProvider`
+  to support programmatic connection-fill-and-start from external providers.
+
 ## [1.3.0] - 2026-04-xx
 
 ### Added
