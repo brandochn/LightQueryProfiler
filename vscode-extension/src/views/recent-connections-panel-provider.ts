@@ -1,19 +1,21 @@
-import * as crypto from "crypto";
-import * as vscode from "vscode";
-import { ProfilerClient } from "../services/profiler-client";
-import { RecentConnection } from "../models/recent-connection";
+import * as crypto from 'crypto';
+import * as vscode from 'vscode';
+import { ProfilerClient } from '../services/profiler-client';
+import { RecentConnection } from '../models/recent-connection';
 
 // Messages the extension HOST receives FROM the webview
 type WebviewIncomingMessage =
-  | { command: "webviewReady" }
-  | { command: "refresh" }
-  | { command: "connectionSelected"; data: RecentConnection }
-  | { command: "error"; data: string };
+  | { command: 'webviewReady' }
+  | { command: 'refresh' }
+  | { command: 'connectionSelected'; data: RecentConnection }
+  | { command: 'startProfiling'; data: RecentConnection }
+  | { command: 'deleteConnection'; data: number }
+  | { command: 'error'; data: string };
 
 // Messages the extension HOST sends TO the webview
 type WebviewOutgoingMessage =
-  | { command: "updateConnections"; data: RecentConnection[] }
-  | { command: "error"; data: string };
+  | { command: 'updateConnections'; data: RecentConnection[] }
+  | { command: 'error'; data: string };
 
 /**
  * Manages the "Recent Connections" webview panel.
@@ -30,6 +32,7 @@ export class RecentConnectionsPanelProvider implements vscode.Disposable {
     private readonly onConnectionSelected: (
       connection: RecentConnection,
     ) => void,
+    private readonly onStartProfiling: (connection: RecentConnection) => void,
   ) {}
 
   /**
@@ -46,8 +49,8 @@ export class RecentConnectionsPanelProvider implements vscode.Disposable {
     }
 
     this.panel = vscode.window.createWebviewPanel(
-      "recentConnections",
-      "Recent Connections",
+      'recentConnections',
+      'Recent Connections',
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -75,20 +78,20 @@ export class RecentConnectionsPanelProvider implements vscode.Disposable {
   public async loadConnections(): Promise<void> {
     try {
       if (!this.profilerClient.isRunning()) {
-        this.log("Server not running, starting server process...");
+        this.log('Server not running, starting server process...');
         await this.profilerClient.start();
       }
 
       const connections = await this.profilerClient.getRecentConnections();
       await this.postMessage({
-        command: "updateConnections",
+        command: 'updateConnections',
         data: connections,
       });
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logError(`Failed to load recent connections: ${errorMessage}`);
-      await this.postMessage({ command: "error", data: errorMessage });
+      await this.postMessage({ command: 'error', data: errorMessage });
     }
   }
 
@@ -102,25 +105,55 @@ export class RecentConnectionsPanelProvider implements vscode.Disposable {
 
   private async handleMessage(message: WebviewIncomingMessage): Promise<void> {
     switch (message.command) {
-      case "webviewReady":
+      case 'webviewReady':
         await this.loadConnections();
         break;
 
-      case "refresh":
+      case 'refresh':
         await this.loadConnections();
         break;
 
-      case "connectionSelected":
+      case 'connectionSelected':
         this.onConnectionSelected(message.data);
         this.panel?.dispose();
         break;
 
-      case "error":
+      case 'startProfiling':
+        this.onStartProfiling(message.data);
+        this.panel?.dispose();
+        break;
+
+      case 'deleteConnection':
+        await this.deleteConnection(message.data);
+        break;
+
+      case 'error':
         this.logError(`Webview error: ${message.data}`);
         break;
 
       default:
         break;
+    }
+  }
+
+  /**
+   * Deletes a recent connection by its id and refreshes the list.
+   * Starts the JSON-RPC server first if it is not yet running.
+   */
+  private async deleteConnection(id: number): Promise<void> {
+    try {
+      if (!this.profilerClient.isRunning()) {
+        this.log('Server not running, starting server process...');
+        await this.profilerClient.start();
+      }
+
+      await this.profilerClient.deleteRecentConnection(id);
+      await this.loadConnections();
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logError(`Failed to delete connection ${id}: ${errorMessage}`);
+      await this.postMessage({ command: 'error', data: errorMessage });
     }
   }
 
@@ -145,7 +178,7 @@ export class RecentConnectionsPanelProvider implements vscode.Disposable {
   }
 
   private getHtmlContent(_webview: vscode.Webview): string {
-    const nonce = crypto.randomBytes(16).toString("hex");
+    const nonce = crypto.randomBytes(16).toString('hex');
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -220,13 +253,55 @@ export class RecentConnectionsPanelProvider implements vscode.Disposable {
 
     .connection-item {
       display: grid;
-      grid-template-columns: 1fr 1fr auto;
+      grid-template-columns: 1fr 1fr auto auto;
       align-items: center;
       gap: 8px;
       padding: 6px 12px;
       cursor: pointer;
       user-select: none;
       outline: none;
+    }
+
+    .item-actions {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .action-btn {
+      padding: 2px 8px;
+      border: 1px solid var(--vscode-input-border, #555);
+      cursor: pointer;
+      font-size: 0.8em;
+      border-radius: 2px;
+      white-space: nowrap;
+      line-height: 1.5;
+      font-family: inherit;
+    }
+
+    .action-btn:focus {
+      outline: 1px solid var(--vscode-focusBorder, #007fd4);
+      outline-offset: 1px;
+    }
+
+    .start-btn {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #fff);
+    }
+
+    .start-btn:hover {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+    }
+
+    .delete-btn {
+      background: var(--vscode-button-secondaryBackground, transparent);
+      color: var(--vscode-button-secondaryForeground, var(--vscode-editor-foreground));
+    }
+
+    .delete-btn:hover {
+      background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground));
+      color: var(--vscode-errorForeground, #f48771);
+      border-color: var(--vscode-errorForeground, #f48771);
     }
 
     .connection-item:hover {
@@ -253,11 +328,12 @@ export class RecentConnectionsPanelProvider implements vscode.Disposable {
     }
 
     .auth-badge {
-      background-color: var(--vscode-badge-background, #4d4d4d);
-      color: var(--vscode-badge-foreground, #fff);
-      border-radius: 3px;
-      padding: 2px 6px;
-      font-size: 0.85em;
+      background-color: transparent;
+      color: var(--vscode-terminal-ansiCyan, #11a8cd);
+      border: 1px solid var(--vscode-terminal-ansiCyan, #11a8cd);
+      border-radius: 10px;
+      padding: 1px 8px;
+      font-size: 0.8em;
       white-space: nowrap;
     }
 
@@ -303,10 +379,22 @@ export class RecentConnectionsPanelProvider implements vscode.Disposable {
         list.innerHTML = connections
           .map(
             (conn, i) =>
-              '<div class="connection-item" data-index="' + i + '" data-id="' + conn.id + '" tabindex="0" role="option" aria-selected="false">' +
+              '<div class="connection-item" data-index="' + i + '" data-id="' + parseInt(String(conn.id), 10) + '" tabindex="0" role="option" aria-selected="false">' +
               '  <span class="server-name">' + escapeHtml(conn.dataSource) + '</span>' +
               '  <span class="catalog-name">' + escapeHtml(conn.initialCatalog) + '</span>' +
               '  <span class="auth-badge">' + escapeHtml(getAuthLabel(conn.authenticationMode)) + '</span>' +
+              '  <div class="item-actions">' +
+              '    <button class="action-btn start-btn" data-index="' + i + '"' +
+              '      title="Start profiling with this connection"' +
+              '      aria-label="Start profiling ' + escapeHtml(conn.dataSource) + '">' +
+              '      &#9654; Start' +
+              '    </button>' +
+              '    <button class="action-btn delete-btn" data-index="' + i + '" data-id="' + parseInt(String(conn.id), 10) + '"' +
+              '      title="Remove this connection from the list"' +
+              '      aria-label="Delete ' + escapeHtml(conn.dataSource) + '">' +
+              '      &#x2715; Delete' +
+              '    </button>' +
+              '  </div>' +
               '</div>'
           )
           .join('');
@@ -332,6 +420,34 @@ export class RecentConnectionsPanelProvider implements vscode.Disposable {
               moveFocus(-1);
             }
           });
+
+          // --- action buttons ---
+          var startBtn = item.querySelector('.start-btn');
+          if (startBtn) {
+            startBtn.addEventListener('click', function (e) {
+              e.stopPropagation();
+              var idx = parseInt(startBtn.getAttribute('data-index') || '0', 10);
+              var conn = connections[idx];
+              if (conn) {
+                vscode.postMessage({ command: 'startProfiling', data: conn });
+              }
+            });
+            startBtn.addEventListener('dblclick', function (e) {
+              e.stopPropagation();
+            });
+          }
+
+          var deleteBtn = item.querySelector('.delete-btn');
+          if (deleteBtn) {
+            deleteBtn.addEventListener('click', function (e) {
+              e.stopPropagation();
+              var id = parseInt(deleteBtn.getAttribute('data-id') || '0', 10);
+              vscode.postMessage({ command: 'deleteConnection', data: id });
+            });
+            deleteBtn.addEventListener('dblclick', function (e) {
+              e.stopPropagation();
+            });
+          }
         });
       }
 

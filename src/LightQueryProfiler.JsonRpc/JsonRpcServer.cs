@@ -429,4 +429,35 @@ public class JsonRpcServer
             throw;
         }
     }
+
+    /// <summary>
+    /// Deletes a recent connection by its unique identifier.
+    /// </summary>
+    /// <remarks>
+    /// If no row with the given <paramref name="request"/> Id exists the operation
+    /// completes silently — SQLite DELETE is a no-op when no rows match.
+    /// </remarks>
+    [JsonRpcMethod("DeleteRecentConnectionAsync", UseSingleObjectParameterDeserialization = true)]
+    public async Task DeleteRecentConnectionAsync(
+        DeleteRecentConnectionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
+        {
+            await _connectionRepository.Delete(request.Id).ConfigureAwait(false);
+
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Recent connection deleted: Id={Id}", request.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete recent connection: {Id}", request.Id);
+            throw;
+        }
+    }
 }
