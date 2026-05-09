@@ -13,7 +13,7 @@ import {
   toConnectionString,
   getEngineType,
 } from '../models/connection-settings';
-import { RecentConnection } from '../models/recent-connection';
+import { ConnectionProfile } from '../models/connection-profile';
 
 /**
  * Request parameters for starting a profiling session
@@ -61,30 +61,30 @@ const getEventsRequestType = new RequestType<
   void
 >('GetLastEventsAsync');
 
-const getRecentConnectionsRequestType = new RequestType<
+const getConnectionsRequestType = new RequestType<
   Record<string, never>,
-  RecentConnection[],
+  ConnectionProfile[],
   void
->('GetRecentConnectionsAsync');
+>('GetConnectionsAsync');
 
-const saveRecentConnectionRequestType = new RequestType<
-  Omit<RecentConnection, 'id'>,
+const saveConnectionRequestType = new RequestType<
+  ConnectionProfile,
   void,
   void
->('SaveRecentConnectionAsync');
+>('SaveConnectionAsync');
 
 /**
- * Request parameters for deleting a recent connection
+ * Request parameters for deleting a connection
  */
-interface DeleteRecentConnectionRequest {
+interface DeleteConnectionRequest {
   readonly id: number;
 }
 
-const deleteRecentConnectionRequestType = new RequestType<
-  DeleteRecentConnectionRequest,
+const deleteConnectionRequestType = new RequestType<
+  DeleteConnectionRequest,
   void,
   void
->('DeleteRecentConnectionAsync');
+>('DeleteConnectionAsync');
 
 /**
  * Client state enum for tracking lifecycle
@@ -329,64 +329,78 @@ export class ProfilerClient {
   }
 
   /**
-   * Retrieves all saved recent connections from the backend, sorted most-recent first.
-   * @returns Array of recent connections (passwords already decrypted by backend).
+   * Retrieves all saved connections from the backend, sorted most-recent first.
+   * @returns Array of connection profiles (passwords already decrypted by backend).
    * @throws Error if the connection is not established or request fails.
    */
-  public async getRecentConnections(): Promise<RecentConnection[]> {
+  public async getConnections(): Promise<ConnectionProfile[]> {
     this.ensureRunning();
 
     try {
       const connections = await this.connection!.sendRequest(
-        getRecentConnectionsRequestType,
+        getConnectionsRequestType,
         {},
       );
       return connections;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logError(`Failed to get recent connections: ${message}`);
-      throw new Error(`Failed to get recent connections: ${message}`);
+      this.logError(`Failed to get connections: ${message}`);
+      throw new Error(`Failed to get connections: ${message}`);
     }
   }
 
   /**
-   * Saves (upserts) a connection to the backend recent-connections store.
-   * @param connection - Connection details to save (without id).
+   * Saves (upserts) a connection to the backend connections store.
+   * @param connection - Connection details to save (without id for new connections).
    * @throws Error if the connection is not established or request fails.
    */
-  public async saveRecentConnection(
-    connection: Omit<RecentConnection, 'id'>,
+  public async saveConnection(
+    connection: Omit<ConnectionProfile, 'id'>,
   ): Promise<void> {
     this.ensureRunning();
 
     try {
-      await this.connection!.sendRequest(
-        saveRecentConnectionRequestType,
-        connection,
-      );
+      await this.connection!.sendRequest(saveConnectionRequestType, connection);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logError(`Failed to save recent connection: ${message}`);
-      throw new Error(`Failed to save recent connection: ${message}`);
+      this.logError(`Failed to save connection: ${message}`);
+      throw new Error(`Failed to save connection: ${message}`);
     }
   }
 
   /**
-   * Deletes a recent connection from the backend store by its identifier.
-   * @param id - Unique identifier of the connection to delete.
+   * Updates an existing connection profile by its identifier.
+   * @param connection - Connection profile with id set.
    * @throws Error if the server is not running or the request fails.
    */
-  public async deleteRecentConnection(id: number): Promise<void> {
+  public async updateConnection(connection: ConnectionProfile): Promise<void> {
     this.ensureRunning();
 
     try {
-      await this.connection!.sendRequest(deleteRecentConnectionRequestType, {
+      await this.connection!.sendRequest(saveConnectionRequestType, connection);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logError(`Failed to update connection: ${message}`);
+      throw new Error(`Failed to update connection: ${message}`);
+    }
+  }
+
+  /**
+   * Deletes a connection from the backend store by its identifier.
+   * @param id - Unique identifier of the connection to delete.
+   * @throws Error if the server is not running or the request fails.
+   */
+  public async deleteConnection(id: number): Promise<void> {
+    this.ensureRunning();
+
+    try {
+      await this.connection!.sendRequest(deleteConnectionRequestType, {
         id,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logError(`Failed to delete recent connection: ${message}`);
-      throw new Error(`Failed to delete recent connection: ${message}`);
+      this.logError(`Failed to delete connection: ${message}`);
+      throw new Error(`Failed to delete connection: ${message}`);
     }
   }
 

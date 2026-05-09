@@ -91,6 +91,22 @@ namespace LightQueryProfiler.Shared.Data
                 SqliteCommand alterTableCmd = new(alterTableConnString, db);
                 await alterTableCmd.ExecuteNonQueryAsync();
             }
+
+            // Migration: Add ProfileName column if it doesn't exist (for existing databases)
+            const string addProfileNameColumnCheck = @"
+                    SELECT COUNT(*) as ColumnExists
+                    FROM pragma_table_info('Connections')
+                    WHERE name='ProfileName'";
+
+            SqliteCommand checkProfileNameColumn = new(addProfileNameColumnCheck, db);
+            var profileNameResult = await checkProfileNameColumn.ExecuteScalarAsync();
+
+            if (profileNameResult != null && Convert.ToInt32(profileNameResult) == 0)
+            {
+                const string alterTableProfileName = "ALTER TABLE Connections ADD COLUMN ProfileName NVARCHAR(200) NULL";
+                SqliteCommand alterTableCmd = new(alterTableProfileName, db);
+                await alterTableCmd.ExecuteNonQueryAsync();
+            }
         }
     }
 }

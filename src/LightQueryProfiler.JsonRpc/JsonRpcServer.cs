@@ -302,12 +302,12 @@ public class JsonRpcServer
     }
 
     /// <summary>
-    /// Returns all saved recent connections sorted by most recent first.
+    /// Returns all saved connections sorted by most recent first.
     /// Passwords in the returned DTOs are already decrypted by the repository layer.
     /// </summary>
-    [JsonRpcMethod("GetRecentConnectionsAsync", UseSingleObjectParameterDeserialization = true)]
-    public async Task<List<RecentConnectionDto>> GetRecentConnectionsAsync(
-        GetRecentConnectionsRequest request,
+    [JsonRpcMethod("GetConnectionsAsync", UseSingleObjectParameterDeserialization = true)]
+    public async Task<List<ConnectionDto>> GetConnectionsAsync(
+        GetConnectionsRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -319,7 +319,7 @@ public class JsonRpcServer
 
             return connections
                 .OrderByDescending(c => c.CreationDate)
-                .Select(c => new RecentConnectionDto
+                .Select(c => new ConnectionDto
                 {
                     Id = c.Id,
                     DataSource = c.DataSource,
@@ -330,24 +330,25 @@ public class JsonRpcServer
                     EngineType = c.EngineType.HasValue ? (int)c.EngineType.Value : null,
                     AuthenticationMode = (int)c.AuthenticationMode,
                     ConnectionString = c.ConnectionString,
+                    ProfileName = c.ProfileName,
                 })
                 .ToList();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to retrieve recent connections");
+            _logger.LogError(ex, "Failed to retrieve connections");
             throw;
         }
     }
 
     /// <summary>
-    /// Saves (upserts) a connection. If the same DataSource+UserId+InitialCatalog already
+    /// Saves (upserts) a connection profile. If the same DataSource+UserId+InitialCatalog already
     /// exists the row is updated; otherwise a new row is inserted.
     /// Passwords are encrypted by the repository layer before storage.
     /// </summary>
-    [JsonRpcMethod("SaveRecentConnectionAsync", UseSingleObjectParameterDeserialization = true)]
-    public async Task SaveRecentConnectionAsync(
-        SaveRecentConnectionRequest request,
+    [JsonRpcMethod("SaveConnectionAsync", UseSingleObjectParameterDeserialization = true)]
+    public async Task SaveConnectionAsync(
+        SaveConnectionRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -361,7 +362,7 @@ public class JsonRpcServer
 
             var builder = new SqlConnectionStringBuilder(request.ConnectionString);
             var connection = new Connection(
-                id: 0,
+                id: request.Id.HasValue ? request.Id.Value : 0,
                 initialCatalog: builder.InitialCatalog,
                 creationDate: DateTime.UtcNow,
                 dataSource: builder.DataSource,
@@ -370,14 +371,15 @@ public class JsonRpcServer
                 userId: string.IsNullOrEmpty(builder.UserID) ? null : builder.UserID,
                 engineType: null,
                 authenticationMode: AuthenticationMode.ConnectionString,
-                connectionString: request.ConnectionString);
+                connectionString: request.ConnectionString,
+                profileName: request.ProfileName);
 
             await _connectionRepository.UpsertAsync(connection).ConfigureAwait(false);
 
             if (_logger.IsEnabled(LogLevel.Information))
             {
                 _logger.LogInformation(
-                    "Recent connection saved (ConnString mode): DataSource={DataSource}, InitialCatalog={InitialCatalog}",
+                    "Connection saved (ConnString mode): DataSource={DataSource}, InitialCatalog={InitialCatalog}",
                     builder.DataSource,
                     builder.InitialCatalog);
             }
@@ -399,7 +401,7 @@ public class JsonRpcServer
         try
         {
             var connection = new Connection(
-                id: 0,
+                id: request.Id.HasValue ? request.Id.Value : 0,
                 initialCatalog: request.InitialCatalog,
                 creationDate: DateTime.UtcNow,
                 dataSource: request.DataSource,
@@ -411,35 +413,36 @@ public class JsonRpcServer
                     : null,
                 authenticationMode: request.AuthenticationMode.HasValue
                     ? (AuthenticationMode)request.AuthenticationMode.Value
-                    : AuthenticationMode.WindowsAuth);
+                    : AuthenticationMode.WindowsAuth,
+                profileName: request.ProfileName);
 
             await _connectionRepository.UpsertAsync(connection).ConfigureAwait(false);
 
             if (_logger.IsEnabled(LogLevel.Information))
             {
                 _logger.LogInformation(
-                    "Recent connection saved: DataSource={DataSource}, InitialCatalog={InitialCatalog}",
+                    "Connection saved: DataSource={DataSource}, InitialCatalog={InitialCatalog}",
                     request.DataSource,
                     request.InitialCatalog);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save recent connection: {DataSource}", request.DataSource);
+            _logger.LogError(ex, "Failed to save connection: {DataSource}", request.DataSource);
             throw;
         }
     }
 
     /// <summary>
-    /// Deletes a recent connection by its unique identifier.
+    /// Deletes a connection by its unique identifier.
     /// </summary>
     /// <remarks>
     /// If no row with the given <paramref name="request"/> Id exists the operation
     /// completes silently — SQLite DELETE is a no-op when no rows match.
     /// </remarks>
-    [JsonRpcMethod("DeleteRecentConnectionAsync", UseSingleObjectParameterDeserialization = true)]
-    public async Task DeleteRecentConnectionAsync(
-        DeleteRecentConnectionRequest request,
+    [JsonRpcMethod("DeleteConnectionAsync", UseSingleObjectParameterDeserialization = true)]
+    public async Task DeleteConnectionAsync(
+        DeleteConnectionRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -451,12 +454,12 @@ public class JsonRpcServer
 
             if (_logger.IsEnabled(LogLevel.Information))
             {
-                _logger.LogInformation("Recent connection deleted: Id={Id}", request.Id);
+                _logger.LogInformation("Connection deleted: Id={Id}", request.Id);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete recent connection: {Id}", request.Id);
+            _logger.LogError(ex, "Failed to delete connection: {Id}", request.Id);
             throw;
         }
     }

@@ -1,17 +1,17 @@
-import * as vscode from 'vscode';
-import * as path from 'path';
-import { ProfilerClient } from '../services/profiler-client';
-import { RecentConnection } from '../models/recent-connection';
+import * as vscode from "vscode";
+import * as path from "path";
+import { ProfilerClient } from "../services/profiler-client";
+import { ConnectionProfile } from "../models/connection-profile";
 import {
   EventExportImportService,
   DisplayEvent,
-} from '../services/event-export-import.service';
+} from "../services/event-export-import.service";
 import {
   AuthenticationMode,
   getAllAuthenticationModes,
-} from '../models/authentication-mode';
-import { validateConnectionSettings } from '../models/connection-settings';
-import { ProfilerEvent } from '../models/profiler-event';
+} from "../models/authentication-mode";
+import { validateConnectionSettings } from "../models/connection-settings";
+import { ProfilerEvent } from "../models/profiler-event";
 
 /**
  * Connection settings for SQL Server/Azure SQL
@@ -29,9 +29,10 @@ interface ConnectionSettings {
  * Profiler state enumeration
  */
 enum ProfilerState {
-  Stopped = 'stopped',
-  Running = 'running',
-  Paused = 'paused',
+  Stopped = "stopped",
+  Starting = "starting",
+  Running = "running",
+  Paused = "paused",
 }
 
 /**
@@ -52,17 +53,17 @@ interface EventFilter {
  */
 interface WebviewIncomingMessage {
   command:
-    | 'start'
-    | 'stop'
-    | 'pause'
-    | 'resume'
-    | 'clear'
-    | 'applyFilters'
-    | 'clearFilters'
-    | 'exportEvents'
-    | 'importEvents'
-    | 'showRecentConnections'
-    | 'webviewReady';
+    | "start"
+    | "stop"
+    | "pause"
+    | "resume"
+    | "clear"
+    | "applyFilters"
+    | "clearFilters"
+    | "exportEvents"
+    | "importEvents"
+    | "showConnections"
+    | "webviewReady";
   data?: ConnectionSettings | EventFilter;
 }
 
@@ -71,15 +72,15 @@ interface WebviewIncomingMessage {
  */
 interface WebviewOutgoingMessage {
   command:
-    | 'updateState'
-    | 'updateEventCount'
-    | 'addEvents'
-    | 'clearEvents'
-    | 'updateFilter'
-    | 'error'
-    | 'setConnectionFieldsEnabled'
-    | 'loadImportedEvents'
-    | 'setConnectionFields';
+    | "updateState"
+    | "updateEventCount"
+    | "addEvents"
+    | "clearEvents"
+    | "updateFilter"
+    | "error"
+    | "setConnectionFieldsEnabled"
+    | "loadImportedEvents"
+    | "setConnectionFields";
   data?: unknown;
 }
 
@@ -97,19 +98,19 @@ export class ProfilerPanelProvider {
   private readonly profilerClient: ProfilerClient;
   private readonly extensionUri: vscode.Uri;
   private readonly outputChannel: vscode.OutputChannel;
-  private sessionName = 'VSCodeProfilerSession';
+  private sessionName = "VSCodeProfilerSession";
   private state: ProfilerState = ProfilerState.Stopped;
   private pollingInterval: NodeJS.Timeout | null = null;
   private readonly pollingIntervalMs = 900; // Match WinForms implementation
   private eventCount = 0;
   private readonly sessionEventKeys = new Set<string>();
   private eventFilter: EventFilter = {
-    eventClass: '',
-    textData: '',
-    applicationName: '',
-    ntUserName: '',
-    loginName: '',
-    databaseName: '',
+    eventClass: "",
+    textData: "",
+    applicationName: "",
+    ntUserName: "",
+    loginName: "",
+    databaseName: "",
   };
 
   /**
@@ -133,8 +134,8 @@ export class ProfilerPanelProvider {
    */
   private pendingImportEvents: DisplayEvent[] | null = null;
 
-  /** Callback invoked when the webview toolbar "Recent Connections" button is clicked. */
-  private onShowRecentConnectionsCallback: (() => void) | null = null;
+  /** Callback invoked when the webview toolbar "Connections" button is clicked. */
+  private onShowConnectionsCallback: (() => void) | null = null;
 
   /**
    * The connection settings used in the most recent (or current) profiling session.
@@ -173,8 +174,8 @@ export class ProfilerPanelProvider {
 
     // Create new panel
     this.panel = vscode.window.createWebviewPanel(
-      'lightQueryProfiler',
-      'Light Query Profiler',
+      "lightQueryProfiler",
+      "Light Query Profiler",
       column,
       {
         enableScripts: true,
@@ -192,8 +193,8 @@ export class ProfilerPanelProvider {
     // issue where the detailed 128×128 design becomes unrecognisable when
     // VS Code renders it at ~16 px in the editor tab strip.
     this.panel.iconPath = {
-      light: vscode.Uri.joinPath(this.extensionUri, 'media', 'icon-small.svg'),
-      dark: vscode.Uri.joinPath(this.extensionUri, 'media', 'icon-small.svg'),
+      light: vscode.Uri.joinPath(this.extensionUri, "media", "icon-small.svg"),
+      dark: vscode.Uri.joinPath(this.extensionUri, "media", "icon-small.svg"),
     };
 
     // Handle messages from webview
@@ -206,7 +207,7 @@ export class ProfilerPanelProvider {
 
     // Handle panel disposal
     this.panel.onDidDispose(() => {
-      this.log('Panel disposed');
+      this.log("Panel disposed");
       // Set panel to undefined first so postMessage becomes a no-op during cleanup.
       this.panel = undefined;
       if (this.state !== ProfilerState.Stopped) {
@@ -222,7 +223,7 @@ export class ProfilerPanelProvider {
       }
     }, undefined);
 
-    this.log('Panel created and shown');
+    this.log("Panel created and shown");
   }
 
   /**
@@ -235,52 +236,52 @@ export class ProfilerPanelProvider {
 
     try {
       switch (message.command) {
-        case 'start':
+        case "start":
           if (message.data && this.isConnectionSettings(message.data)) {
             await this.handleStart(message.data);
           } else {
-            await this.showError('Invalid connection settings');
+            await this.showError("Invalid connection settings");
           }
           break;
-        case 'stop':
+        case "stop":
           await this.handleStop();
           break;
-        case 'pause':
+        case "pause":
           await this.handlePause();
           break;
-        case 'resume':
+        case "resume":
           await this.handleResume();
           break;
-        case 'clear':
+        case "clear":
           await this.handleClear();
           break;
-        case 'applyFilters':
+        case "applyFilters":
           if (message.data && this.isEventFilter(message.data)) {
             await this.handleApplyFilters(message.data);
           }
           break;
-        case 'clearFilters':
+        case "clearFilters":
           await this.handleClearFilters();
           break;
-        case 'exportEvents':
+        case "exportEvents":
           await this.exportEvents();
           break;
-        case 'importEvents':
+        case "importEvents":
           await this.importEvents();
           break;
-        case 'showRecentConnections':
-          if (this.onShowRecentConnectionsCallback) {
-            this.onShowRecentConnectionsCallback();
+        case "showConnections":
+          if (this.onShowConnectionsCallback) {
+            this.onShowConnectionsCallback();
           }
           break;
-        case 'webviewReady':
+        case "webviewReady":
           // If importEvents() stored pending data while the panel was opening,
           // forward it now that the webview has signalled it is ready.
           if (this.pendingImportEvents) {
             const pending = this.pendingImportEvents;
             this.pendingImportEvents = null;
             await this.postMessage({
-              command: 'loadImportedEvents',
+              command: "loadImportedEvents",
               data: pending,
             });
           }
@@ -304,7 +305,7 @@ export class ProfilerPanelProvider {
    * @remarks Validates connection, starts server session, and begins polling
    */
   private async handleStart(settings: ConnectionSettings): Promise<void> {
-    this.log('Starting profiling session...');
+    this.log("Starting profiling session...");
     this.currentConnectionSettings = settings;
 
     // Validate connection settings before attempting to connect.
@@ -316,10 +317,20 @@ export class ProfilerPanelProvider {
       return;
     }
 
+    // ── Immediately update UI to reflect the starting state ──────────
+    // This ensures the user sees immediate feedback (disabled inputs,
+    // updated status badge, spinner on Start button) BEFORE the backend
+    // attempts to connect. If the connection is invalid and eventually
+    // times out, the UI has already been reflecting the "Starting" state
+    // the whole time, avoiding the perception that nothing happened.
+    this.state = ProfilerState.Starting;
+    await this.setConnectionFieldsEnabled(false);
+    await this.updateState();
+
     try {
       // Ensure the .NET server process is running before calling startProfiling
       if (!this.profilerClient.isRunning()) {
-        this.log('Server not running, starting server process...');
+        this.log("Server not running, starting server process...");
         await this.profilerClient.start();
       }
 
@@ -330,22 +341,22 @@ export class ProfilerPanelProvider {
       this.eventCount = 0;
       this.sessionEventKeys.clear();
       this.capturedEvents = [];
-      await this.postMessage({ command: 'clearEvents' });
+      await this.postMessage({ command: "clearEvents" });
 
-      // Update state and disable connection fields while profiling is active
+      // Transition from Starting → Running
       this.state = ProfilerState.Running;
-      await this.setConnectionFieldsEnabled(false);
       await this.updateState();
 
       // Start polling for events
       this.startPolling();
 
-      this.log('Profiling started successfully');
-      await vscode.window.showInformationMessage('Profiling started');
+      this.log("Profiling started successfully");
+      await vscode.window.showInformationMessage("Profiling started");
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logError(`Failed to start profiling: ${errorMessage}`);
+      // Transition from Starting → Stopped (error recovery)
       this.state = ProfilerState.Stopped;
       await this.setConnectionFieldsEnabled(true);
       await this.updateState();
@@ -359,7 +370,7 @@ export class ProfilerPanelProvider {
    */
   private async updateState(): Promise<void> {
     await this.postMessage({
-      command: 'updateState',
+      command: "updateState",
       data: {
         state: this.state,
         eventCount: this.eventCount,
@@ -375,7 +386,7 @@ export class ProfilerPanelProvider {
    */
   private async setConnectionFieldsEnabled(enabled: boolean): Promise<void> {
     await this.postMessage({
-      command: 'setConnectionFieldsEnabled',
+      command: "setConnectionFieldsEnabled",
       data: enabled,
     });
   }
@@ -387,15 +398,15 @@ export class ProfilerPanelProvider {
    * @remarks Validates required properties: server, database, authenticationMode
    */
   private isConnectionSettings(data: unknown): data is ConnectionSettings {
-    if (typeof data !== 'object' || data === null) {
+    if (typeof data !== "object" || data === null) {
       return false;
     }
 
     const obj = data as Record<string, unknown>;
     return (
-      typeof obj.server === 'string' &&
-      typeof obj.database === 'string' &&
-      typeof obj.authenticationMode === 'number'
+      typeof obj.server === "string" &&
+      typeof obj.database === "string" &&
+      typeof obj.authenticationMode === "number"
     );
   }
 
@@ -404,7 +415,7 @@ export class ProfilerPanelProvider {
    * @remarks Stops polling, terminates server session, and resets state
    */
   private async handleStop(): Promise<void> {
-    this.log('Stopping profiling session...');
+    this.log("Stopping profiling session...");
     this.stopPolling();
 
     if (this.profilerClient.isRunning()) {
@@ -426,7 +437,7 @@ export class ProfilerPanelProvider {
     if (this.currentConnectionSettings) {
       const settings = this.currentConnectionSettings;
       try {
-        await this.profilerClient.saveRecentConnection({
+        await this.profilerClient.saveConnection({
           dataSource: settings.server,
           initialCatalog: settings.database,
           userId: settings.username,
@@ -435,9 +446,10 @@ export class ProfilerPanelProvider {
             settings.authenticationMode === AuthenticationMode.WindowsAuth,
           authenticationMode: settings.authenticationMode,
           engineType: undefined,
-          connectionString: settings.connectionString, // ← NEW
+          connectionString: settings.connectionString,
+          // profileName intentionally omitted — auto-save must not overwrite custom names
         });
-        this.log('Recent connection saved');
+        this.log("Recent connection saved");
       } catch (saveError) {
         const saveMessage =
           saveError instanceof Error ? saveError.message : String(saveError);
@@ -448,8 +460,8 @@ export class ProfilerPanelProvider {
       }
     }
 
-    this.log('Profiling stopped');
-    await vscode.window.showInformationMessage('Profiling stopped');
+    this.log("Profiling stopped");
+    await vscode.window.showInformationMessage("Profiling stopped");
   }
 
   /**
@@ -477,13 +489,13 @@ export class ProfilerPanelProvider {
    * @remarks Clears local event cache and resets event count without stopping profiling
    */
   private async handleClear(): Promise<void> {
-    this.log('Clearing events');
+    this.log("Clearing events");
     this.eventCount = 0;
     this.capturedEvents = [];
     // sessionEventKeys intentionally NOT cleared — session cache must survive Clear
     // so that already-seen ring_buffer events cannot re-appear after a clear.
     await this.postMessage({
-      command: 'clearEvents',
+      command: "clearEvents",
     });
   }
 
@@ -495,7 +507,7 @@ export class ProfilerPanelProvider {
   private async handleApplyFilters(filter: EventFilter): Promise<void> {
     this.eventFilter = filter;
     this.log(`Filters applied: ${JSON.stringify(filter)}`);
-    await this.postMessage({ command: 'updateFilter', data: filter });
+    await this.postMessage({ command: "updateFilter", data: filter });
   }
 
   /**
@@ -504,15 +516,15 @@ export class ProfilerPanelProvider {
    */
   private async handleClearFilters(): Promise<void> {
     this.eventFilter = {
-      eventClass: '',
-      textData: '',
-      applicationName: '',
-      ntUserName: '',
-      loginName: '',
-      databaseName: '',
+      eventClass: "",
+      textData: "",
+      applicationName: "",
+      ntUserName: "",
+      loginName: "",
+      databaseName: "",
     };
-    this.log('Filters cleared');
-    await this.postMessage({ command: 'updateFilter', data: this.eventFilter });
+    this.log("Filters cleared");
+    await this.postMessage({ command: "updateFilter", data: this.eventFilter });
   }
 
   /**
@@ -520,14 +532,14 @@ export class ProfilerPanelProvider {
    */
   private isEventFilter(data: unknown): data is EventFilter {
     return (
-      typeof data === 'object' &&
+      typeof data === "object" &&
       data !== null &&
-      'eventClass' in data &&
-      'textData' in data &&
-      'applicationName' in data &&
-      'ntUserName' in data &&
-      'loginName' in data &&
-      'databaseName' in data
+      "eventClass" in data &&
+      "textData" in data &&
+      "applicationName" in data &&
+      "ntUserName" in data &&
+      "loginName" in data &&
+      "databaseName" in data
     );
   }
 
@@ -538,7 +550,7 @@ export class ProfilerPanelProvider {
    * @remarks Called via the onServerStopped callback registered in the constructor.
    */
   private async handleServerCrash(): Promise<void> {
-    this.logError('Server stopped unexpectedly — resetting profiler state');
+    this.logError("Server stopped unexpectedly — resetting profiler state");
     this.stopPolling();
     this.state = ProfilerState.Stopped;
     // Clear dedup cache: after a server restart sequence numbers start from 1 again,
@@ -604,7 +616,7 @@ export class ProfilerPanelProvider {
         ...keys: string[]
       ): string => {
         if (!obj) {
-          return '';
+          return "";
         }
         for (const k of keys) {
           const v = obj[k];
@@ -612,7 +624,7 @@ export class ProfilerPanelProvider {
             return String(v);
           }
         }
-        return '';
+        return "";
       };
 
       for (const event of events) {
@@ -620,38 +632,38 @@ export class ProfilerPanelProvider {
         const a = event.actions;
 
         // TextData: options_text (login/logout), batch_text (sql_batch_*), statement (rpc_*)
-        const textData = str(f, 'options_text', 'batch_text', 'statement');
+        const textData = str(f, "options_text", "batch_text", "statement");
 
         const displayEvent = {
-          eventClass: event.name ?? 'Unknown',
+          eventClass: event.name ?? "Unknown",
           textData,
-          applicationName: str(a, 'client_app_name'),
-          hostName: str(a, 'client_hostname'),
-          ntUserName: str(a, 'nt_username'),
-          loginName: str(a, 'server_principal_name', 'username'),
-          clientProcessId: str(a, 'client_pid'),
-          spid: str(a, 'session_id'),
-          startTime: event.timestamp ?? '',
-          cpu: str(f, 'cpu_time'),
-          reads: str(f, 'logical_reads'),
-          writes: str(f, 'writes'),
-          duration: str(f, 'duration'),
-          databaseId: str(f, 'database_id'),
-          databaseName: str(a, 'database_name'),
+          applicationName: str(a, "client_app_name"),
+          hostName: str(a, "client_hostname"),
+          ntUserName: str(a, "nt_username"),
+          loginName: str(a, "server_principal_name", "username"),
+          clientProcessId: str(a, "client_pid"),
+          spid: str(a, "session_id"),
+          startTime: event.timestamp ?? "",
+          cpu: str(f, "cpu_time"),
+          reads: str(f, "logical_reads"),
+          writes: str(f, "writes"),
+          duration: str(f, "duration"),
+          databaseId: str(f, "database_id"),
+          databaseName: str(a, "database_name"),
         };
 
         // Dedup key — mirrors ProfilerEvent.GetEventKey() priority exactly:
         //   1. event_sequence  (unique counter per session, most reliable)
         //   2. attach_activity_id (GUID, unique per activity)
         //   3. timestamp|name|session_id  (weakest, same format as C# fallback)
-        const seqKey = str(a, 'event_sequence');
-        const activityKey = str(a, 'attach_activity_id');
-        const sessionId = str(a, 'session_id');
+        const seqKey = str(a, "event_sequence");
+        const activityKey = str(a, "attach_activity_id");
+        const sessionId = str(a, "session_id");
         const eventKey = seqKey
           ? `seq:${seqKey}`
           : activityKey
             ? `activity:${activityKey}`
-            : `${event.timestamp ?? ''}|${event.name ?? ''}|${sessionId}`;
+            : `${event.timestamp ?? ""}|${event.name ?? ""}|${sessionId}`;
 
         if (this.sessionEventKeys.has(eventKey)) {
           continue;
@@ -682,12 +694,12 @@ export class ProfilerPanelProvider {
         this.eventCount += newEvents.length;
 
         await this.postMessage({
-          command: 'addEvents',
+          command: "addEvents",
           data: newEvents,
         });
 
         await this.postMessage({
-          command: 'updateEventCount',
+          command: "updateEventCount",
           data: this.eventCount,
         });
 
@@ -717,20 +729,20 @@ export class ProfilerPanelProvider {
   private async showError(message: string): Promise<void> {
     this.logError(message);
     await this.postMessage({
-      command: 'error',
+      command: "error",
       data: message,
     });
     await vscode.window.showErrorMessage(`Light Query Profiler: ${message}`);
   }
 
   /**
-   * Registers a callback invoked when the user clicks "Recent Connections"
+   * Registers a callback invoked when the user clicks "Connections"
    * inside the webview toolbar. Extension.ts uses this to open the
-   * `RecentConnectionsPanelProvider` without creating a direct dependency
+   * `ConnectionsPanelProvider` without creating a direct dependency
    * between the two providers.
    */
-  public setOnShowRecentConnections(callback: () => void): void {
-    this.onShowRecentConnectionsCallback = callback;
+  public setOnShowConnections(callback: () => void): void {
+    this.onShowConnectionsCallback = callback;
   }
 
   /**
@@ -738,9 +750,9 @@ export class ProfilerPanelProvider {
    * Called by `extension.ts` when the user double-clicks a recent connection.
    * @param connection - The connection whose fields should be populated in the form.
    */
-  public fillConnectionFields(connection: RecentConnection): void {
+  public fillConnectionFields(connection: ConnectionProfile): void {
     void this.panel?.webview.postMessage({
-      command: 'setConnectionFields',
+      command: "setConnectionFields",
       data: connection,
     });
   }
@@ -754,14 +766,17 @@ export class ProfilerPanelProvider {
    * before delegating to `handleStart`.
    */
   public async startProfilingWithConnection(
-    connection: RecentConnection,
+    connection: ConnectionProfile,
   ): Promise<void> {
-    // Guard: if a session is already running, show an error and abort.
+    // Guard: if a session is already running or starting, show an error and abort.
     // handleStart has no state check of its own — it relies on the webview UI
-    // disabling the Start button. Calling it while Running would corrupt state.
-    if (this.state === ProfilerState.Running) {
+    // disabling the Start button. Calling it while Running or Starting would corrupt state.
+    if (
+      this.state === ProfilerState.Running ||
+      this.state === ProfilerState.Starting
+    ) {
       await this.showError(
-        'A profiling session is already running. Please stop it first.',
+        "A profiling session is already in progress. Please stop it first.",
       );
       return;
     }
@@ -798,7 +813,7 @@ export class ProfilerPanelProvider {
   public async exportEvents(): Promise<void> {
     if (this.capturedEvents.length === 0) {
       await vscode.window.showInformationMessage(
-        'Light Query Profiler: No events to export.',
+        "Light Query Profiler: No events to export.",
       );
       return;
     }
@@ -810,9 +825,9 @@ export class ProfilerPanelProvider {
     const uri = await vscode.window.showSaveDialog({
       defaultUri,
       // eslint-disable-next-line @typescript-eslint/naming-convention
-      filters: { 'JSON Files': ['json'], 'All Files': ['*'] },
-      title: 'Export Profiler Events',
-      saveLabel: 'Export',
+      filters: { "JSON Files": ["json"], "All Files": ["*"] },
+      title: "Export Profiler Events",
+      saveLabel: "Export",
     });
 
     if (!uri) {
@@ -855,9 +870,9 @@ export class ProfilerPanelProvider {
       canSelectFolders: false,
       canSelectMany: false,
       // eslint-disable-next-line @typescript-eslint/naming-convention
-      filters: { 'JSON Files': ['json'], 'All Files': ['*'] },
-      title: 'Import Profiler Events',
-      openLabel: 'Import',
+      filters: { "JSON Files": ["json"], "All Files": ["*"] },
+      title: "Import Profiler Events",
+      openLabel: "Import",
     });
 
     if (!uris || uris.length === 0) {
@@ -874,9 +889,9 @@ export class ProfilerPanelProvider {
       const answer = await vscode.window.showWarningMessage(
         `This will replace ${this.capturedEvents.length} existing event(s). Continue?`,
         { modal: true },
-        'Replace',
+        "Replace",
       );
-      if (answer !== 'Replace') {
+      if (answer !== "Replace") {
         return;
       }
     }
@@ -894,7 +909,7 @@ export class ProfilerPanelProvider {
       if (this.panel) {
         // Panel is already open — send directly
         await this.postMessage({
-          command: 'loadImportedEvents',
+          command: "loadImportedEvents",
           data: imported,
         });
       } else {
@@ -932,7 +947,7 @@ export class ProfilerPanelProvider {
    * @remarks Stops polling and profiling session if active
    */
   public async dispose(): Promise<void> {
-    this.log('Disposing profiler panel provider...');
+    this.log("Disposing profiler panel provider...");
     this.stopPolling();
 
     if (this.state !== ProfilerState.Stopped) {
@@ -950,7 +965,7 @@ export class ProfilerPanelProvider {
       this.panel = undefined;
     }
 
-    this.log('Profiler panel provider disposed');
+    this.log("Profiler panel provider disposed");
   }
 
   /**
@@ -988,20 +1003,20 @@ export class ProfilerPanelProvider {
 
     const hlJsUri = webview
       .asWebviewUri(
-        vscode.Uri.joinPath(this.extensionUri, 'media', 'highlight.min.js'),
+        vscode.Uri.joinPath(this.extensionUri, "media", "highlight.min.js"),
       )
       .toString();
     const hlSqlUri = webview
       .asWebviewUri(
-        vscode.Uri.joinPath(this.extensionUri, 'media', 'highlight-sql.min.js'),
+        vscode.Uri.joinPath(this.extensionUri, "media", "highlight-sql.min.js"),
       )
       .toString();
     const hlCssUri = webview
       .asWebviewUri(
         vscode.Uri.joinPath(
           this.extensionUri,
-          'media',
-          'highlight-vs2015.min.css',
+          "media",
+          "highlight-vs2015.min.css",
         ),
       )
       .toString();
@@ -1110,6 +1125,12 @@ export class ProfilerPanelProvider {
       background-color: rgba(var(--vscode-notificationsWarningIcon-foreground-rgb, 200,160,0), 0.12);
       color: var(--vscode-notificationsWarningIcon-foreground, #cca700);
       border-color: rgba(var(--vscode-notificationsWarningIcon-foreground-rgb, 200,160,0), 0.3);
+    }
+
+    .status-badge.starting {
+      background-color: rgba(var(--vscode-progressBar-background-rgb, 0,122,204), 0.12);
+      color: var(--vscode-progressBar-background, #007acc);
+      border-color: rgba(var(--vscode-progressBar-background-rgb, 0,122,204), 0.3);
     }
 
     .status-dot {
@@ -1904,7 +1925,7 @@ export class ProfilerPanelProvider {
           <div class="form-group">
             <label for="authMode">Authentication Mode</label>
             <select id="authMode">
-              ${authModes.map((mode) => '<option value="' + mode.value + '">' + mode.label + '</option>').join('')}
+              ${authModes.map((mode) => '<option value="' + mode.value + '">' + mode.label + "</option>").join("")}
             </select>
           </div>
 
@@ -1977,8 +1998,8 @@ export class ProfilerPanelProvider {
           <span class="btn-icon">⬇</span> Import...
         </button>
         <div class="toolbar-divider"></div>
-        <button class="btn btn-secondary" id="recentConnectionsBtn" title="Show saved recent connections" aria-label="Show Recent Connections">
-          <span class="btn-icon">⏱</span> Recent...
+        <button class="btn btn-secondary" id="connectionsBtn" title="Show saved connections" aria-label="Show Connections">
+          <span class="btn-icon">⏱</span> Connections
         </button>
       </div>
     </div>
@@ -2183,7 +2204,7 @@ export class ProfilerPanelProvider {
       const clearFilterBtn       = document.getElementById('clearFilterBtn');
       const exportBtn            = document.getElementById('exportBtn');
       const importBtn            = document.getElementById('importBtn');
-      const recentConnectionsBtn = document.getElementById('recentConnectionsBtn');
+      const connectionsBtn = document.getElementById('connectionsBtn');
       const filterModalOverlay   = document.getElementById('filterModalOverlay');
       const filterCloseBtn       = document.getElementById('filterCloseBtn');
       const filterApplyBtn       = document.getElementById('filterApplyBtn');
@@ -2362,7 +2383,7 @@ export class ProfilerPanelProvider {
       clearBtn.addEventListener('click',  () => vscode.postMessage({ command: 'clear' }));
       exportBtn.addEventListener('click', () => vscode.postMessage({ command: 'exportEvents' }));
       importBtn.addEventListener('click', () => vscode.postMessage({ command: 'importEvents' }));
-      recentConnectionsBtn.addEventListener('click', () => vscode.postMessage({ command: 'showRecentConnections' }));
+      connectionsBtn.addEventListener('click', () => vscode.postMessage({ command: 'showConnections' }));
 
       errorClose.addEventListener('click', () => errorContainer.classList.add('hidden'));
       queryPanelClose.addEventListener('click', () => {
@@ -2649,22 +2670,24 @@ export class ProfilerPanelProvider {
 
         // Badge
         statusBadge.className = 'status-badge ' + state;
-        const labels = { stopped: 'Stopped', running: 'Running', paused: 'Paused' };
+        const labels = { stopped: 'Stopped', running: 'Running', paused: 'Paused', starting: 'Starting\u2026' };
         statusText.textContent = labels[state] || state;
 
         // Buttons
         const isRunning = state === 'running';
         const isPaused  = state === 'paused';
         const isStopped = state === 'stopped';
+        const isStarting = state === 'starting';
 
         startBtn.disabled  = !isStopped;
         if (isStopped) { setStarting(false); }
+        else if (isStarting) { setStarting(true); }
 
         pauseBtn.disabled  = !isRunning;
-        pauseBtn.classList.toggle('hidden', isPaused);
-        resumeBtn.classList.toggle('hidden', !isPaused);
+        pauseBtn.classList.toggle('hidden', isPaused || isStarting);
+        resumeBtn.classList.toggle('hidden', !isPaused || isStarting);
         resumeBtn.disabled = !isPaused;
-        stopBtn.disabled   = isStopped;
+        stopBtn.disabled   = isStopped || isStarting;
         // Export and Import are only available when stopped — running would
         // mix live events with exported/imported data, producing a confusing result.
         exportBtn.disabled = !isStopped;
@@ -2687,7 +2710,7 @@ export class ProfilerPanelProvider {
           timerInterval = null;
           timerEl.className = 'session-timer';
         } else {
-          // Stopped — clear everything
+          // Stopped or Starting — clear everything
           clearInterval(timerInterval);
           timerInterval = null;
           sessionStartTime = null;

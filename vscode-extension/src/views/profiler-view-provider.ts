@@ -1,20 +1,21 @@
-import * as vscode from 'vscode';
-import { ProfilerClient } from '../services/profiler-client';
+import * as vscode from "vscode";
+import { ProfilerClient } from "../services/profiler-client";
 import {
   ConnectionSettings,
   validateConnectionSettings,
-} from '../models/connection-settings';
-import { getAllAuthenticationModes } from '../models/authentication-mode';
-import { ProfilerEvent, toEventRow } from '../models/profiler-event';
+} from "../models/connection-settings";
+import { getAllAuthenticationModes } from "../models/authentication-mode";
+import { ProfilerEvent, toEventRow } from "../models/profiler-event";
 
 /**
  * Profiler state discriminated union
  * @remarks Used for state machine implementation in the view provider
  */
 enum ProfilerState {
-  Stopped = 'stopped',
-  Running = 'running',
-  Paused = 'paused',
+  Stopped = "stopped",
+  Starting = "starting",
+  Running = "running",
+  Paused = "paused",
 }
 
 /**
@@ -29,7 +30,7 @@ interface WebviewMessage {
  * Message to update state in the webview
  */
 interface UpdateStateMessage {
-  readonly command: 'updateState';
+  readonly command: "updateState";
   readonly data: {
     readonly state: ProfilerState;
     readonly eventCount: number;
@@ -40,7 +41,7 @@ interface UpdateStateMessage {
  * Message to add events to the webview
  */
 interface AddEventsMessage {
-  readonly command: 'addEvents';
+  readonly command: "addEvents";
   readonly data: ReadonlyArray<ReturnType<typeof toEventRow>>;
 }
 
@@ -48,14 +49,14 @@ interface AddEventsMessage {
  * Message to clear events in the webview
  */
 interface ClearEventsMessage {
-  readonly command: 'clearEvents';
+  readonly command: "clearEvents";
 }
 
 /**
  * Message to show error in the webview
  */
 interface ErrorMessage {
-  readonly command: 'error';
+  readonly command: "error";
   readonly data: string;
 }
 
@@ -63,7 +64,7 @@ interface ErrorMessage {
  * Message to update event count
  */
 interface UpdateEventCountMessage {
-  readonly command: 'updateEventCount';
+  readonly command: "updateEventCount";
   readonly data: number;
 }
 
@@ -91,7 +92,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
   private readonly profilerClient: ProfilerClient;
   private readonly extensionUri: vscode.Uri;
   private readonly outputChannel: vscode.OutputChannel;
-  private sessionName = 'VSCodeProfilerSession';
+  private sessionName = "VSCodeProfilerSession";
   private state: ProfilerState = ProfilerState.Stopped;
   private pollingInterval: NodeJS.Timeout | null = null;
   private readonly pollingIntervalMs = 900; // Match WinForms implementation
@@ -146,14 +147,24 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
       [],
     );
 
-    // Update state when view becomes visible.
+    // Transition from Starting to Running when view becomes visible.
     // Pass the cancellation token so this listener is unregistered if VS Code
     // cancels the view before it is ever shown.
-    webviewView.onDidChangeVisibility(() => {
-      if (webviewView.visible) {
-        void this.updateState();
-      }
-    }, undefined, [{ dispose: () => { /* no-op — listener lifetime tied to webviewView */ } }]);
+    webviewView.onDidChangeVisibility(
+      () => {
+        if (webviewView.visible) {
+          void this.updateState();
+        }
+      },
+      undefined,
+      [
+        {
+          dispose: () => {
+            /* no-op — listener lifetime tied to webviewView */
+          },
+        },
+      ],
+    );
   }
 
   /**
@@ -163,7 +174,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
    */
   private async handleMessage(message: unknown): Promise<void> {
     if (!this.isValidMessage(message)) {
-      this.log('Received invalid message from webview');
+      this.log("Received invalid message from webview");
       return;
     }
 
@@ -171,22 +182,22 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
 
     try {
       switch (message.command) {
-        case 'start':
+        case "start":
           await this.handleStart(message.data);
           break;
-        case 'stop':
+        case "stop":
           await this.handleStop();
           break;
-        case 'pause':
+        case "pause":
           await this.handlePause();
           break;
-        case 'resume':
+        case "resume":
           await this.handleResume();
           break;
-        case 'clear':
+        case "clear":
           await this.handleClear();
           break;
-        case 'ready':
+        case "ready":
           await this.updateState();
           break;
         default:
@@ -196,6 +207,11 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logError(`Command '${message.command}' failed: ${errorMessage}`);
+      // If start failed after transitioning to Starting, reset to Stopped
+      if (message.command === "start") {
+        this.state = ProfilerState.Stopped;
+        await this.updateState();
+      }
       await this.showError(errorMessage);
     }
   }
@@ -208,10 +224,10 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
    */
   private isValidMessage(message: unknown): message is WebviewMessage {
     return (
-      typeof message === 'object' &&
+      typeof message === "object" &&
       message !== null &&
-      'command' in message &&
-      typeof (message as { command: unknown }).command === 'string'
+      "command" in message &&
+      typeof (message as { command: unknown }).command === "string"
     );
   }
 
@@ -222,10 +238,10 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
    * @remarks Validates settings, starts server if needed, and begins polling
    */
   private async handleStart(data: unknown): Promise<void> {
-    this.log('Starting profiling session...');
+    this.log("Starting profiling session...");
 
     if (!this.isConnectionSettings(data)) {
-      throw new Error('Invalid connection settings');
+      throw new Error("Invalid connection settings");
     }
 
     const validationError = validateConnectionSettings(data);
@@ -233,9 +249,14 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
       throw new Error(validationError);
     }
 
+    // Immediately update UI to reflect the starting state before any async calls.
+    // This ensures the user sees immediate feedback even if the backend times out.
+    this.state = ProfilerState.Starting;
+    await this.updateState();
+
     // Start the server if not running
     if (!this.profilerClient.isRunning()) {
-      this.log('Starting profiler client...');
+      this.log("Starting profiler client...");
       await this.profilerClient.start();
     }
 
@@ -252,9 +273,9 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
     // Start polling for events
     this.startPolling();
 
-    this.log('Profiling started successfully');
+    this.log("Profiling started successfully");
     await vscode.window.showInformationMessage(
-      'Profiling started successfully',
+      "Profiling started successfully",
     );
   }
 
@@ -265,15 +286,15 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
    * @remarks Validates required properties: server, database, authenticationMode
    */
   private isConnectionSettings(data: unknown): data is ConnectionSettings {
-    if (typeof data !== 'object' || data === null) {
+    if (typeof data !== "object" || data === null) {
       return false;
     }
 
     const obj = data as Record<string, unknown>;
     return (
-      typeof obj.server === 'string' &&
-      typeof obj.database === 'string' &&
-      typeof obj.authenticationMode === 'number'
+      typeof obj.server === "string" &&
+      typeof obj.database === "string" &&
+      typeof obj.authenticationMode === "number"
     );
   }
 
@@ -282,7 +303,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
    * @remarks Stops polling, terminates server session, and resets state
    */
   private async handleStop(): Promise<void> {
-    this.log('Stopping profiling session...');
+    this.log("Stopping profiling session...");
     this.stopPolling();
 
     if (this.profilerClient.isRunning()) {
@@ -294,8 +315,8 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
     this.seenEventKeys.clear();
     await this.updateState();
 
-    this.log('Profiling stopped');
-    await vscode.window.showInformationMessage('Profiling stopped');
+    this.log("Profiling stopped");
+    await vscode.window.showInformationMessage("Profiling stopped");
   }
 
   /**
@@ -327,11 +348,11 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
    * @remarks Clears local event cache and resets event count without stopping profiling
    */
   private async handleClear(): Promise<void> {
-    this.log('Clearing events');
+    this.log("Clearing events");
     this.eventCount = 0;
     this.seenEventKeys.clear();
     await this.postMessage({
-      command: 'clearEvents',
+      command: "clearEvents",
     });
   }
 
@@ -390,7 +411,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
         const rows = newEvents.map((event) => toEventRow(event));
 
         await this.postMessage({
-          command: 'addEvents',
+          command: "addEvents",
           data: rows,
         });
 
@@ -414,25 +435,25 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
 
     // Option 1: Use event_sequence
     if (
-      typeof actions['event_sequence'] === 'number' ||
-      typeof actions['event_sequence'] === 'string'
+      typeof actions["event_sequence"] === "number" ||
+      typeof actions["event_sequence"] === "string"
     ) {
-      return `seq:${actions['event_sequence']}`;
+      return `seq:${actions["event_sequence"]}`;
     }
 
     // Option 2: Use attach_activity_id
-    if (typeof actions['attach_activity_id'] === 'string') {
-      return `activity:${actions['attach_activity_id']}`;
+    if (typeof actions["attach_activity_id"] === "string") {
+      return `activity:${actions["attach_activity_id"]}`;
     }
 
     // Option 3: Fallback
-    const timestamp = event.timestamp ?? '';
-    const name = event.name ?? '';
-    const sessionIdRaw = actions['session_id'];
+    const timestamp = event.timestamp ?? "";
+    const name = event.name ?? "";
+    const sessionIdRaw = actions["session_id"];
     const sessionId =
-      typeof sessionIdRaw === 'string' || typeof sessionIdRaw === 'number'
+      typeof sessionIdRaw === "string" || typeof sessionIdRaw === "number"
         ? String(sessionIdRaw)
-        : '';
+        : "";
 
     return `${timestamp}|${name}|${sessionId}`;
   }
@@ -443,7 +464,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
    */
   private async updateState(): Promise<void> {
     await this.postMessage({
-      command: 'updateState',
+      command: "updateState",
       data: {
         state: this.state,
         eventCount: this.eventCount,
@@ -457,7 +478,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
    */
   private async updateEventCount(): Promise<void> {
     await this.postMessage({
-      command: 'updateEventCount',
+      command: "updateEventCount",
       data: this.eventCount,
     });
   }
@@ -470,7 +491,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
   private async showError(message: string): Promise<void> {
     this.logError(message);
     await this.postMessage({
-      command: 'error',
+      command: "error",
       data: message,
     });
     await vscode.window.showErrorMessage(`Light Query Profiler: ${message}`);
@@ -492,7 +513,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
    * @remarks Stops polling and profiling session if active
    */
   public async dispose(): Promise<void> {
-    this.log('Disposing profiler view provider...');
+    this.log("Disposing profiler view provider...");
     this.stopPolling();
 
     if (this.state !== ProfilerState.Stopped) {
@@ -505,7 +526,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
       }
     }
 
-    this.log('Profiler view provider disposed');
+    this.log("Profiler view provider disposed");
   }
 
   /**
@@ -656,6 +677,10 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
       background-color: var(--vscode-testing-iconQueued);
     }
 
+    .status-indicator.starting {
+      background-color: var(--vscode-progressBar-background, #007acc);
+    }
+
     .events-table {
       width: 100%;
       border-collapse: collapse;
@@ -739,7 +764,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
     <div class="form-group">
       <label for="authMode">Authentication Mode</label>
       <select id="authMode">
-        ${authModes.map((mode) => `<option value="${mode.value}">${mode.label}</option>`).join('')}
+        ${authModes.map((mode) => `<option value="${mode.value}">${mode.label}</option>`).join("")}
       </select>
     </div>
 
@@ -907,6 +932,7 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
             clearEvents();
             break;
           case 'error':
+            updateState('stopped');
             showError(message.data);
             break;
         }
@@ -920,6 +946,13 @@ export class ProfilerViewProvider implements vscode.WebviewViewProvider {
           case 'stopped':
             statusText.textContent = 'Stopped';
             startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            resumeBtn.classList.add('hidden');
+            stopBtn.disabled = true;
+            break;
+          case 'starting':
+            statusText.textContent = 'Starting…';
+            startBtn.disabled = true;
             pauseBtn.disabled = true;
             resumeBtn.classList.add('hidden');
             stopBtn.disabled = true;

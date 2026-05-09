@@ -1,8 +1,8 @@
 /**
- * Represents a saved recent connection entry returned by the backend.
+ * Represents a saved connection profile returned by the backend.
  * Password is plain-text — decrypted by the backend repository layer.
  */
-export interface RecentConnection {
+export interface ConnectionProfile {
   id: number;
   dataSource: string;
   initialCatalog: string;
@@ -18,4 +18,6 @@ export interface RecentConnection {
    * @remarks Never log this value.
    */
   connectionString?: string;
+  /** User-assigned descriptive name for this connection profile (e.g., "Production", "Dev Local"). */
+  profileName?: string;
 }

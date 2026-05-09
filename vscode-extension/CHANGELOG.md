@@ -5,6 +5,32 @@ All notable changes to the Light Query Profiler extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-05-XX
+
+### Added
+
+- **Connection Profiles**: Connections can now be saved with a custom descriptive name
+  (e.g., "Production", "Dev Local"). The profile name is displayed prominently in the
+  Connections panel.
+- **Add Connection dialog**: New "Add" button in the Connections panel toolbar opens a
+  modal dialog to create a new connection profile with all connection fields and a
+  `Profile Name` field.
+- **Edit Connection**: Each connection row now has an "Edit" button that opens the same
+  dialog pre-filled with the connection's current values, allowing modifications.
+
+### Changed
+
+- **Renamed "Recent Connections" → "Connections"**: The panel, command, and all related
+  UI labels now use the simpler "Connections" naming to reflect the profile-based model.
+- The `lightQueryProfiler.showRecentConnections` command is now
+  `lightQueryProfiler.showConnections`.
+- The profiler toolbar button label changed from "Recent…" to "Connections".
+- Backend JSON-RPC methods renamed:
+  - `GetRecentConnectionsAsync` → `GetConnectionsAsync`
+  - `SaveRecentConnectionAsync` → `SaveConnectionAsync`
+  - `DeleteRecentConnectionAsync` → `DeleteConnectionAsync`
+- `localStorage.db` schema migrated: new `ProfileName` column added to the `Connections` table.
+
 ## [1.4.0] - 2026-04-21
 
 ### Added
