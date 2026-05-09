@@ -275,6 +275,16 @@ export class ProfilerPanelProvider {
           }
           break;
         case "webviewReady":
+          // Synchronise filter state with the webview on every handshake.
+          // The webview initialises activeFilter to empty, but the host may
+          // still hold filters from a previous session (e.g. when the panel
+          // was disposed and is now being recreated). Sending the current
+          // filter guarantees both sides agree on the active filter set.
+          await this.postMessage({
+            command: "updateFilter",
+            data: this.eventFilter,
+          });
+
           // If importEvents() stored pending data while the panel was opening,
           // forward it now that the webview has signalled it is ready.
           if (this.pendingImportEvents) {
