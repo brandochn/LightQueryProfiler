@@ -9,7 +9,7 @@ type WebviewIncomingMessage =
   | { command: "refresh" }
   | { command: "connectionSelected"; data: ConnectionProfile }
   | { command: "startProfiling"; data: ConnectionProfile }
-  | { command: "deleteConnection"; data: number }
+  | { command: "deleteConnection"; data: { id: number; name: string } }
   | { command: "addConnection"; data: ConnectionProfile }
   | { command: "updateConnection"; data: ConnectionProfile }
   | { command: "error"; data: string };
@@ -124,7 +124,7 @@ export class ConnectionsPanelProvider implements vscode.Disposable {
         break;
 
       case "deleteConnection":
-        await this.deleteConnection(message.data);
+        await this.deleteConnection(message.data.id, message.data.name);
         break;
 
       case "addConnection":
@@ -183,9 +183,19 @@ export class ConnectionsPanelProvider implements vscode.Disposable {
   }
 
   /**
-   * Deletes a connection by its id and refreshes the list.
+   * Deletes a connection by its id after user confirmation, then refreshes the list.
    */
-  private async deleteConnection(id: number): Promise<void> {
+  private async deleteConnection(id: number, name: string): Promise<void> {
+    const confirm = await vscode.window.showWarningMessage(
+      `Are you sure you want to delete the connection "${name}"?`,
+      { modal: false },
+      "Delete",
+    );
+
+    if (confirm !== "Delete") {
+      return;
+    }
+
     try {
       if (!this.profilerClient.isRunning()) {
         this.log("Server not running, starting server process...");
@@ -658,7 +668,10 @@ export class ConnectionsPanelProvider implements vscode.Disposable {
             deleteBtn.addEventListener('click', function (e) {
               e.stopPropagation();
               var id = parseInt(deleteBtn.getAttribute('data-id') || '0', 10);
-              vscode.postMessage({ command: 'deleteConnection', data: id });
+              let idx = parseInt(deleteBtn.getAttribute('data-index') || '0', 10);
+              let conn = connections[idx];
+              let name = conn ? (conn.profileName || conn.dataSource || 'this connection') : 'this connection';
+              vscode.postMessage({ command: 'deleteConnection', data: { id: id, name: name } });
             });
             deleteBtn.addEventListener('dblclick', function (e) {
               e.stopPropagation();
