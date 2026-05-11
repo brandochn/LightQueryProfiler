@@ -2,9 +2,9 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ProfilerPanelProvider } from './views/profiler-panel-provider';
-import { RecentConnectionsPanelProvider } from './views/recent-connections-panel-provider';
+import { ConnectionsPanelProvider } from './views/connections-panel-provider';
 import { ProfilerClient } from './services/profiler-client';
-import { RecentConnection } from './models/recent-connection';
+import { ConnectionProfile } from './models/connection-profile';
 
 /**
  * Logger interface for structured logging
@@ -22,7 +22,7 @@ interface Logger {
 interface ExtensionState {
   profilerClient: ProfilerClient | undefined;
   profilerPanelProvider: ProfilerPanelProvider | undefined;
-  recentConnectionsPanelProvider: RecentConnectionsPanelProvider | undefined;
+  connectionsPanelProvider: ConnectionsPanelProvider | undefined;
   outputChannel: vscode.OutputChannel | undefined;
 }
 
@@ -32,7 +32,7 @@ interface ExtensionState {
 const state: ExtensionState = {
   profilerClient: undefined,
   profilerPanelProvider: undefined,
-  recentConnectionsPanelProvider: undefined,
+  connectionsPanelProvider: undefined,
   outputChannel: undefined,
 };
 
@@ -90,12 +90,12 @@ export async function activate(
   );
   context.subscriptions.push(importEventsCommand);
 
-  const showRecentConnectionsCommand = vscode.commands.registerCommand(
-    'lightQueryProfiler.showRecentConnections',
+  const showConnectionsCommand = vscode.commands.registerCommand(
+    'lightQueryProfiler.showConnections',
     () => {
-      log.info('Show Recent Connections command executed');
-      if (state.recentConnectionsPanelProvider) {
-        void state.recentConnectionsPanelProvider.show();
+      log.info('Show Connections command executed');
+      if (state.connectionsPanelProvider) {
+        void state.connectionsPanelProvider.show();
       } else {
         void vscode.window.showErrorMessage(
           'Light Query Profiler: Extension is not initialized.',
@@ -103,7 +103,7 @@ export async function activate(
       }
     },
   );
-  context.subscriptions.push(showRecentConnectionsCommand);
+  context.subscriptions.push(showConnectionsCommand);
 
   const showProfilerCommand = vscode.commands.registerCommand(
     'lightQueryProfiler.showProfiler',
@@ -177,18 +177,18 @@ export async function activate(
       state.outputChannel,
     );
 
-    // Create recent connections provider
-    state.recentConnectionsPanelProvider = new RecentConnectionsPanelProvider(
+    // Create connections provider
+    state.connectionsPanelProvider = new ConnectionsPanelProvider(
       context.extensionUri,
       state.profilerClient,
       state.outputChannel,
-      (connection: RecentConnection) => {
+      (connection: ConnectionProfile) => {
         // Double-click / Enter: fill connection fields only (no auto-start).
         // NOTE: method is showPanel(), not show()
         state.profilerPanelProvider?.showPanel();
         state.profilerPanelProvider?.fillConnectionFields(connection);
       },
-      (connection: RecentConnection) => {
+      (connection: ConnectionProfile) => {
         // "Start Profiling" button: fill connection fields and start profiling automatically.
         void state.profilerPanelProvider?.startProfilingWithConnection(
           connection,
@@ -196,9 +196,9 @@ export async function activate(
       },
     );
 
-    // Wire the "Recent Connections" toolbar button inside the profiler webview
-    state.profilerPanelProvider.setOnShowRecentConnections(() => {
-      state.recentConnectionsPanelProvider?.show();
+    // Wire the "Connections" toolbar button inside the profiler webview
+    state.profilerPanelProvider.setOnShowConnections(() => {
+      state.connectionsPanelProvider?.show();
     });
 
     // Register remaining disposables
@@ -214,9 +214,9 @@ export async function activate(
       },
       {
         dispose: () => {
-          if (state.recentConnectionsPanelProvider) {
-            log.info('Disposing recent connections panel provider...');
-            state.recentConnectionsPanelProvider.dispose();
+          if (state.connectionsPanelProvider) {
+            log.info('Disposing connections panel provider...');
+            state.connectionsPanelProvider.dispose();
           }
         },
       },

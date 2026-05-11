@@ -2,7 +2,7 @@
   "name": "light-query-profiler",
   "displayName": "Light Query Profiler",
   "description": "SQL Server and Azure SQL Database query profiler for VS Code",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "publisher": "brandochn",
   "author": {
     "name": "Hildebrando Chávez",
@@ -54,8 +54,8 @@
         "icon": "$(arrow-down)"
       },
       {
-        "command": "lightQueryProfiler.showRecentConnections",
-        "title": "Show Recent Connections",
+        "command": "lightQueryProfiler.showConnections",
+        "title": "Show Connections",
         "category": "Light Query Profiler",
         "icon": "$(history)"
       }
@@ -63,7 +63,7 @@
     "menus": {
       "editor/title": [
         {
-          "command": "lightQueryProfiler.showRecentConnections",
+          "command": "lightQueryProfiler.showConnections",
           "when": "activeWebviewPanelId == 'lightQueryProfiler'",
           "group": "navigation"
         }

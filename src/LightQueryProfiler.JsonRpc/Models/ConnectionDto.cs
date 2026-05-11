@@ -1,10 +1,10 @@
 namespace LightQueryProfiler.JsonRpc.Models
 {
     /// <summary>
-    /// Data transfer object representing a recent connection entry.
+    /// Data transfer object representing a saved connection profile.
     /// Passwords are returned in plain-text — decryption has already been applied by the repository.
     /// </summary>
-    public record RecentConnectionDto
+    public record ConnectionDto
     {
         public required int Id { get; init; }
         public required string DataSource { get; init; }
@@ -25,5 +25,8 @@ namespace LightQueryProfiler.JsonRpc.Models
         /// Never log this value — it may contain credentials.
         /// </remarks>
         public string? ConnectionString { get; init; }
+
+        /// <summary>User-assigned descriptive name for this connection profile.</summary>
+        public string? ProfileName { get; init; }
     }
 }

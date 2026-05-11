@@ -17,7 +17,8 @@ namespace LightQueryProfiler.Shared.Models
         /// <param name="engineType">Detected or specified engine type. <see langword="null"/> when using <see cref="AuthenticationMode.ConnectionString"/> (detected at start-profiling time).</param>
         /// <param name="authenticationMode">Authentication method used.</param>
         /// <param name="connectionString">Raw ADO.NET connection string. Only set when <paramref name="authenticationMode"/> is <see cref="AuthenticationMode.ConnectionString"/>. Plain-text — the repository layer decrypts it before passing here. Never log this value.</param>
-        public Connection(int id, string initialCatalog, DateTime creationDate, string dataSource, bool integratedSecurity, string? password, string? userId, DatabaseEngineType? engineType = null, AuthenticationMode authenticationMode = AuthenticationMode.WindowsAuth, string? connectionString = null)
+        /// <param name="profileName">User-assigned descriptive name for this connection profile (e.g., "Production", "Dev Local").</param>
+        public Connection(int id, string initialCatalog, DateTime creationDate, string dataSource, bool integratedSecurity, string? password, string? userId, DatabaseEngineType? engineType = null, AuthenticationMode authenticationMode = AuthenticationMode.WindowsAuth, string? connectionString = null, string? profileName = null)
         {
             Id = id;
             InitialCatalog = initialCatalog;
@@ -29,6 +30,7 @@ namespace LightQueryProfiler.Shared.Models
             EngineType = engineType;
             AuthenticationMode = authenticationMode;
             ConnectionString = connectionString;
+            ProfileName = profileName;
         }
 
         public int Id { get; }
@@ -59,5 +61,10 @@ namespace LightQueryProfiler.Shared.Models
         /// </summary>
         /// <remarks>Never log this value — it may contain credentials.</remarks>
         public string? ConnectionString { get; }
+
+        /// <summary>
+        /// Gets the user-assigned descriptive name for this connection profile (e.g., "Production", "Dev Local").
+        /// </summary>
+        public string? ProfileName { get; }
     }
 }

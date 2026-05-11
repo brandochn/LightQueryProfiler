@@ -1,11 +1,17 @@
 namespace LightQueryProfiler.JsonRpc.Models
 {
     /// <summary>
-    /// Request model for saving (upserting) a recent connection.
+    /// Request model for saving (upserting) a connection profile.
     /// Passwords are accepted in plain-text and encrypted by the repository layer.
     /// </summary>
-    public record SaveRecentConnectionRequest
+    public record SaveConnectionRequest
     {
+        /// <summary>
+        /// Gets the unique identifier of the connection to update.
+        /// When null or 0, a new connection is created.
+        /// </summary>
+        public int? Id { get; init; }
+
         public required string DataSource { get; init; }
         public required string InitialCatalog { get; init; }
         public string? UserId { get; init; }
@@ -24,5 +30,8 @@ namespace LightQueryProfiler.JsonRpc.Models
         /// The repository layer encrypts this value before storage. Never log this value.
         /// </remarks>
         public string? ConnectionString { get; init; }
+
+        /// <summary>User-assigned descriptive name for this connection profile.</summary>
+        public string? ProfileName { get; init; }
     }
 }
