@@ -5,6 +5,25 @@ All notable changes to the Light Query Profiler extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-05-XX
+
+### Added
+
+- **MSSQL Extension Integration**: Automatically detect and import connection profiles
+  from the official SQL Server (mssql) extension. On first activation after upgrade,
+  Light Query Profiler offers a one-time import of all MSSQL connections.
+- **Import from MSSQL button**: New button in the Connections panel toolbar to manually
+  import connections from the MSSQL extension at any time.
+- New `MssqlConnectionReader` service that reads `mssql.connections` from VS Code
+  settings and maps them to Light Query Profiler connection profiles.
+- New `lightQueryProfiler.importFromMssql` command for manual import via the Command Palette.
+
+### Security
+
+- Passwords stored by the MSSQL extension in the OS credential manager are NOT imported.
+  Users must re-enter passwords for imported connections before starting a profiling session.
+  All other fields (server, database, username, auth mode) are imported automatically.
+
 ## [1.5.0] - 2026-05-XX
 
 ### Added

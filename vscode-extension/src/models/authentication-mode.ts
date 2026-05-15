@@ -32,15 +32,15 @@ export enum AuthenticationMode {
 export function getAuthenticationModeString(mode: AuthenticationMode): string {
   switch (mode) {
     case AuthenticationMode.WindowsAuth:
-      return 'Windows Authentication';
+      return "Windows Authentication";
     case AuthenticationMode.SqlServerAuth:
-      return 'SQL Server Authentication';
+      return "SQL Server Authentication";
     case AuthenticationMode.AzureSqlDatabase:
-      return 'Azure SQL Database';
+      return "Azure SQL Database";
     case AuthenticationMode.ConnectionString:
-      return 'Connection String';
+      return "Connection String";
     default:
-      return 'Unknown';
+      return "Unknown";
   }
 }
 

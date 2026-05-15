@@ -1,19 +1,19 @@
-import * as vscode from 'vscode';
-import { spawn, ChildProcess } from 'child_process';
+import * as vscode from "vscode";
+import { spawn, ChildProcess } from "child_process";
 import {
   StreamMessageReader,
   StreamMessageWriter,
   createMessageConnection,
   MessageConnection,
   RequestType,
-} from 'vscode-jsonrpc/node';
-import { ProfilerEvent } from '../models/profiler-event';
+} from "vscode-jsonrpc/node";
+import { ProfilerEvent } from "../models/profiler-event";
 import {
   ConnectionSettings,
   toConnectionString,
   getEngineType,
-} from '../models/connection-settings';
-import { ConnectionProfile } from '../models/connection-profile';
+} from "../models/connection-settings";
+import { ConnectionProfile } from "../models/connection-profile";
 
 /**
  * Request parameters for starting a profiling session
@@ -49,29 +49,29 @@ const startProfilingRequestType = new RequestType<
   StartProfilingRequest,
   void,
   void
->('StartProfilingAsync');
+>("StartProfilingAsync");
 const stopProfilingRequestType = new RequestType<
   StopProfilingRequest,
   void,
   void
->('StopProfilingAsync');
+>("StopProfilingAsync");
 const getEventsRequestType = new RequestType<
   GetEventsRequest,
   ProfilerEvent[],
   void
->('GetLastEventsAsync');
+>("GetLastEventsAsync");
 
 const getConnectionsRequestType = new RequestType<
   Record<string, never>,
   ConnectionProfile[],
   void
->('GetConnectionsAsync');
+>("GetConnectionsAsync");
 
 const saveConnectionRequestType = new RequestType<
   ConnectionProfile,
   void,
   void
->('SaveConnectionAsync');
+>("SaveConnectionAsync");
 
 /**
  * Request parameters for deleting a connection
@@ -84,18 +84,18 @@ const deleteConnectionRequestType = new RequestType<
   DeleteConnectionRequest,
   void,
   void
->('DeleteConnectionAsync');
+>("DeleteConnectionAsync");
 
 /**
  * Client state enum for tracking lifecycle
  * @remarks Forms a discriminated union for state machine implementation
  */
 enum ClientState {
-  Idle = 'idle',
-  Starting = 'starting',
-  Running = 'running',
-  Stopping = 'stopping',
-  Disposed = 'disposed',
+  Idle = "idle",
+  Starting = "starting",
+  Running = "running",
+  Stopping = "stopping",
+  Disposed = "disposed",
 }
 
 /**
@@ -138,33 +138,33 @@ export class ProfilerClient {
    */
   public async start(): Promise<void> {
     if (this.state === ClientState.Disposed) {
-      throw new Error('Client has been disposed and cannot be restarted');
+      throw new Error("Client has been disposed and cannot be restarted");
     }
 
     if (this.state === ClientState.Running) {
-      this.log('Server is already running');
+      this.log("Server is already running");
       return;
     }
 
     if (this.state === ClientState.Starting) {
-      throw new Error('Server is already starting');
+      throw new Error("Server is already starting");
     }
 
     this.state = ClientState.Starting;
-    this.log('Starting Light Query Profiler server...');
+    this.log("Starting Light Query Profiler server...");
 
     try {
       // Spawn the .NET process
       this.serverProcess = spawn(this.dotnetPath, [this.serverDllPath], {
-        stdio: ['pipe', 'pipe', 'pipe'],
+        stdio: ["pipe", "pipe", "pipe"],
       });
 
       if (!this.serverProcess.stdout || !this.serverProcess.stdin) {
-        throw new Error('Failed to create server process streams');
+        throw new Error("Failed to create server process streams");
       }
 
       // Set up error handlers before anything else
-      this.serverProcess.on('error', (error: Error) => {
+      this.serverProcess.on("error", (error: Error) => {
         this.logError(`Server process error: ${error.message}`);
         void this.handleServerFailure(error);
       });
@@ -173,7 +173,7 @@ export class ProfilerClient {
       // NOTE: waitForServerReady() registers its own one-time listener that
       // resolves on "READY" and then removes itself.  This persistent handler
       // runs in parallel and logs every stderr line for diagnostics.
-      this.serverProcess.stderr?.on('data', (data: Buffer) => {
+      this.serverProcess.stderr?.on("data", (data: Buffer) => {
         const message = data.toString().trim();
         if (message) {
           this.log(`[Server stderr] ${message}`);
@@ -182,11 +182,11 @@ export class ProfilerClient {
 
       // Handle server exit
       this.serverProcess.on(
-        'exit',
+        "exit",
         (code: number | null, signal: string | null) => {
           const exitInfo = signal
             ? `signal ${signal}`
-            : `code ${code ?? 'null'}`;
+            : `code ${code ?? "null"}`;
           this.log(`Server process exited with ${exitInfo}`);
           void this.handleServerExit(code, signal);
         },
@@ -212,7 +212,7 @@ export class ProfilerClient {
       });
 
       this.connection.onClose(() => {
-        this.log('JSON-RPC connection closed');
+        this.log("JSON-RPC connection closed");
         void this.handleConnectionClose();
       });
 
@@ -220,7 +220,7 @@ export class ProfilerClient {
       this.connection.listen();
 
       this.state = ClientState.Running;
-      this.log('Server started successfully');
+      this.log("Server started successfully");
     } catch (error) {
       this.state = ClientState.Idle;
       await this.cleanup();
@@ -355,7 +355,7 @@ export class ProfilerClient {
    * @throws Error if the connection is not established or request fails.
    */
   public async saveConnection(
-    connection: Omit<ConnectionProfile, 'id'>,
+    connection: Omit<ConnectionProfile, "id">,
   ): Promise<void> {
     this.ensureRunning();
 
@@ -447,7 +447,7 @@ export class ProfilerClient {
       return;
     }
 
-    this.log('Disposing profiler client...');
+    this.log("Disposing profiler client...");
     this.state = ClientState.Disposed;
     void this.cleanup();
   }
@@ -469,20 +469,20 @@ export class ProfilerClient {
         reject(
           new Error(
             `Server did not become ready within ${timeoutMs}ms. ` +
-              'Check the Output panel for server startup errors.',
+              "Check the Output panel for server startup errors.",
           ),
         );
       }, timeoutMs);
 
       const cleanup = (): void => {
         clearTimeout(timer);
-        this.serverProcess?.stderr?.off('data', onData);
-        this.serverProcess?.off('exit', onExit);
+        this.serverProcess?.stderr?.off("data", onData);
+        this.serverProcess?.off("exit", onExit);
       };
 
       const onData = (data: Buffer): void => {
-        if (data.toString().includes('READY')) {
-          this.log('Server ready signal received');
+        if (data.toString().includes("READY")) {
+          this.log("Server ready signal received");
           cleanup();
           resolve();
         }
@@ -492,14 +492,14 @@ export class ProfilerClient {
         cleanup();
         reject(
           new Error(
-            `Server process exited (code ${code ?? 'null'}) before becoming ready. ` +
-              'Check the Output panel for server startup errors.',
+            `Server process exited (code ${code ?? "null"}) before becoming ready. ` +
+              "Check the Output panel for server startup errors.",
           ),
         );
       };
 
-      this.serverProcess?.stderr?.on('data', onData);
-      this.serverProcess?.once('exit', onExit);
+      this.serverProcess?.stderr?.on("data", onData);
+      this.serverProcess?.once("exit", onExit);
     });
   }
 
@@ -510,7 +510,7 @@ export class ProfilerClient {
    */
   private ensureRunning(): void {
     if (this.state === ClientState.Disposed) {
-      throw new Error('Client has been disposed');
+      throw new Error("Client has been disposed");
     }
 
     if (
@@ -519,7 +519,7 @@ export class ProfilerClient {
       this.state !== ClientState.Running
     ) {
       throw new Error(
-        'Server is not running. Call start() first and ensure it completed successfully.',
+        "Server is not running. Call start() first and ensure it completed successfully.",
       );
     }
   }
@@ -530,7 +530,7 @@ export class ProfilerClient {
    */
   private validateSessionName(sessionName: string): void {
     if (!sessionName || sessionName.trim().length === 0) {
-      throw new Error('Session name cannot be empty');
+      throw new Error("Session name cannot be empty");
     }
   }
 
@@ -557,11 +557,11 @@ export class ProfilerClient {
   ): Promise<void> {
     // Normal exit
     if (code === 0 && this.state === ClientState.Stopping) {
-      this.log('Server exited normally');
+      this.log("Server exited normally");
       return;
     }
 
-    const exitInfo = signal ? `signal ${signal}` : `code ${code ?? 'unknown'}`;
+    const exitInfo = signal ? `signal ${signal}` : `code ${code ?? "unknown"}`;
 
     // Exit during startup — waitForServerReady() will reject via its own onExit
     // listener, which triggers cleanup() in start()'s catch block.  We only need
@@ -580,7 +580,7 @@ export class ProfilerClient {
 
       if (hadActiveSessions) {
         await vscode.window.showWarningMessage(
-          'Profiler server stopped unexpectedly. Active profiling sessions have been terminated.',
+          "Profiler server stopped unexpectedly. Active profiling sessions have been terminated.",
         );
       }
 
@@ -604,7 +604,7 @@ export class ProfilerClient {
    */
   private async handleConnectionClose(): Promise<void> {
     if (this.state === ClientState.Running) {
-      this.log('Connection closed unexpectedly');
+      this.log("Connection closed unexpectedly");
       await this.cleanup();
       this.onServerStoppedCallback?.();
     }
@@ -636,19 +636,19 @@ export class ProfilerClient {
     if (this.serverProcess !== null) {
       try {
         if (!this.serverProcess.killed) {
-          this.serverProcess.kill('SIGTERM');
+          this.serverProcess.kill("SIGTERM");
 
           // Give it a moment to exit gracefully
           await new Promise<void>((resolve) => {
             const timeout = setTimeout(() => {
               if (this.serverProcess && !this.serverProcess.killed) {
-                this.log('Force killing server process');
-                this.serverProcess.kill('SIGKILL');
+                this.log("Force killing server process");
+                this.serverProcess.kill("SIGKILL");
               }
               resolve();
             }, 2000);
 
-            this.serverProcess?.once('exit', () => {
+            this.serverProcess?.once("exit", () => {
               clearTimeout(timeout);
               resolve();
             });
@@ -666,7 +666,7 @@ export class ProfilerClient {
       this.state = ClientState.Idle;
     }
 
-    this.log('Cleanup completed');
+    this.log("Cleanup completed");
   }
 
   /**

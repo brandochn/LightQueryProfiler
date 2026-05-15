@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
 /**
  * Represents a single profiler event row as displayed in the events table.
@@ -107,11 +107,11 @@ export class EventExportImportService {
     filePath: string,
   ): Promise<void> {
     if (!filePath || filePath.trim().length === 0) {
-      throw new Error('File path is required');
+      throw new Error("File path is required");
     }
 
     if (!events || events.length === 0) {
-      throw new Error('No events to export');
+      throw new Error("No events to export");
     }
 
     const serialized: SerializedEvent[] = events.map((event, index) => {
@@ -129,12 +129,12 @@ export class EventExportImportService {
 
     try {
       await fs.promises.writeFile(filePath, json, {
-        encoding: 'utf8',
-        flag: 'w',
+        encoding: "utf8",
+        flag: "w",
       });
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
-      if (code === 'EACCES' || code === 'EPERM') {
+      if (code === "EACCES" || code === "EPERM") {
         throw new Error(
           `Permission denied writing to: ${path.basename(filePath)}`,
         );
@@ -165,16 +165,16 @@ export class EventExportImportService {
    */
   public static async importEvents(filePath: string): Promise<ImportResult> {
     if (!filePath || filePath.trim().length === 0) {
-      throw new Error('File path is required');
+      throw new Error("File path is required");
     }
 
     // ── Read file ──────────────────────────────────────────────────────────
     let content: string;
     try {
-      content = await fs.promises.readFile(filePath, 'utf8');
+      content = await fs.promises.readFile(filePath, "utf8");
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
-      if (code === 'ENOENT') {
+      if (code === "ENOENT") {
         throw new Error(`File not found: ${path.basename(filePath)}`);
       }
       throw new Error(`Cannot read file: ${(error as Error).message}`);
@@ -186,16 +186,16 @@ export class EventExportImportService {
       parsed = JSON.parse(content);
     } catch {
       throw new Error(
-        'Invalid JSON file. Please select a valid profiler events file.',
+        "Invalid JSON file. Please select a valid profiler events file.",
       );
     }
 
     if (!Array.isArray(parsed)) {
-      throw new Error('Invalid format: expected a JSON array of events.');
+      throw new Error("Invalid format: expected a JSON array of events.");
     }
 
     if (parsed.length === 0) {
-      throw new Error('The selected file contains no events.');
+      throw new Error("The selected file contains no events.");
     }
 
     // ── Sort by __RowIndex (stable; falls back to JSON array order) ────────
@@ -207,12 +207,12 @@ export class EventExportImportService {
       const ra = a as Record<string, unknown>;
       const rb = b as Record<string, unknown>;
       const aIdx =
-        typeof ra['__RowIndex'] === 'number'
-          ? ra['__RowIndex']
+        typeof ra["__RowIndex"] === "number"
+          ? ra["__RowIndex"]
           : Number.MAX_SAFE_INTEGER;
       const bIdx =
-        typeof rb['__RowIndex'] === 'number'
-          ? rb['__RowIndex']
+        typeof rb["__RowIndex"] === "number"
+          ? rb["__RowIndex"]
           : Number.MAX_SAFE_INTEGER;
       return aIdx - bIdx;
     });
@@ -233,29 +233,29 @@ export class EventExportImportService {
             return String(v);
           }
         }
-        return '';
+        return "";
       };
 
       return {
-        eventClass: str('eventClass', 'EventClass', 'EventName'),
-        textData: str('textData', 'TextData'),
-        applicationName: str('applicationName', 'ApplicationName'),
-        hostName: str('hostName', 'HostName'),
-        ntUserName: str('ntUserName', 'NTUserName'),
-        loginName: str('loginName', 'LoginName'),
+        eventClass: str("eventClass", "EventClass", "EventName"),
+        textData: str("textData", "TextData"),
+        applicationName: str("applicationName", "ApplicationName"),
+        hostName: str("hostName", "HostName"),
+        ntUserName: str("ntUserName", "NTUserName"),
+        loginName: str("loginName", "LoginName"),
         clientProcessId: str(
-          'clientProcessId',
-          'ClientProcessId',
-          'ClientProcessID',
+          "clientProcessId",
+          "ClientProcessId",
+          "ClientProcessID",
         ),
-        spid: str('spid', 'Spid', 'SPID'),
-        startTime: str('startTime', '__Timestamp', 'StartTime'),
-        cpu: str('cpu', 'CPU'),
-        reads: str('reads', 'Reads'),
-        writes: str('writes', 'Writes'),
-        duration: str('duration', 'Duration'),
-        databaseId: str('databaseId', 'DatabaseId', 'DatabaseID'),
-        databaseName: str('databaseName', 'DatabaseName'),
+        spid: str("spid", "Spid", "SPID"),
+        startTime: str("startTime", "__Timestamp", "StartTime"),
+        cpu: str("cpu", "CPU"),
+        reads: str("reads", "Reads"),
+        writes: str("writes", "Writes"),
+        duration: str("duration", "Duration"),
+        databaseId: str("databaseId", "DatabaseId", "DatabaseID"),
+        databaseName: str("databaseName", "DatabaseName"),
       };
     });
 
@@ -272,7 +272,7 @@ export class EventExportImportService {
    */
   public static generateDefaultFilename(): string {
     const now = new Date();
-    const pad = (n: number): string => String(n).padStart(2, '0');
+    const pad = (n: number): string => String(n).padStart(2, "0");
     const datePart = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
     const timePart = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
     return `ProfilerEvents_${datePart}_${timePart}.json`;

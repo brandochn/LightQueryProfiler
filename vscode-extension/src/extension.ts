@@ -1,10 +1,11 @@
-import * as vscode from 'vscode';
-import * as path from 'path';
-import * as fs from 'fs';
-import { ProfilerPanelProvider } from './views/profiler-panel-provider';
-import { ConnectionsPanelProvider } from './views/connections-panel-provider';
-import { ProfilerClient } from './services/profiler-client';
-import { ConnectionProfile } from './models/connection-profile';
+import * as vscode from "vscode";
+import * as path from "path";
+import * as fs from "fs";
+import { ProfilerPanelProvider } from "./views/profiler-panel-provider";
+import { ConnectionsPanelProvider } from "./views/connections-panel-provider";
+import { ProfilerClient } from "./services/profiler-client";
+import { MssqlConnectionReader } from "./services/mssql-connection-reader";
+import { ConnectionProfile } from "./models/connection-profile";
 
 /**
  * Logger interface for structured logging
@@ -36,6 +37,93 @@ const state: ExtensionState = {
   outputChannel: undefined,
 };
 
+// ── Module-level concurrency guard for MSSQL import ────────────────────
+let isImportingFromMssql = false;
+
+/**
+ * Imports MSSQL connection profiles into Light Query Profiler's connection store.
+ * @param connections - Array of ConnectionProfile objects to import
+ * @param client - ProfilerClient instance for backend communication
+ * @param context - Extension context for globalState
+ * @param log - Logger instance
+ * @remarks This function is guarded against concurrent execution. Only one import
+ * can run at a time. The `mssqlImportCompleted` flag is only set when at least
+ * one connection is successfully imported.
+ */
+async function importMssqlConnections(
+  connections: ConnectionProfile[],
+  client: ProfilerClient,
+  context: vscode.ExtensionContext,
+  log: Logger,
+): Promise<void> {
+  // -- Concurrency guard -------------------------------------------
+  if (isImportingFromMssql) {
+    log.warn("MSSQL import already in progress, skipping duplicate request.");
+    return;
+  }
+  isImportingFromMssql = true;
+
+  try {
+    // Ensure the JSON-RPC server is running before attempting saves.
+    // The one-time detection fires early in activation before any panel
+    // has triggered server start; the manual button path also benefits
+    // from this guard should the server have stopped unexpectedly.
+    if (!client.isRunning()) {
+      log.info("Starting server before MSSQL import...");
+      try {
+        await client.start();
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        log.error(
+          `Failed to start profiler server for MSSQL import: ${errorMessage}`,
+        );
+        await vscode.window.showErrorMessage(
+          `Failed to start the profiler server. Cannot import connections: ${errorMessage}`,
+        );
+        return;
+      }
+    }
+
+    let importedCount = 0;
+    let errorCount = 0;
+
+    for (const conn of connections) {
+      try {
+        await client.saveConnection(conn);
+        importedCount++;
+      } catch (error) {
+        errorCount++;
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        log.error(
+          `Failed to import MSSQL connection "${conn.profileName || conn.dataSource}": ${errorMessage}`,
+        );
+      }
+    }
+
+    if (importedCount > 0) {
+      // Fire-and-forget: do NOT await the dialog so the caller can refresh
+      // the connections table immediately while the message is still visible.
+      void vscode.window.showInformationMessage(
+        `Successfully imported ${importedCount} connection(s) from the MSSQL extension.`,
+      );
+      // Only mark as completed if at least one import succeeded (Issue 1 fix)
+      await context.globalState.update("mssqlImportCompleted", true);
+    }
+
+    if (errorCount > 0) {
+      // Fire-and-forget: same reason as above — let the UI refresh without
+      // waiting for the user to dismiss this warning.
+      void vscode.window.showWarningMessage(
+        `${errorCount} connection(s) could not be imported. Check the output log for details.`,
+      );
+    }
+  } finally {
+    isImportingFromMssql = false;
+  }
+}
+
 /**
  * Activates the extension
  * @param context - Extension context provided by VS Code
@@ -46,11 +134,11 @@ export async function activate(
 ): Promise<void> {
   // Create output channel first for logging
   state.outputChannel = vscode.window.createOutputChannel(
-    'Light Query Profiler',
+    "Light Query Profiler",
   );
   const log = createLogger(state.outputChannel);
 
-  log.info('Activating Light Query Profiler extension...');
+  log.info("Activating Light Query Profiler extension...");
 
   // IMPORTANT: Register the command IMMEDIATELY — before any awaits.
   // VS Code may dispatch the command while activate() is still running its
@@ -61,14 +149,14 @@ export async function activate(
   // panel or queues a retry once initialization completes.
   let activationReady = false;
   const exportEventsCommand = vscode.commands.registerCommand(
-    'lightQueryProfiler.exportEvents',
+    "lightQueryProfiler.exportEvents",
     () => {
-      log.info('Export Events command executed');
+      log.info("Export Events command executed");
       if (state.profilerPanelProvider) {
         void state.profilerPanelProvider.exportEvents();
       } else {
         void vscode.window.showErrorMessage(
-          'Light Query Profiler: Extension is not initialized.',
+          "Light Query Profiler: Extension is not initialized.",
         );
       }
     },
@@ -76,14 +164,14 @@ export async function activate(
   context.subscriptions.push(exportEventsCommand);
 
   const importEventsCommand = vscode.commands.registerCommand(
-    'lightQueryProfiler.importEvents',
+    "lightQueryProfiler.importEvents",
     () => {
-      log.info('Import Events command executed');
+      log.info("Import Events command executed");
       if (state.profilerPanelProvider) {
         void state.profilerPanelProvider.importEvents();
       } else {
         void vscode.window.showErrorMessage(
-          'Light Query Profiler: Extension is not initialized.',
+          "Light Query Profiler: Extension is not initialized.",
         );
       }
     },
@@ -91,14 +179,14 @@ export async function activate(
   context.subscriptions.push(importEventsCommand);
 
   const showConnectionsCommand = vscode.commands.registerCommand(
-    'lightQueryProfiler.showConnections',
+    "lightQueryProfiler.showConnections",
     () => {
-      log.info('Show Connections command executed');
+      log.info("Show Connections command executed");
       if (state.connectionsPanelProvider) {
         void state.connectionsPanelProvider.show();
       } else {
         void vscode.window.showErrorMessage(
-          'Light Query Profiler: Extension is not initialized.',
+          "Light Query Profiler: Extension is not initialized.",
         );
       }
     },
@@ -106,19 +194,19 @@ export async function activate(
   context.subscriptions.push(showConnectionsCommand);
 
   const showProfilerCommand = vscode.commands.registerCommand(
-    'lightQueryProfiler.showProfiler',
+    "lightQueryProfiler.showProfiler",
     () => {
-      log.info('Show SQL Profiler command executed');
+      log.info("Show SQL Profiler command executed");
       if (state.profilerPanelProvider) {
         state.profilerPanelProvider.showPanel();
       } else if (!activationReady) {
         // Extension is still initializing — wait for it then open the panel
-        log.info('Provider not ready yet, deferring panel open...');
+        log.info("Provider not ready yet, deferring panel open...");
         const deferredInterval = setInterval(() => {
           if (state.profilerPanelProvider) {
             clearInterval(deferredInterval);
             clearTimeout(deferredTimeout);
-            log.info('Provider ready, opening deferred panel');
+            log.info("Provider ready, opening deferred panel");
             state.profilerPanelProvider.showPanel();
           }
         }, 50);
@@ -137,9 +225,9 @@ export async function activate(
           },
         });
       } else {
-        log.error('Profiler panel provider not initialized');
+        log.error("Profiler panel provider not initialized");
         void vscode.window.showErrorMessage(
-          'Failed to open SQL Profiler. Please reload the window.',
+          "Failed to open SQL Profiler. Please reload the window.",
         );
       }
     },
@@ -150,10 +238,10 @@ export async function activate(
     // Get server DLL path and dotnet path in parallel (no duplicate dotnet check)
     const serverDllPath = getServerDllPath(context, log);
     if (!serverDllPath) {
-      const message = 'Light Query Profiler server not found.';
+      const message = "Light Query Profiler server not found.";
       log.error(message);
       activationReady = true;
-      await vscode.window.showErrorMessage(message, 'Error');
+      await vscode.window.showErrorMessage(message, "Error");
       return;
     }
 
@@ -201,13 +289,96 @@ export async function activate(
       state.connectionsPanelProvider?.show();
     });
 
+    // -- One-time MSSQL connection import detection --------------------
+    void (async () => {
+      const mssqlImportCompleted = context.globalState.get<boolean>(
+        "mssqlImportCompleted",
+        false,
+      );
+      if (!mssqlImportCompleted) {
+        const reader = new MssqlConnectionReader();
+        const mssqlConnections = reader.getImportableConnections();
+        if (mssqlConnections.length > 0 && state.profilerClient) {
+          const choice = await vscode.window.showInformationMessage(
+            `Light Query Profiler detected ${mssqlConnections.length} connection(s) in the MSSQL extension. Would you like to import them?`,
+            "Import All",
+            "Not Now",
+          );
+          if (choice === "Import All") {
+            // Per Issue 5: we intentionally skip isMssqlExtensionAvailable()
+            // here because the MSSQL extension uses lazy activation and
+            // extension.isActive may return false even though it is installed
+            // and has connections.  getImportableConnections() already reads
+            // from vscode.workspace.getConfiguration('mssql') which works
+            // regardless of activation state.
+            await importMssqlConnections(
+              mssqlConnections,
+              state.profilerClient,
+              context,
+              log,
+            );
+          }
+        }
+      }
+    })();
+
+    // -- Register import-from-mssql command ---------------------------
+    const importFromMssqlCommand = vscode.commands.registerCommand(
+      "lightQueryProfiler.importFromMssql",
+      async () => {
+        if (!state.profilerClient) {
+          await vscode.window.showErrorMessage(
+            "Light Query Profiler is not initialized.",
+          );
+          return;
+        }
+        const reader = new MssqlConnectionReader();
+        // Per Issue 5: we intentionally skip isMssqlExtensionAvailable()
+        // because the MSSQL extension uses lazy activation and
+        // extension.isActive may return false even though it is installed
+        // and has connections.  getImportableConnections() reads from
+        // vscode.workspace.getConfiguration('mssql') which works regardless
+        // of activation state.
+        const connections = reader.getImportableConnections();
+        if (connections.length === 0) {
+          // Distinguish between "extension not installed" (no mssql config
+          // section at all) and "installed but no connections configured".
+          const extension = vscode.extensions.getExtension("ms-mssql.mssql");
+          if (extension) {
+            await vscode.window.showInformationMessage(
+              "No connections found in the MSSQL extension.",
+            );
+          } else {
+            await vscode.window.showWarningMessage(
+              "The MSSQL extension (ms-mssql.mssql) is not installed.",
+            );
+          }
+          return;
+        }
+        const choice = await vscode.window.showInformationMessage(
+          `Found ${connections.length} connection(s) in the MSSQL extension. Import them?`,
+          "Import All",
+          "Cancel",
+        );
+        if (choice === "Import All") {
+          await importMssqlConnections(
+            connections,
+            state.profilerClient,
+            context,
+            log,
+          );
+        }
+      },
+    );
+    context.subscriptions.push(importFromMssqlCommand);
+
     // Register remaining disposables
     context.subscriptions.push(
       state.outputChannel,
       {
         dispose: async () => {
           if (state.profilerPanelProvider) {
-            log.info('Disposing profiler panel provider...');
+            log.info("Disposing profiler panel provider...");
             await state.profilerPanelProvider.dispose();
           }
         },
@@ -215,7 +386,7 @@ export async function activate(
       {
         dispose: () => {
           if (state.connectionsPanelProvider) {
-            log.info('Disposing connections panel provider...');
+            log.info("Disposing connections panel provider...");
             state.connectionsPanelProvider.dispose();
           }
         },
@@ -223,7 +394,7 @@ export async function activate(
       {
         dispose: () => {
           if (state.profilerClient) {
-            log.info('Disposing profiler client...');
+            log.info("Disposing profiler client...");
             state.profilerClient.dispose();
           }
         },
@@ -231,11 +402,11 @@ export async function activate(
     );
 
     activationReady = true;
-    log.info('Light Query Profiler extension activated successfully');
+    log.info("Light Query Profiler extension activated successfully");
 
     // Show welcome message only on first activation
     const hasShownWelcomeMessage = context.globalState.get<boolean>(
-      'hasShownWelcomeMessage',
+      "hasShownWelcomeMessage",
       false,
     );
     if (!hasShownWelcomeMessage) {
@@ -245,7 +416,7 @@ export async function activate(
         )
         .then(() => {
           // Mark as shown after user dismisses or acknowledges the message
-          void context.globalState.update('hasShownWelcomeMessage', true);
+          void context.globalState.update("hasShownWelcomeMessage", true);
         });
     }
   } catch (error) {
@@ -261,10 +432,10 @@ export async function activate(
     await vscode.window
       .showErrorMessage(
         `Failed to activate Light Query Profiler: ${errorMessage}`,
-        'View Logs',
+        "View Logs",
       )
       .then((selection) => {
-        if (selection === 'View Logs' && state.outputChannel) {
+        if (selection === "View Logs" && state.outputChannel) {
           state.outputChannel.show();
         }
       });
@@ -292,7 +463,7 @@ export async function deactivate(): Promise<void> {
         },
       };
 
-  log.info('Deactivating Light Query Profiler extension...');
+  log.info("Deactivating Light Query Profiler extension...");
 
   // Cleanup is primarily handled by context.subscriptions dispose
   // But we ensure proper cleanup order here
@@ -311,7 +482,7 @@ export async function deactivate(): Promise<void> {
   }
 
   if (state.outputChannel) {
-    log.info('Light Query Profiler extension deactivated');
+    log.info("Light Query Profiler extension deactivated");
     state.outputChannel.dispose();
     state.outputChannel = undefined;
   }
@@ -329,21 +500,21 @@ function getServerDllPath(
   log: Logger,
 ): string | undefined {
   const possiblePaths: ReadonlyArray<string> = [
-    path.join(context.extensionPath, 'bin', 'LightQueryProfiler.JsonRpc.dll'),
+    path.join(context.extensionPath, "bin", "LightQueryProfiler.JsonRpc.dll"),
     path.join(
       context.extensionPath,
-      'server',
-      'LightQueryProfiler.JsonRpc.dll',
+      "server",
+      "LightQueryProfiler.JsonRpc.dll",
     ),
     path.join(
       context.extensionPath,
-      'dist',
-      'server',
-      'LightQueryProfiler.JsonRpc.dll',
+      "dist",
+      "server",
+      "LightQueryProfiler.JsonRpc.dll",
     ),
   ];
 
-  log.info('Searching for server DLL in the following paths:');
+  log.info("Searching for server DLL in the following paths:");
   for (const dllPath of possiblePaths) {
     log.info(`  - ${dllPath}`);
     try {
@@ -356,7 +527,7 @@ function getServerDllPath(
     }
   }
 
-  log.error('Server DLL not found in any expected location');
+  log.error("Server DLL not found in any expected location");
   return undefined;
 }
 
@@ -375,7 +546,7 @@ async function getDotnetPath(log: Logger): Promise<string> {
 
   // Default to 'dotnet' and let the OS resolve it
   log.warn("Could not verify dotnet installation, using 'dotnet' as default");
-  return 'dotnet';
+  return "dotnet";
 }
 
 /**
@@ -386,15 +557,15 @@ async function getDotnetPath(log: Logger): Promise<string> {
  */
 async function findDotnetInPath(log: Logger): Promise<string | undefined> {
   try {
-    const { exec } = await import('child_process');
-    const { promisify } = await import('util');
+    const { exec } = await import("child_process");
+    const { promisify } = await import("util");
     const execAsync = promisify(exec);
 
-    log.info('Checking for dotnet installation...');
-    const { stdout } = await execAsync('dotnet --version');
+    log.info("Checking for dotnet installation...");
+    const { stdout } = await execAsync("dotnet --version");
     const version = stdout.trim();
     log.info(`Found dotnet version: ${version}`);
-    return 'dotnet';
+    return "dotnet";
   } catch (error) {
     log.warn(`dotnet not found in PATH: ${String(error)}`);
     return undefined;

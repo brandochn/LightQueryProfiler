@@ -117,62 +117,62 @@ export function toEventRow(event: ProfilerEvent): ProfilerEventRow {
 
   // Extract query text from different event types
   let queryText: string | undefined;
-  if (typeof fields['batch_text'] === 'string') {
-    queryText = fields['batch_text'];
-  } else if (typeof fields['statement'] === 'string') {
-    queryText = fields['statement'];
+  if (typeof fields["batch_text"] === "string") {
+    queryText = fields["batch_text"];
+  } else if (typeof fields["statement"] === "string") {
+    queryText = fields["statement"];
   }
 
   // Extract duration (convert to microseconds if needed)
   let duration: number | undefined;
-  if (typeof fields['duration'] === 'number') {
-    duration = fields['duration'];
+  if (typeof fields["duration"] === "number") {
+    duration = fields["duration"];
   }
 
   // Extract CPU time
   let cpuTime: number | undefined;
-  if (typeof fields['cpu_time'] === 'number') {
-    cpuTime = fields['cpu_time'];
+  if (typeof fields["cpu_time"] === "number") {
+    cpuTime = fields["cpu_time"];
   }
 
   // Extract reads
   let reads: number | undefined;
-  if (typeof fields['logical_reads'] === 'number') {
-    reads = fields['logical_reads'];
+  if (typeof fields["logical_reads"] === "number") {
+    reads = fields["logical_reads"];
   }
 
   // Extract writes
   let writes: number | undefined;
-  if (typeof fields['writes'] === 'number') {
-    writes = fields['writes'];
+  if (typeof fields["writes"] === "number") {
+    writes = fields["writes"];
   }
 
   // Extract action data
   const applicationName =
-    typeof actions['client_app_name'] === 'string'
-      ? actions['client_app_name']
+    typeof actions["client_app_name"] === "string"
+      ? actions["client_app_name"]
       : undefined;
 
   const hostname =
-    typeof actions['client_hostname'] === 'string'
-      ? actions['client_hostname']
+    typeof actions["client_hostname"] === "string"
+      ? actions["client_hostname"]
       : undefined;
 
   const databaseName =
-    typeof actions['database_name'] === 'string'
-      ? actions['database_name']
+    typeof actions["database_name"] === "string"
+      ? actions["database_name"]
       : undefined;
 
   const loginName =
-    typeof actions['username'] === 'string' ? actions['username'] : undefined;
+    typeof actions["username"] === "string" ? actions["username"] : undefined;
 
   const sessionId =
-    typeof actions['session_id'] === 'number'
-      ? actions['session_id']
+    typeof actions["session_id"] === "number"
+      ? actions["session_id"]
       : undefined;
 
   return {
-    eventName: event.name ?? 'Unknown',
+    eventName: event.name ?? "Unknown",
     timestamp: event.timestamp ?? new Date().toISOString(),
     duration,
     queryText,
@@ -203,7 +203,7 @@ export function toEventRow(event: ProfilerEvent): ProfilerEventRow {
  */
 export function formatDuration(microseconds: number | undefined): string {
   if (microseconds === undefined) {
-    return '-';
+    return "-";
   }
 
   if (microseconds < 1000) {
@@ -231,7 +231,7 @@ export function formatDuration(microseconds: number | undefined): string {
  */
 export function formatNumber(value: number | undefined): string {
   if (value === undefined) {
-    return '-';
+    return "-";
   }
 
   return value.toLocaleString();
