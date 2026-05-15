@@ -6,9 +6,7 @@
     "sourceType": "module",
     "project": "./tsconfig.json"
   },
-  "plugins": [
-    "@typescript-eslint"
-  ],
+  "plugins": ["@typescript-eslint"],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
@@ -61,12 +59,8 @@
     "eqeqeq": "warn",
     "no-throw-literal": "warn",
     "semi": "warn",
-    "quotes": ["warn", "single", { "avoidEscape": true }],
+    "quotes": ["warn", "double", { "avoidEscape": true }],
     "no-console": ["warn", { "allow": ["warn", "error"] }]
   },
-  "ignorePatterns": [
-    "dist",
-    "node_modules",
-    "**/*.d.ts"
-  ]
+  "ignorePatterns": ["dist", "node_modules", "**/*.d.ts"]
 }

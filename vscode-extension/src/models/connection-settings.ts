@@ -1,4 +1,4 @@
-import { AuthenticationMode } from './authentication-mode';
+import { AuthenticationMode } from "./authentication-mode";
 
 /**
  * Connection settings for SQL Server or Azure SQL Database
@@ -52,17 +52,17 @@ export function validateConnectionSettings(
       !settings.connectionString ||
       settings.connectionString.trim().length === 0
     ) {
-      return 'Connection String is required';
+      return "Connection String is required";
     }
     return undefined;
   }
 
   if (!settings.server || settings.server.trim().length === 0) {
-    return 'Server is required';
+    return "Server is required";
   }
 
   if (!settings.database || settings.database.trim().length === 0) {
-    return 'Database is required';
+    return "Database is required";
   }
 
   // SQL Server Auth and Azure SQL require credentials
@@ -71,11 +71,11 @@ export function validateConnectionSettings(
     settings.authenticationMode === AuthenticationMode.AzureSqlDatabase
   ) {
     if (!settings.username || settings.username.trim().length === 0) {
-      return 'Username is required for SQL Server and Azure SQL authentication';
+      return "Username is required for SQL Server and Azure SQL authentication";
     }
 
     if (!settings.password || settings.password.trim().length === 0) {
-      return 'Password is required for SQL Server and Azure SQL authentication';
+      return "Password is required for SQL Server and Azure SQL authentication";
     }
   }
 
@@ -91,7 +91,7 @@ export function validateConnectionSettings(
 export function toConnectionString(settings: ConnectionSettings): string {
   // Connection String mode — return the raw connection string as-is
   if (settings.authenticationMode === AuthenticationMode.ConnectionString) {
-    return settings.connectionString ?? '';
+    return settings.connectionString ?? "";
   }
 
   const parts: string[] = [
@@ -100,7 +100,7 @@ export function toConnectionString(settings: ConnectionSettings): string {
   ];
 
   if (settings.authenticationMode === AuthenticationMode.WindowsAuth) {
-    parts.push('Integrated Security=true');
+    parts.push("Integrated Security=true");
   } else {
     if (settings.username) {
       parts.push(`User Id=${settings.username}`);
@@ -112,13 +112,13 @@ export function toConnectionString(settings: ConnectionSettings): string {
 
   // Tag the connection so the profiler backend can exclude its own queries
   // (mirrors MainPresenter.ConfigureAsync: builder.ApplicationName = "LightQueryProfiler")
-  parts.push('Application Name=LightQueryProfiler');
+  parts.push("Application Name=LightQueryProfiler");
 
   // Add timeout settings
-  parts.push('Connect Timeout=30');
-  parts.push('TrustServerCertificate=true');
+  parts.push("Connect Timeout=30");
+  parts.push("TrustServerCertificate=true");
 
-  return parts.join(';') + ';';
+  return parts.join(";") + ";";
 }
 
 /**

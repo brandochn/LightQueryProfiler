@@ -8,8 +8,8 @@
       1. Validates prerequisites (dotnet, node, npm)
       2. Cleans previous build outputs
       3. Publishes the .NET backend (JsonRpc + Shared) in Release mode (framework-dependent, AnyCPU)
-      4. Converts the SVG icon to PNG 128x128 using the 'sharp' npm package
-      5. Installs npm dependencies
+      4. Installs npm dependencies (including 'sharp' for icon conversion)
+      5. Converts the SVG icon to PNG 128x128 using the 'sharp' npm package
       6. Compiles TypeScript to dist/
       7. Validates all required output files are present
       8. Packages the extension with vsce
@@ -247,15 +247,41 @@ $dllCount = (Get-ChildItem -Path $BinDir -Filter "*.dll" -Recurse).Count
 Write-Info "$dllCount DLL(s) found in bin/"
 
 # ---------------------------------------------------------------------------
-# STEP 4 — Convert SVG icon to PNG 128x128
+# STEP 4 — Install npm dependencies
 # ---------------------------------------------------------------------------
 
-Write-Step 4 "Converting icon.svg to icon.png (128x128)"
+Write-Step 4 "Installing npm dependencies"
+
+if ($SkipNpmInstall) {
+    Write-Info "Skipped (--SkipNpmInstall flag set)"
+    if (-not (Test-Path (Join-Path $ExtDir "node_modules"))) {
+        Write-Fail "node_modules not found and --SkipNpmInstall was set. Run without --SkipNpmInstall first."
+        exit 1
+    }
+} else {
+    Write-Info "Running: npm install"
+    Push-Location $ExtDir
+    try {
+        & npm install
+        if ($LASTEXITCODE -ne 0) {
+            Write-Fail "npm install failed with exit code $LASTEXITCODE"
+            exit 1
+        }
+    } finally {
+        Pop-Location
+    }
+    Write-Success "npm install completed"
+}
+
+# ---------------------------------------------------------------------------
+# STEP 5 — Convert SVG icon to PNG 128x128
+# ---------------------------------------------------------------------------
+
+Write-Step 5 "Converting icon.svg to icon.png (128x128)"
 
 # We use a small inline Node.js script that uses 'sharp'.
-# 'sharp' may already be in node_modules after npm install, but since we run
-# this step before npm install (to keep icon conversion independent), we use
-# npx with --yes to auto-install sharp temporarily if needed.
+# 'sharp' is installed as a devDependency via npm (previous step),
+# so it's always available in node_modules.
 # The sharp package is chosen because it works reliably on Windows/Linux/macOS
 # and does not require any system-level libraries when installed via npm.
 
@@ -279,32 +305,14 @@ sharp(src)
 "@
 
 # Write the inline script to a temp file inside the extension directory
-# so that require('sharp') resolves from node_modules there (if present).
+# so that require('sharp') resolves from node_modules there.
 $tempScript = Join-Path $ExtDir "_icon_convert_temp.js"
 
 try {
     Set-Content -Path $tempScript -Value $convertScript -Encoding UTF8
 
-    Write-Info "Running icon conversion via Node.js + sharp..."
-
-    # First attempt: use sharp from node_modules (if already installed)
-    $sharpInNodeModules = Join-Path (Join-Path $ExtDir "node_modules") "sharp"
-    if (Test-Path $sharpInNodeModules) {
-        Write-Info "Using sharp from existing node_modules"
-        & node $tempScript
-    } else {
-        # Install sharp temporarily via npx
-        Write-Info "sharp not in node_modules, installing via npx (temporary)..."
-        & npx --yes --prefix $ExtDir sharp-cli@latest --input $IconSvg --output $IconPng resize 128 128 2>$null
-        if ($LASTEXITCODE -ne 0) {
-            # Fallback: install sharp directly and run the script
-            Write-Info "Falling back to: npm install --no-save sharp in extension dir..."
-            Push-Location $ExtDir
-            & npm install --no-save sharp 2>&1 | Out-Null
-            Pop-Location
-            & node $tempScript
-        }
-    }
+    Write-Info "Running icon conversion via Node.js + sharp (from node_modules)..."
+    & node $tempScript
 
     if ($LASTEXITCODE -ne 0) {
         Write-Fail "Icon conversion failed. The .vsix cannot be packaged without icon.png."
@@ -324,33 +332,6 @@ try {
     if (Test-Path $tempScript) {
         Remove-Item $tempScript -Force
     }
-}
-
-# ---------------------------------------------------------------------------
-# STEP 5 — Install npm dependencies
-# ---------------------------------------------------------------------------
-
-Write-Step 5 "Installing npm dependencies"
-
-if ($SkipNpmInstall) {
-    Write-Info "Skipped (--SkipNpmInstall flag set)"
-    if (-not (Test-Path (Join-Path $ExtDir "node_modules"))) {
-        Write-Fail "node_modules not found and --SkipNpmInstall was set. Run without --SkipNpmInstall first."
-        exit 1
-    }
-} else {
-    Write-Info "Running: npm install"
-    Push-Location $ExtDir
-    try {
-        & npm install
-        if ($LASTEXITCODE -ne 0) {
-            Write-Fail "npm install failed with exit code $LASTEXITCODE"
-            exit 1
-        }
-    } finally {
-        Pop-Location
-    }
-    Write-Success "npm install completed"
 }
 
 # ---------------------------------------------------------------------------

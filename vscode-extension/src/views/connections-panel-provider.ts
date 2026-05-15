@@ -12,6 +12,7 @@ type WebviewIncomingMessage =
   | { command: "deleteConnection"; data: { id: number; name: string } }
   | { command: "addConnection"; data: ConnectionProfile }
   | { command: "updateConnection"; data: ConnectionProfile }
+  | { command: "importFromMssql" }
   | { command: "error"; data: string };
 
 // Messages the extension HOST sends TO the webview
@@ -133,6 +134,16 @@ export class ConnectionsPanelProvider implements vscode.Disposable {
 
       case "updateConnection":
         await this.updateConnection(message.data);
+        break;
+
+      case "importFromMssql":
+        // Forward to the extension host via the command, which handles
+        // the full flow: check availability -> count connections -> confirm -> import
+        await vscode.commands.executeCommand(
+          "lightQueryProfiler.importFromMssql",
+        );
+        // After import (success or cancel), refresh the connection list
+        await this.loadConnections();
         break;
 
       case "error":
@@ -280,7 +291,7 @@ export class ConnectionsPanelProvider implements vscode.Disposable {
       border-color: var(--vscode-focusBorder, #007fd4);
     }
 
-    #refreshBtn, #addBtn {
+    #refreshBtn, #addBtn, #importMssqlBtn {
       flex-shrink: 0;
       padding: 3px 8px;
       background: var(--vscode-button-secondaryBackground, transparent);
@@ -292,7 +303,7 @@ export class ConnectionsPanelProvider implements vscode.Disposable {
       white-space: nowrap;
     }
 
-    #refreshBtn:hover, #addBtn:hover {
+    #refreshBtn:hover, #addBtn:hover, #importMssqlBtn:hover {
       background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground));
     }
 
@@ -509,6 +520,7 @@ export class ConnectionsPanelProvider implements vscode.Disposable {
     <input type="text" id="searchInput" placeholder="Search by profile, server or database..." autocomplete="off" />
     <button id="addBtn" title="Add a new connection profile" aria-label="Add Connection">+ Add</button>
     <button id="refreshBtn" title="Refresh connections list" aria-label="Refresh">&#8635; Refresh</button>
+    <button id="importMssqlBtn" title="Import connections from the MSSQL extension">Import from MSSQL</button>
   </div>
   <div class="list-container">
     <table class="connections-table">
@@ -907,6 +919,11 @@ export class ConnectionsPanelProvider implements vscode.Disposable {
       // Add button
       document.getElementById('addBtn').addEventListener('click', function () {
         openAddDialog();
+      });
+
+      // Import from MSSQL button
+      document.getElementById('importMssqlBtn').addEventListener('click', function () {
+        vscode.postMessage({ command: 'importFromMssql' });
       });
 
       // Signal readiness

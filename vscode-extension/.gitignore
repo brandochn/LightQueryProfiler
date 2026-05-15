@@ -38,6 +38,9 @@ localStorage.db
 coverage/
 .nyc_output/
 
+# ESLint output
+eslint-output.json
+
 # Package manager
 package-lock.json
 yarn.lock
